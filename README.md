@@ -2,9 +2,9 @@
 
 ## 项目概述
 
-**项目名称**: 健康守护 - 基于区块链的智能老年医疗管理系统  
-**项目时期**: 2024.10 - 2025.01  
-**开发规模**: 独立完整开发 (前后端 + 移动端)  
+**项目名称**: 健康守护 - 基于区块链的智能老年医疗管理系统
+**项目时期**: 2025.9 - 2025.11
+**开发规模**: 独立完整开发 (前后端 + 移动端)
 **项目类型**: 区块链 DApp + 移动应用
 
 ---
@@ -28,18 +28,22 @@
 ### 1️⃣ **架构设计 - 微服务生态设计**
 
 #### 系统架构
+
 - **前端层**：Vue 3 + TypeScript + Vite（Web 端）+ Capacitor（Android 移动端）
 - **网关层**：API Gateway - 统一入口、请求路由、权限管理
 - **业务层**：10+ 微服务（用户服务、用药管理、关系管理、链上交互等）
 - **基础层**：PostgreSQL + Redis + RabbitMQ + Blockchain RPC
 
 #### 通信架构创新
+
 设计并实现了**HTTP + gRPC 混合架构**：
+
 - **外部通信**：RESTful HTTP API（便于调试、文档化）
 - **内部通信**：gRPC（高性能、类型安全）
 - **优势**：兼顾开发效率与系统性能
 
 #### 关键设计决策
+
 - ✅ 异步任务处理：ZKP 证明生成采用后台异步任务 + Redis 状态存储
 - ✅ 事件驱动：RabbitMQ 消息队列用于跨服务通知
 - ✅ 缓存策略：Redis 多层缓存，减少数据库压力
@@ -48,6 +52,7 @@
 ### 2️⃣ **零知识证明模块 - ZKP 证明生成引擎**
 
 #### ZKP Service 设计与实现
+
 ```
 技术栈：snarkjs + Groth16 证明系统 + circomlibjs
 核心功能：
@@ -57,6 +62,7 @@
 ```
 
 #### 业务流程设计
+
 ```
 用户打卡数据 
   ↓
@@ -72,6 +78,7 @@ Redis 存储任务状态（1小时 TTL）
 ```
 
 #### 关键成就
+
 - 实现了从用药数据到零知识证明的完整链路
 - 支持证明在链上的验证，用户隐私得以保护
 - 异步处理避免长时间阻塞，用户体验流畅
@@ -79,23 +86,27 @@ Redis 存储任务状态（1小时 TTL）
 ### 3️⃣ **区块链账户层 - ERC-4337 集成**
 
 #### 智能合约设计思路
+
 - **智能合约账户**：用户无需持有 ETH，系统代付 Gas
 - **社交恢复**：多个信任地址作为恢复因子，账户永不丢失
 - **权限管理**：细粒度的操作权限控制（转账、合约调用等）
 
 #### 核心实现
+
 - Bundler：交易打包和提交
 - Paymaster：代付 Gas 费用的智能合约
 - EntryPoint：ERC-4337 标准合约交互
 
 #### 业务意义
-✅ 降低用户使用门槛（无需学习钱包概念）  
-✅ 提升资产安全性（社交恢复 vs 单一私钥）  
+
+✅ 降低用户使用门槛（无需学习钱包概念）
+✅ 提升资产安全性（社交恢复 vs 单一私钥）
 ✅ 改善用户体验（一切操作对用户透明）
 
 ### 4️⃣ **后端服务体系 - 10+ 核心微服务**
 
 #### 用户认证与管理
+
 ```
 User Service (gRPC 50052)
 ├─ 用户注册/登录
@@ -104,6 +115,7 @@ User Service (gRPC 50052)
 ```
 
 #### 用药管理体系
+
 ```
 Medication Service (HTTP + WebSocket)
 ├─ 用药计划管理
@@ -113,6 +125,7 @@ Medication Service (HTTP + WebSocket)
 ```
 
 #### 关系与隐私
+
 ```
 Relationship Service (gRPC 50053 + HTTP)
 ├─ 家庭关系管理
@@ -126,6 +139,7 @@ Secure Exchange Service
 ```
 
 #### 链上交互
+
 ```
 Chain Service
 ├─ Web3.js/ethers.js 封装
@@ -140,6 +154,7 @@ ZKP Service
 ```
 
 #### 通知系统
+
 ```
 Notification Service
 ├─ WebSocket 推送
@@ -149,6 +164,7 @@ Notification Service
 ```
 
 #### 迁移与恢复
+
 ```
 Migration Service
 ├─ 账户迁移流程
@@ -159,6 +175,7 @@ Migration Service
 ### 5️⃣ **前端应用 - Apple 风格 UI 体验**
 
 #### 技术栈
+
 - **框架**：Vue 3.5+ (Composition API)
 - **构建**：Vite 7.0+
 - **语言**：TypeScript 5.8+ (严格模式)
@@ -168,6 +185,7 @@ Migration Service
 #### 核心功能模块
 
 **登录与认证**
+
 ```
 欢迎页 (灵动浮动动画)
   ↓
@@ -181,28 +199,33 @@ Migration Service
 ```
 
 **用药管理首页**
+
 - 今日用药任务清单（待办/已完成/已漏服）
 - 一键打卡操作
 - 实时状态同步
 
 **用药记录**
+
 - 日历视图（直观展示完成情况）
 - 周/月统计分析
 - 按药物类别分类
 
 **家庭圈功能**
+
 - 生成二维码邀请家人
 - 家人扫码关联
 - 远程查看服药记录
 - 发送关怀消息
 
 **账户安全**
+
 - 修改登录密码
 - 生物识别管理
 - 社交恢复设置
 - 账户迁移
 
 #### 设计规范与动画
+
 ```
 设计风格：Apple 风格灵动 UI
 ├─ 毛玻璃效果背景
@@ -219,6 +242,7 @@ Migration Service
 ```
 
 #### 生物识别集成
+
 - **安全**：硬件级加密（Android Keystore）
 - **流程**：自动弹出指纹/Face ID → 失败自动降级密码登录
 - **存储**：密码加密存储本地，仅可通过生物识别解密
@@ -226,6 +250,7 @@ Migration Service
 ### 6️⃣ **运维部署 - Docker Compose 容器化部署**
 
 #### 部署架构
+
 ```
 Docker Compose 编排
 ├─ 基础设施层
@@ -250,11 +275,13 @@ Docker Compose 编排
 #### 🚀 快速启动（仅需 3 步）
 
 **步骤 1: 进入后端服务目录**
+
 ```bash
 cd backend-services
 ```
 
 **步骤 2: 启动所有服务**
+
 ```bash
 # 使用 Docker Compose（推荐）
 docker-compose up -d --build
@@ -264,6 +291,7 @@ docker-compose up -d --build
 ```
 
 **步骤 3: 验证服务**
+
 ```bash
 # 查看容器状态
 docker-compose ps
@@ -277,21 +305,21 @@ docker-compose logs -f
 
 #### 📊 服务端口速查表
 
-| 服务 | HTTP 端口 | gRPC 端口 |
-|------|---------|----------|
-| API Gateway | 3000 | - |
-| User Service | 3001 | 50051 |
-| Relationship Service | 3002 | 50053 |
-| Migration Service | 3003 | - |
-| Notification Service | 3004 | 50056 |
-| ZKP Service | 3005 | 50057 |
-| Secure Exchange Service | 3006 | 50052 |
-| Medication Service | 3007 | - |
-| Userinfo Service | 5000 | - |
-| Chain Service | 4337 | - |
-| PostgreSQL | 5400 | - |
-| Redis | 6379 | - |
-| RabbitMQ | 5672 | 15672(管理) |
+| 服务                    | HTTP 端口 | gRPC 端口   |
+| ----------------------- | --------- | ----------- |
+| API Gateway             | 3000      | -           |
+| User Service            | 3001      | 50051       |
+| Relationship Service    | 3002      | 50053       |
+| Migration Service       | 3003      | -           |
+| Notification Service    | 3004      | 50056       |
+| ZKP Service             | 3005      | 50057       |
+| Secure Exchange Service | 3006      | 50052       |
+| Medication Service      | 3007      | -           |
+| Userinfo Service        | 5000      | -           |
+| Chain Service           | 4337      | -           |
+| PostgreSQL              | 5400      | -           |
+| Redis                   | 6379      | -           |
+| RabbitMQ                | 5672      | 15672(管理) |
 
 #### 🔐 数据库连接信息
 
@@ -342,6 +370,7 @@ docker-compose exec redis redis-cli
 #### 🐛 故障排查
 
 **问题 1: 端口被占用**
+
 ```bash
 # 查找占用端口的进程
 netstat -ano | findstr :3000
@@ -353,6 +382,7 @@ taskkill /PID <PID> /F
 ```
 
 **问题 2: 数据库连接失败**
+
 ```bash
 # 检查数据库是否启动
 docker-compose exec postgres pg_isready -U root
@@ -362,6 +392,7 @@ docker-compose exec postgres psql -U root -l
 ```
 
 **问题 3: 查看服务启动日志**
+
 ```bash
 # 查看所有日志
 docker-compose logs
@@ -391,6 +422,7 @@ backend-services/
 #### 📖 详细文档
 
 完整的部署文档位于 `backend-services/` 目录：
+
 - **DOCKER_QUICK_START.md** - ⚡ 快速启动（5分钟上手）
 - **DOCKER_DEPLOYMENT_GUIDE.md** - 📚 完整部署指南（包含所有命令）
 
@@ -428,6 +460,7 @@ JWT_SECRET: <长强密钥>
 ## 🛠️ 技术栈总结
 
 ### 后端技术
+
 ```
 运行时      Node.js 20+
 Web 框架    Express.js 5+
@@ -441,6 +474,7 @@ RPC 通信    gRPC + protobuf
 ```
 
 ### 前端技术
+
 ```
 框架        Vue 3.5+ (Composition API)
 构建工具    Vite 7.0+
@@ -452,6 +486,7 @@ RPC 通信    gRPC + protobuf
 ```
 
 ### 基础设施
+
 ```
 容器化      Docker Compose
 操作系统    Windows/Linux
@@ -463,42 +498,47 @@ RPC 通信    gRPC + protobuf
 
 ## 📊 项目规模
 
-| 维度 | 指标 |
-|------|------|
-| **服务数量** | 10+ 核心微服务 |
-| **代码行数** | ~5000+ 行业务代码 |
-| **数据库表** | 20+ 核心业务表 |
-| **API 端点** | 50+ RESTful 接口 + gRPC 服务 |
-| **前端页面** | 38 个 Vue 页面组件 |
+| 维度               | 指标                                         |
+| ------------------ | -------------------------------------------- |
+| **服务数量** | 10+ 核心微服务                               |
+| **代码行数** | ~5000+ 行业务代码                            |
+| **数据库表** | 20+ 核心业务表                               |
+| **API 端点** | 50+ RESTful 接口 + gRPC 服务                 |
+| **前端页面** | 38 个 Vue 页面组件                           |
 | **ZKP 电路** | 2 个电路（weekly summary, medical check-in） |
-| **部署容器** | 12+ Docker 容器 |
+| **部署容器** | 12+ Docker 容器                              |
 
 ---
 
 ## 🏆 技术亮点
 
 ### 1. **微服务架构最佳实践**
+
 - HTTP + gRPC 混合通信模式
 - 完整的服务间通信框架（内外部分离）
 - 异步任务处理 + 消息队列集成
 
 ### 2. **区块链深度集成**
+
 - ERC-4337 账户抽象完整实现
 - 零知识证明生成与链上验证
 - 智能合约与后端服务无缝交互
 
 ### 3. **隐私保护设计**
+
 - 零知识证明保护用户隐私（证明不泄露数据）
 - 端到端加密敏感信息
 - 多层权限管理系统
 
 ### 4. **用户体验优化**
+
 - 生物识别 + 密码双重认证
 - Apple 风格 UI 与适老化设计完美结合
 - WebSocket 实时通知
 - 多端适配（Web + Android）
 
 ### 5. **系统可靠性**
+
 - 完整的错误处理机制
 - 异步任务重试策略
 - Redis 缓存与数据库事务保证一致性
@@ -509,6 +549,7 @@ RPC 通信    gRPC + protobuf
 ## 📈 项目成果
 
 ### 完成度
+
 - ✅ 核心功能 100% 完成
 - ✅ 微服务架构完全实现
 - ✅ 前后端完整集成
@@ -518,12 +559,14 @@ RPC 通信    gRPC + protobuf
 - ✅ 一键部署脚本
 
 ### 质量指标
+
 - 完整的 API 文档（Postman 集合）
 - E2E 测试覆盖核心业务流程
 - 详细的技术文档（20+ markdown 文档）
 - 清晰的代码注释与模块划分
 
 ### 部署验证
+
 - 通过了 E2E 测试（用药流程、关系管理、交互验证等）
 - 支持本地开发 + 生产部署
 - 一键启动脚本在 Windows PowerShell 可靠运行
@@ -533,15 +576,19 @@ RPC 通信    gRPC + protobuf
 ## 💡 关键创新点
 
 ### 1. 账户抽象在医疗的创新应用
+
 传统应用需要用户管理私钥，本系统通过 ERC-4337 账户抽象，让老年用户无需了解钱包概念，系统代付 Gas，社交恢复保护资产安全。
 
 ### 2. 零知识证明保护隐私
+
 用户的每日用药打卡数据敏感，通过 ZKP 生成证明，在链上验证用户完成用药而不暴露具体打卡记录，隐私与可信性兼得。
 
 ### 3. 微服务 + 区块链的完美融合
+
 后端采用微服务处理复杂业务逻辑，区块链负责数据存证，两者分工清晰，各得其所。
 
 ### 4. 适老化设计的深度思考
+
 不仅是大字体、高对比度，还在交互流程、视觉反馈、错误恢复等方面处处为老年用户考虑。
 
 ---
@@ -551,10 +598,12 @@ RPC 通信    gRPC + protobuf
 项目包含完整的文档体系：
 
 ### 核心文档
+
 - **README.md** (本文件) - 项目总体介绍与快速启动
 - **PROJECT_SUMMARY.md** - 详细的项目技术总结
 
 ### 后端文档 (`backend-services/`)
+
 - **DOCKER_QUICK_START.md** ⚡ - Docker 5分钟快速启动指南
 - **DOCKER_DEPLOYMENT_GUIDE.md** 📚 - 完整的 Docker 部署文档
 - **docker-compose.yml** - 12+ 容器编排配置
@@ -562,10 +611,12 @@ RPC 通信    gRPC + protobuf
 - **doc/** - API 文档、架构设计、消息通知等
 
 ### 前端文档 (`foreneded/`)
+
 - **README.md** - 前端项目介绍
 - **doc/** - 功能设计、组件说明、API 集成指南
 
 ### 其他文档
+
 - 架构设计文档
 - ZKP 电路与证明生成说明
 - 生物识别登录实现指南
@@ -579,21 +630,25 @@ RPC 通信    gRPC + protobuf
 ### 多层次安全保障
 
 **1. 密码安全**
+
 - 使用 ethers.js 加密钱包管理私钥
 - 密码从不明文存储
 - 本地设备存储加密密钥
 
 **2. 生物识别安全**
+
 - 硬件级加密（Android Keystore）
 - 生物识别数据不上传
 - 自动降级机制
 
 **3. 区块链安全**
+
 - 智能合约账户多签机制
 - 社交恢复保护
 - 所有操作链上记录可审计
 
 **4. 数据隐私**
+
 - 身份证号脱敏
 - 参数化查询防 SQL 注入
 - 敏感数据端到端加密
@@ -669,13 +724,13 @@ docker-compose exec redis redis-cli
 
 ## 📞 获取帮助
 
-| 问题 | 文档 |
-|------|------|
-| 🚀 快速启动 | [DOCKER_QUICK_START.md](./backend-services/DOCKER_QUICK_START.md) |
+| 问题        | 文档                                                                     |
+| ----------- | ------------------------------------------------------------------------ |
+| 🚀 快速启动 | [DOCKER_QUICK_START.md](./backend-services/DOCKER_QUICK_START.md)           |
 | 📚 完整部署 | [DOCKER_DEPLOYMENT_GUIDE.md](./backend-services/DOCKER_DEPLOYMENT_GUIDE.md) |
-| 🔍 故障排查 | 见部署指南的"故障排查"部分 |
-| 📖 API 文档 | [backend-services/doc/](./backend-services/doc/) |
-| 🎨 前端指南 | [foreneded/README.md](./foreneded/README.md) |
+| 🔍 故障排查 | 见部署指南的"故障排查"部分                                               |
+| 📖 API 文档 | [backend-services/doc/](./backend-services/doc/)                            |
+| 🎨 前端指南 | [foreneded/README.md](./foreneded/README.md)                                |
 
 ---
 
@@ -695,17 +750,17 @@ docker-compose exec redis redis-cli
 
 ---
 
-**项目地址**：  
+**项目地址**：
+
 - 后端：`./backend-services/`
 - 前端：`./foreneded/`
 
-**开发者**：独立完整开发  
+**开发者**：独立完整开发
 **完成时间**：2024.10 - 2025.01
 
 **快速链接**：
+
 - 🚀 [Docker 快速启动](./backend-services/DOCKER_QUICK_START.md)
 - 📚 [完整部署指南](./backend-services/DOCKER_DEPLOYMENT_GUIDE.md)
 - 🔧 [API 参考文档](./backend-services/doc/)
 - 📖 [前端开发指南](./foreneded/README.md)
-
-
