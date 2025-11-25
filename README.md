@@ -13,6 +13,10 @@
 
 一个基于**以太坊区块链**和**零知识证明**技术的综合性老年医疗管理系统。系统采用**微服务架构**设计，融合了**ERC-4337 账户抽象**、**零知识证明**、**生物识别认证**等前沿技术，为老年用户提供安全、便捷、智能的健康管理体验。
 
+<div align="center">
+  <img src="./picture/e259b25732178371146198190a315cb5.jpg" alt="项目展示" width="400" />
+</div>
+
 ### 核心业务
 
 - 💊 **智能用药管理**：个性化用药计划、智能提醒、一键打卡
@@ -173,6 +177,15 @@ Migration Service
 ```
 
 ### 5️⃣ **前端应用 - Apple 风格 UI 体验**
+
+#### 📱 应用界面展示
+
+<div align="center">
+  <img src="./picture/e259b25732178371146198190a315cb5.jpg" alt="应用首页" width="280" />
+  <img src="./picture/0db4b5da03f86e209e88e900732a65fb.jpg" alt="用药管理" width="280" />
+  <img src="./picture/8e40b78b17c648425fb04d9de5ec61f4.jpg" alt="家庭圈" width="280" />
+  <img src="./picture/2546ea9c31d4f16758472bf60f1efdd7.jpg" alt="账户设置" width="280" />
+</div>
 
 #### 技术栈
 
