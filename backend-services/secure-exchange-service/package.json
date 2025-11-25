@@ -1,0 +1,32 @@
+{
+  "name": "secure-exchange-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Secure End-to-End Encrypted Data Exchange Service",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.0",
+    "@grpc/proto-loader": "^0.8.0",
+    "amqplib": "^0.10.9",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.15.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "node-cron": "^3.0.3",
+    "path-to-regexp": "^8.3.0",
+    "pg": "^8.16.3",
+    "redis": "^5.8.3",
+    "uuid": "^11.0.5",
+    "ws": "^8.18.0"
+  }
+}

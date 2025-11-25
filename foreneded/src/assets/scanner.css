@@ -1,0 +1,19 @@
+/**
+ * 扫描器全局样式
+ * 当扫描器激活时，隐藏网页内容显示相机预览
+ */
+
+body.scanner-active {
+  background-color: transparent !important;
+}
+
+body.scanner-active .app-container,
+body.scanner-active #app > * {
+  visibility: hidden;
+  opacity: 0;
+}
+
+body.scanner-active .scanner-ui {
+  visibility: visible;
+  opacity: 1;
+}

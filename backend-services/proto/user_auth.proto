@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package user_auth;
+
+service UserAuthService {
+  rpc Register(RegisterRequest) returns (UserReply);
+  rpc Login(LoginRequest) returns (LoginReply);
+  rpc GetUserPublicKey(GetPublicKeyRequest) returns (GetPublicKeyReply);
+}
+
+message RegisterRequest {
+  string id_card_number = 1;
+  string phone_number = 2;
+  string email = 3;
+  string eoa_address = 4;        // EOA地址,用于签名
+  string smart_account = 5;      // 智能合约账户地址
+}
+
+message LoginRequest {
+  string login_time = 1; // ISO 8601 format string
+  string signature = 2;
+}
+
+message User {
+    string eoa_address = 1;        // EOA地址
+    string smart_account = 2;      // 智能合约账户地址
+    string u_id = 3;
+    string username = 4;
+    repeated string roles = 5;
+}
+
+message UserReply {
+  User user = 1;
+}
+
+message LoginReply {
+  string token = 1;
+  User user = 2;
+}
+
+message GetPublicKeyRequest {
+  string smart_account = 1;  // 智能合约账户地址
+}
+
+message GetPublicKeyReply {
+  string smart_account = 1;
+  string encryption_public_key = 2;
+  string encryption_key_updated_at = 3;
+}
+

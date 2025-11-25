@@ -1,0 +1,32 @@
+{
+  "name": "notification-service",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/test-http-api.js && node tests/test-websocket.js && node tests/test-mq.js",
+    "test:http": "node tests/test-http-api.js",
+    "test:ws": "node tests/test-websocket.js",
+    "test:mq": "node tests/test-mq.js",
+    "test:flow": "node tests/test-complete-flow.js",
+    "test:all": "npm run test:http && npm run test:ws && npm run test:mq && npm run test:flow"
+  },
+  "keywords": ["notification", "websocket", "push", "messaging"],
+  "author": "",
+  "license": "ISC",
+  "description": "实时消息通知服务 - 支持WebSocket推送、FCM推送和多优先级消息队列",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.14.0",
+    "@grpc/proto-loader": "^0.8.0",
+    "amqplib": "^0.10.9",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.1",
+    "pg": "^8.16.3",
+    "redis": "^5.8.3",
+    "ws": "^8.18.0"
+  }
+}

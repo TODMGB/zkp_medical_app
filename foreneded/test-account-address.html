@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抽象账户地址测试工具</title>
+  <!-- 使用多个CDN备用方案 -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js" 
+          onerror="loadBackupEthers()"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    h1 {
+      text-align: center;
+      color: #667eea;
+      margin-bottom: 10px;
+      font-size: 2em;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 30px;
+    }
+
+    .config {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    .test-section {
+      margin-bottom: 30px;
+      border: 2px solid #e0e0e0;
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .test-section h2 {
+      color: #764ba2;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .test-section h3 {
+      color: #555;
+      margin: 15px 0 10px 0;
+      font-size: 1em;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 25px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: block;
+      margin: 20px auto;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .result {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 10px 0;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .account-item {
+      background: white;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 8px 0;
+      border-left: 4px solid #667eea;
+    }
+
+    .success {
+      color: #28a745;
+      font-weight: bold;
+    }
+
+    .error {
+      color: #dc3545;
+      font-weight: bold;
+    }
+
+    .warning {
+      color: #ffc107;
+      font-weight: bold;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .badge.success {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .badge.error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .loading {
+      text-align: center;
+      color: #667eea;
+      font-size: 14px;
+      margin: 10px 0;
+    }
+
+    .summary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      margin-top: 30px;
+    }
+
+    .summary h2 {
+      color: white;
+      margin-bottom: 15px;
+    }
+
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .summary-item:last-child {
+      border-bottom: none;
+    }
+
+    code {
+      background: #f1f1f1;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 抽象账户地址测试工具</h1>
+    <p class="subtitle">验证不同EOA账户是否生成不同的抽象账户地址</p>
+
+    <div class="config">
+      <strong>后端API:</strong> <span id="apiUrl"></span>
+    </div>
+
+    <button id="runAllTests" disabled>⏳ 正在加载依赖...</button>
+
+    <div class="test-section" id="test1Section">
+      <h2>📋 测试1: 不同EOA + 相同Salt(0)</h2>
+      <p>预期：应该生成3个<strong>不同</strong>的抽象账户地址</p>
+      <div id="test1Results"></div>
+    </div>
+
+    <div class="test-section" id="test2Section">
+      <h2>📋 测试2: 相同EOA + 不同Salt</h2>
+      <p>预期：应该生成3个<strong>不同</strong>的抽象账户地址</p>
+      <div id="test2Results"></div>
+    </div>
+
+    <div class="test-section" id="test3Section">
+      <h2>📋 测试3: 不同EOA + 动态Salt (基于地址生成)</h2>
+      <p>预期：应该生成3个<strong>不同</strong>的抽象账户地址</p>
+      <div id="test3Results"></div>
+    </div>
+
+    <div class="test-section" id="test4Section">
+      <h2>📋 测试4: 幂等性测试</h2>
+      <p>预期：相同的Owner+Salt应该产生<strong>相同</strong>的地址</p>
+      <div id="test4Results"></div>
+    </div>
+
+    <div class="summary" id="summary" style="display: none;">
+      <h2>📊 测试总结</h2>
+      <div id="summaryContent"></div>
+    </div>
+  </div>
+
+  <script>
+    // 备用CDN加载函数
+    let ethersLoadAttempts = 0;
+    const backupCDNs = [
+      'https://unpkg.com/ethers@5.7.2/dist/ethers.umd.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js'
+    ];
+
+    function loadBackupEthers() {
+      if (ethersLoadAttempts < backupCDNs.length) {
+        console.log(`尝试从备用CDN加载 ethers.js (${ethersLoadAttempts + 1}/${backupCDNs.length})...`);
+        const script = document.createElement('script');
+        script.src = backupCDNs[ethersLoadAttempts];
+        script.onerror = loadBackupEthers;
+        script.onload = () => {
+          console.log('✅ ethers.js 加载成功！');
+          checkEthersLoaded();
+        };
+        document.head.appendChild(script);
+        ethersLoadAttempts++;
+      } else {
+        showLoadError();
+      }
+    }
+
+    function showLoadError() {
+      document.getElementById('runAllTests').disabled = true;
+      document.getElementById('runAllTests').textContent = '❌ ethers.js 加载失败';
+      document.body.innerHTML = `
+        <div class="container">
+          <h1 style="color: #dc3545;">⚠️ 依赖加载失败</h1>
+          <div style="background: #f8d7da; color: #721c24; padding: 20px; border-radius: 10px; margin-top: 20px;">
+            <h3>无法加载 ethers.js 库</h3>
+            <p style="margin-top: 10px;">可能的原因：</p>
+            <ul style="margin: 10px 0 10px 20px;">
+              <li>网络连接问题</li>
+              <li>CDN服务不可用</li>
+              <li>防火墙或代理设置</li>
+            </ul>
+            <h4 style="margin-top: 20px;">解决方案：</h4>
+            <ol style="margin: 10px 0 10px 20px;">
+              <li>检查网络连接</li>
+              <li>使用 Node.js 版本: <code style="background: #fff; padding: 2px 6px; border-radius: 3px;">node test-account-address.js</code></li>
+              <li>或者手动下载 ethers.js 并放在本地</li>
+            </ol>
+          </div>
+        </div>
+      `;
+    }
+
+    function checkEthersLoaded() {
+      if (typeof ethers !== 'undefined') {
+        console.log('✅ ethers.js 已就绪');
+        const button = document.getElementById('runAllTests');
+        if (button) {
+          button.disabled = false;
+          button.textContent = '🚀 运行所有测试';
+        }
+      } else {
+        setTimeout(checkEthersLoaded, 100);
+      }
+    }
+
+    // 页面加载完成后检查
+    window.addEventListener('load', () => {
+      if (typeof ethers === 'undefined') {
+        console.warn('⚠️ ethers.js 未加载，尝试备用方案...');
+        loadBackupEthers();
+      } else {
+        console.log('✅ ethers.js 已就绪');
+        checkEthersLoaded();
+      }
+    });
+
+    const BACKEND_IP = '192.168.0.186';
+    const API_BASE_URL = `http://${BACKEND_IP}:4337/api`;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('apiUrl').textContent = API_BASE_URL;
+    });
+
+    // 调用API获取账户地址
+    async function getAccountAddress(owner, salt) {
+      const url = `${API_BASE_URL}/paymaster/get-account-address?owner=${owner}&salt=${salt}`;
+      
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (!data.ok) {
+          throw new Error('API调用失败');
+        }
+        
+        return data.address;
+      } catch (error) {
+        console.error('请求失败:', error);
+        return null;
+      }
+    }
+
+    // 生成基于地址的唯一salt
+    function generateSaltFromAddress(address) {
+      const hash = ethers.utils.keccak256(ethers.utils.toUtf8Bytes(address));
+      const salt = ethers.BigNumber.from(hash).mod(1000000);
+      return salt.toNumber();
+    }
+
+    // 测试1: 不同EOA + 相同Salt
+    async function test1() {
+      const container = document.getElementById('test1Results');
+      container.innerHTML = '<div class="loading">⏳ 正在测试...</div>';
+
+      const accounts = [];
+      
+      for (let i = 0; i < 3; i++) {
+        const wallet = ethers.Wallet.createRandom();
+        const owner = wallet.address;
+        const salt = 0;
+        const abstractAddress = await getAccountAddress(owner, salt);
+        
+        accounts.push({ owner, salt, abstractAddress });
+        
+        container.innerHTML += `
+          <div class="account-item">
+            <strong>账户${i + 1}</strong><br>
+            EOA地址: <code>${owner}</code><br>
+            Salt值: <code>${salt}</code><br>
+            抽象账户: <code>${abstractAddress}</code>
+          </div>
+        `;
+      }
+
+      const uniqueAddresses = new Set(accounts.map(a => a.abstractAddress));
+      const passed = uniqueAddresses.size === 3;
+      
+      container.querySelector('.loading').remove();
+      container.innerHTML += `
+        <div class="result ${passed ? 'success' : 'error'}">
+          ${passed ? '✅' : '❌'} 生成了 ${uniqueAddresses.size} 个不同的地址 (期望: 3)
+          ${!passed ? '<br>⚠️ 后端API可能只使用了salt，没有使用owner参数' : ''}
+        </div>
+      `;
+
+      return passed;
+    }
+
+    // 测试2: 相同EOA + 不同Salt
+    async function test2() {
+      const container = document.getElementById('test2Results');
+      container.innerHTML = '<div class="loading">⏳ 正在测试...</div>';
+
+      const wallet = ethers.Wallet.createRandom();
+      const owner = wallet.address;
+      
+      container.innerHTML = `<div class="result">测试EOA: <code>${owner}</code></div>`;
+
+      const accounts = [];
+      
+      for (let i = 0; i < 3; i++) {
+        const salt = i;
+        const abstractAddress = await getAccountAddress(owner, salt);
+        
+        accounts.push({ owner, salt, abstractAddress });
+        
+        container.innerHTML += `
+          <div class="account-item">
+            Salt=${i}: <code>${abstractAddress}</code>
+          </div>
+        `;
+      }
+
+      const uniqueAddresses = new Set(accounts.map(a => a.abstractAddress));
+      const passed = uniqueAddresses.size === 3;
+      
+      container.innerHTML += `
+        <div class="result ${passed ? 'success' : 'error'}">
+          ${passed ? '✅' : '❌'} 生成了 ${uniqueAddresses.size} 个不同的地址 (期望: 3)
+        </div>
+      `;
+
+      return passed;
+    }
+
+    // 测试3: 动态Salt
+    async function test3() {
+      const container = document.getElementById('test3Results');
+      container.innerHTML = '<div class="loading">⏳ 正在测试...</div>';
+
+      const accounts = [];
+      
+      for (let i = 0; i < 3; i++) {
+        const wallet = ethers.Wallet.createRandom();
+        const owner = wallet.address;
+        const salt = generateSaltFromAddress(owner);
+        const abstractAddress = await getAccountAddress(owner, salt);
+        
+        accounts.push({ owner, salt, abstractAddress });
+        
+        container.innerHTML += `
+          <div class="account-item">
+            <strong>账户${i + 1}</strong><br>
+            EOA地址: <code>${owner}</code><br>
+            动态Salt: <code>${salt}</code> (基于EOA地址哈希生成)<br>
+            抽象账户: <code>${abstractAddress}</code>
+          </div>
+        `;
+      }
+
+      const uniqueAddresses = new Set(accounts.map(a => a.abstractAddress));
+      const passed = uniqueAddresses.size === 3;
+      
+      container.querySelector('.loading').remove();
+      container.innerHTML += `
+        <div class="result ${passed ? 'success' : 'error'}">
+          ${passed ? '✅' : '❌'} 生成了 ${uniqueAddresses.size} 个不同的地址 (期望: 3)
+        </div>
+      `;
+
+      return passed;
+    }
+
+    // 测试4: 幂等性
+    async function test4() {
+      const container = document.getElementById('test4Results');
+      container.innerHTML = '<div class="loading">⏳ 正在测试...</div>';
+
+      const wallet = ethers.Wallet.createRandom();
+      const owner = wallet.address;
+      const salt = 12345;
+
+      container.innerHTML = `
+        <div class="result">
+          EOA地址: <code>${owner}</code><br>
+          Salt值: <code>${salt}</code>
+        </div>
+      `;
+
+      const address1 = await getAccountAddress(owner, salt);
+      const address2 = await getAccountAddress(owner, salt);
+      const address3 = await getAccountAddress(owner, salt);
+
+      container.innerHTML += `
+        <div class="account-item">
+          第1次调用: <code>${address1}</code><br>
+          第2次调用: <code>${address2}</code><br>
+          第3次调用: <code>${address3}</code>
+        </div>
+      `;
+
+      const passed = address1 === address2 && address2 === address3;
+      
+      container.innerHTML += `
+        <div class="result ${passed ? 'success' : 'error'}">
+          ${passed ? '✅ 幂等性正常' : '❌ 幂等性失败'}
+        </div>
+      `;
+
+      return passed;
+    }
+
+    // 运行所有测试
+    async function runAllTests() {
+      // 检查 ethers.js 是否已加载
+      if (typeof ethers === 'undefined') {
+        alert('❌ ethers.js 库未加载，无法运行测试。请检查网络连接。');
+        return;
+      }
+
+      const button = document.getElementById('runAllTests');
+      button.disabled = true;
+      button.textContent = '⏳ 测试进行中...';
+
+      const results = {
+        test1: await test1(),
+        test2: await test2(),
+        test3: await test3(),
+        test4: await test4()
+      };
+
+      // 显示总结
+      const summary = document.getElementById('summary');
+      const summaryContent = document.getElementById('summaryContent');
+      
+      summaryContent.innerHTML = `
+        <div class="summary-item">
+          <span>测试1 (不同EOA+相同Salt)</span>
+          <span class="badge ${results.test1 ? 'success' : 'error'}">
+            ${results.test1 ? '✅ 通过' : '❌ 失败'}
+          </span>
+        </div>
+        <div class="summary-item">
+          <span>测试2 (相同EOA+不同Salt)</span>
+          <span class="badge ${results.test2 ? 'success' : 'error'}">
+            ${results.test2 ? '✅ 通过' : '❌ 失败'}
+          </span>
+        </div>
+        <div class="summary-item">
+          <span>测试3 (动态Salt)</span>
+          <span class="badge ${results.test3 ? 'success' : 'error'}">
+            ${results.test3 ? '✅ 通过' : '❌ 失败'}
+          </span>
+        </div>
+        <div class="summary-item">
+          <span>测试4 (幂等性)</span>
+          <span class="badge ${results.test4 ? 'success' : 'error'}">
+            ${results.test4 ? '✅ 通过' : '❌ 失败'}
+          </span>
+        </div>
+      `;
+
+      if (!results.test1) {
+        summaryContent.innerHTML += `
+          <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+            <strong>💡 建议：</strong><br>
+            后端API似乎没有正确使用owner参数来计算地址。<br>
+            请检查SimpleAccountFactory合约的getAddress函数实现。<br>
+            地址应该基于: keccak256(abi.encodePacked(owner, salt))
+          </div>
+        `;
+      } else {
+        summaryContent.innerHTML += `
+          <div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+            <strong>✅ 后端API工作正常！</strong><br>
+            建议在前端使用动态salt（基于EOA地址）来确保每个EOA都有唯一的抽象账户。
+          </div>
+        `;
+      }
+
+      summary.style.display = 'block';
+      button.disabled = false;
+      button.textContent = '🔄 重新运行测试';
+    }
+
+    document.getElementById('runAllTests').addEventListener('click', runAllTests);
+  </script>
+</body>
+</html>
+

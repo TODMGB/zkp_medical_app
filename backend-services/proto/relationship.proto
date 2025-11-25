@@ -1,0 +1,221 @@
+syntax = "proto3";
+
+package relationship;
+
+service RelationshipService {
+  // === 访问组管理 ===
+  // 创建访问组
+  rpc CreateAccessGroup(CreateAccessGroupRequest) returns (AccessGroup);
+  // 获取某个老人拥有的所有访问组
+  rpc ListAccessGroups(ListAccessGroupsRequest) returns (ListAccessGroupsResponse);
+  // 获取访问组详情（含成员统计）
+  rpc GetAccessGroupsWithStats(GetAccessGroupsWithStatsRequest) returns (GetAccessGroupsWithStatsResponse);
+  // 获取访问组成员列表
+  rpc GetAccessGroupMembers(GetAccessGroupMembersRequest) returns (GetAccessGroupMembersResponse);
+  // 初始化用户的默认访问组
+  rpc InitializeDefaultGroups(InitializeDefaultGroupsRequest) returns (InitializeDefaultGroupsResponse);
+  
+  // === 邀请管理 ===
+  // 创建标准邀请
+  rpc CreateInvitation(CreateInvitationRequest) returns (CreateInvitationResponse);
+  // 创建医院预授权邀请
+  rpc CreateHospitalInvitation(CreateHospitalInvitationRequest) returns (CreateHospitalInvitationResponse);
+  // 接受邀请
+  rpc AcceptInvitation(AcceptInvitationRequest) returns (AcceptInvitationResponse);
+  // 获取我的邀请列表
+  rpc GetMyInvitations(GetMyInvitationsRequest) returns (GetMyInvitationsResponse);
+  // 取消邀请
+  rpc CancelInvitation(CancelInvitationRequest) returns (CancelInvitationResponse);
+  
+  // === 关系管理 ===
+  // [核心] 查询授权信息 (供网关调用)
+  rpc GetAuthorizations(GetAuthorizationsRequest) returns (GetAuthorizationsResponse);
+  // 暂停关系
+  rpc SuspendRelationship(SuspendRelationshipRequest) returns (SuspendRelationshipResponse);
+  // 恢复关系
+  rpc ResumeRelationship(ResumeRelationshipRequest) returns (ResumeRelationshipResponse);
+  // 撤销关系
+  rpc RevokeRelationship(RevokeRelationshipRequest) returns (RevokeRelationshipResponse);
+}
+
+// --- 消息体定义 ---
+
+// AccessGroup
+message AccessGroup {
+  int32 id = 1;
+  string owner_address = 2;
+  string group_name = 3;
+}
+
+message CreateAccessGroupRequest {
+  string owner_address = 1;
+  string group_name = 2;
+  string description = 3;
+}
+
+message ListAccessGroupsRequest {
+  string owner_address = 1;
+}
+
+message ListAccessGroupsResponse {
+  repeated AccessGroup groups = 1;
+}
+
+// Invitation
+message CreateInvitationRequest {
+  string inviter_address = 1;
+  int32 access_group_id = 2;
+}
+
+message CreateInvitationResponse {
+  string token = 1;
+}
+
+// Accept Invitation & Relationship
+message AcceptInvitationRequest {
+  string viewer_address = 1;
+  string token = 2;
+}
+
+message AcceptInvitationResponse {
+  string message = 1;
+}
+
+// Authorization
+message GetAuthorizationsRequest {
+  string principal_address = 1;
+  string viewer_address = 2;
+}
+
+message GetAuthorizationsResponse {
+  string principal_address = 1;
+  string viewer_address = 2;
+  repeated AccessGroup groups = 3;
+}
+
+// === 新增消息定义 ===
+
+// 访问组详情（含统计）
+message AccessGroupWithStats {
+  int32 id = 1;
+  string owner_address = 2;
+  string group_name = 3;
+  string description = 4;
+  string group_type = 5;
+  bool is_system_default = 6;
+  string icon = 7;
+  int32 active_member_count = 8;
+  int32 total_member_count = 9;
+  int32 max_members = 10;
+}
+
+message GetAccessGroupsWithStatsRequest {
+  string owner_address = 1;
+}
+
+message GetAccessGroupsWithStatsResponse {
+  repeated AccessGroupWithStats groups = 1;
+}
+
+// 访问组成员
+message AccessGroupMember {
+  int32 id = 1;
+  string viewer_address = 2;
+  string status = 3;
+  int32 permission_level = 4;
+  string created_at = 5;
+  string last_accessed_at = 6;
+}
+
+message GetAccessGroupMembersRequest {
+  int32 access_group_id = 1;
+}
+
+message GetAccessGroupMembersResponse {
+  repeated AccessGroupMember members = 1;
+}
+
+// 初始化默认访问组
+message InitializeDefaultGroupsRequest {
+  string owner_address = 1;
+}
+
+message InitializeDefaultGroupsResponse {
+  bool success = 1;
+  repeated AccessGroup groups = 2;
+  int32 count = 3;
+}
+
+// 医院预授权邀请
+message CreateHospitalInvitationRequest {
+  string inviter_address = 1;
+  int32 access_group_id = 2;
+  string hospital_id = 3;
+  string hospital_name = 4;
+  string invitee_address = 5;
+}
+
+message CreateHospitalInvitationResponse {
+  string token = 1;
+  string qrCode = 2;
+  string expiresAt = 3;
+  string hospitalName = 4;
+}
+
+// 获取我的邀请列表
+message Invitation {
+  int32 id = 1;
+  string inviter_address = 2;
+  int32 access_group_id = 3;
+  string group_name = 4;
+  string token = 5;
+  string status = 6;
+  string invitation_type = 7;
+  string created_at = 8;
+  string expires_at = 9;
+  string hospital_name = 10;
+}
+
+message GetMyInvitationsRequest {
+  string inviter_address = 1;
+  string status = 2;  // 可选：pending, accepted, expired, cancelled
+}
+
+message GetMyInvitationsResponse {
+  repeated Invitation invitations = 1;
+}
+
+// 取消邀请
+message CancelInvitationRequest {
+  string token = 1;
+}
+
+message CancelInvitationResponse {
+  string message = 1;
+}
+
+// 关系管理
+message SuspendRelationshipRequest {
+  int32 relationship_id = 1;
+}
+
+message SuspendRelationshipResponse {
+  string message = 1;
+}
+
+message ResumeRelationshipRequest {
+  int32 relationship_id = 1;
+}
+
+message ResumeRelationshipResponse {
+  string message = 1;
+}
+
+message RevokeRelationshipRequest {
+  int32 relationship_id = 1;
+}
+
+message RevokeRelationshipResponse {
+  string message = 1;
+}
+

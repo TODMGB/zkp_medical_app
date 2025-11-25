@@ -1,0 +1,105 @@
+### ==========================================
+### Notification Service API Tests
+### ==========================================
+
+@baseUrl = http://localhost:3006
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzbWFydF9hY2NvdW50IjoiMHgxMjM0NTY3ODkwYWJjZGVmMTIzNDU2Nzg5MGFiY2RlZjEyMzQ1Njc4IiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+### ==========================================
+### 1. 健康检查
+### ==========================================
+GET {{baseUrl}}/health
+
+### ==========================================
+### 2. 发送通知（高优先级）
+### ==========================================
+POST {{baseUrl}}/api/notifications/send
+Content-Type: application/json
+
+{
+  "recipient_address": "0x1234567890abcdef1234567890abcdef12345678",
+  "type": "MEDICATION_REMINDER",
+  "priority": "HIGH",
+  "title": "🔔 用药提醒",
+  "body": "您该服用降压药了！",
+  "data": {
+    "medication_id": "med_123",
+    "medication_name": "阿司匹林",
+    "dosage": "1片"
+  },
+  "channels": ["push", "websocket"]
+}
+
+### ==========================================
+### 3. 发送通知（普通优先级）
+### ==========================================
+POST {{baseUrl}}/api/notifications/send
+Content-Type: application/json
+
+{
+  "recipient_address": "0x1234567890abcdef1234567890abcdef12345678",
+  "type": "INVITATION_ACCEPTED",
+  "priority": "NORMAL",
+  "title": "👋 邀请已接受",
+  "body": "张医生接受了您的邀请",
+  "data": {
+    "inviter_address": "0xabcdef1234567890abcdef1234567890abcdef12"
+  },
+  "channels": ["websocket"]
+}
+
+### ==========================================
+### 4. 获取通知列表
+### ==========================================
+GET {{baseUrl}}/api/notifications?limit=20&offset=0
+Authorization: Bearer {{token}}
+
+### ==========================================
+### 5. 获取未读通知列表
+### ==========================================
+GET {{baseUrl}}/api/notifications?status=unread&limit=20
+Authorization: Bearer {{token}}
+
+### ==========================================
+### 6. 获取未读通知数量
+### ==========================================
+GET {{baseUrl}}/api/notifications/unread/count
+Authorization: Bearer {{token}}
+
+### ==========================================
+### 7. 标记通知为已读
+### ==========================================
+PUT {{baseUrl}}/api/notifications/0x123456/read
+Authorization: Bearer {{token}}
+
+### ==========================================
+### 8. 标记所有通知为已读
+### ==========================================
+PUT {{baseUrl}}/api/notifications/read-all
+Authorization: Bearer {{token}}
+
+### ==========================================
+### 9. 删除通知
+### ==========================================
+DELETE {{baseUrl}}/api/notifications/0x123456
+Authorization: Bearer {{token}}
+
+### ==========================================
+### WebSocket连接测试（使用浏览器控制台）
+### ==========================================
+### 
+### const token = 'your_jwt_token';
+### const ws = new WebSocket(`ws://localhost:3000/ws/notification/socket.io?token=${token}`);
+### 
+### ws.onopen = () => console.log('✅ Connected');
+### ws.onmessage = (e) => console.log('📥 Message:', JSON.parse(e.data));
+### ws.onerror = (e) => console.error('❌ Error:', e);
+### ws.onclose = () => console.log('🔌 Disconnected');
+### 
+### // 发送心跳
+### ws.send(JSON.stringify({ type: 'ping' }));
+### 
+### // 标记已读
+### ws.send(JSON.stringify({ type: 'mark_read', notification_id: '0x123456' }));
+###
+

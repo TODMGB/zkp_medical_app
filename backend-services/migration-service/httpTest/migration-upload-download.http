@@ -1,0 +1,101 @@
+### =====================================================
+### 账户迁移 - 上传下载测试
+### =====================================================
+
+### 变量定义
+@baseUrl = http://localhost:50052
+@migrationId = mig_test_{{$timestamp}}
+@jwtToken = your_jwt_token_here
+
+### =====================================================
+### 步骤 1: 创建迁移会话
+### =====================================================
+POST {{baseUrl}}/api/migration/create
+Content-Type: application/json
+
+{
+  "id": "{{migrationId}}",
+  "oldDeviceId": "device_old_{{$timestamp}}",
+  "status": "pending",
+  "createdAt": {{$timestamp}},
+  "expiresAt": {{$timestamp}}0000
+}
+
+### =====================================================
+### 步骤 2: 上传加密迁移数据（需要 JWT Token）
+### =====================================================
+POST {{baseUrl}}/api/migration/upload
+Content-Type: application/json
+Authorization: Bearer {{jwtToken}}
+x-user-smart-account: 0x1234567890123456789012345678901234567890
+
+{
+  "migrationId": "{{migrationId}}",
+  "encryptedData": "U2FsdGVkX1+YxNZ4xvZ8M0k5eDZmNWY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY3ZjY=",
+  "expiresAt": {{$timestamp}}0000
+}
+
+### =====================================================
+### 步骤 3: 下载加密迁移数据（不需要认证）
+### =====================================================
+GET {{baseUrl}}/api/migration/download/{{migrationId}}
+
+### =====================================================
+### 步骤 4: 验证确认码（获取会话中的确认码）
+### =====================================================
+GET {{baseUrl}}/api/migration/session/{{migrationId}}
+
+### =====================================================
+### 测试：上传大文件（模拟真实场景）
+### =====================================================
+POST {{baseUrl}}/api/migration/upload
+Content-Type: application/json
+Authorization: Bearer {{jwtToken}}
+x-user-smart-account: 0x1234567890123456789012345678901234567890
+
+{
+  "migrationId": "mig_large_test",
+  "encryptedData": "{{$randomLoremParagraphs}}",
+  "expiresAt": {{$timestamp}}0000
+}
+
+### =====================================================
+### 测试：下载不存在的数据
+### =====================================================
+GET {{baseUrl}}/api/migration/download/mig_nonexistent
+
+### =====================================================
+### 测试：重复上传（应该失败）
+### =====================================================
+POST {{baseUrl}}/api/migration/upload
+Content-Type: application/json
+Authorization: Bearer {{jwtToken}}
+
+{
+  "migrationId": "{{migrationId}}",
+  "encryptedData": "duplicate_data",
+  "expiresAt": {{$timestamp}}0000
+}
+
+### =====================================================
+### 测试：缺少必要参数
+### =====================================================
+POST {{baseUrl}}/api/migration/upload
+Content-Type: application/json
+Authorization: Bearer {{jwtToken}}
+
+{
+  "migrationId": "{{migrationId}}"
+}
+
+### =====================================================
+### 查询迁移状态
+### =====================================================
+GET {{baseUrl}}/api/migration/status/{{migrationId}}
+
+### =====================================================
+### 清理测试数据
+### =====================================================
+DELETE {{baseUrl}}/api/migration/cleanup
+
+

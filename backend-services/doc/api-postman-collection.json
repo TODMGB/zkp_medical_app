@@ -1,0 +1,761 @@
+{
+  "info": {
+    "name": "Elder Medical ZKP API Gateway",
+    "description": "老年医疗零知识证明系统API接口集合",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. 健康检查",
+      "item": [
+        {
+          "name": "API Gateway健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "ERC4337服务健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/erc4337/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["erc4337", "health"]
+            }
+          }
+        },
+        {
+          "name": "迁移服务健康检查",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/migration/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["migration", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 用户认证",
+      "item": [
+        {
+          "name": "用户注册",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eoa_address\": \"0x1234567890123456789012345678901234567890\",\n  \"smart_account\": \"0x0987654321098765432109876543210987654321\",\n  \"phone_number\": \"13800138000\",\n  \"signature\": \"0xabcdef...\",\n  \"message\": \"register message\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "用户登录",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eoa_address\": \"0x1234567890123456789012345678901234567890\",\n  \"signature\": \"0xabcdef...\",\n  \"message\": \"login message\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data.token) {",
+                  "        pm.collectionVariables.set('token', response.data.token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. 用户信息查询",
+      "item": [
+        {
+          "name": "根据手机号查询用户",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/userinfo/phone/13800138000",
+              "host": ["{{baseUrl}}"],
+              "path": ["userinfo", "phone", "13800138000"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. ERC4337 账户抽象",
+      "item": [
+        {
+          "name": "4.1 账户管理",
+          "item": [
+            {
+              "name": "创建社交恢复账户",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ownerAddress\": \"0x1234567890123456789012345678901234567890\",\n  \"guardians\": [\"0x1111111111111111111111111111111111111111\", \"0x2222222222222222222222222222222222222222\"],\n  \"threshold\": 2,\n  \"salt\": \"0x0000000000000000000000000000000000000000000000000000000000000001\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/account",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "account"]
+                }
+              }
+            },
+            {
+              "name": "预计算账户地址",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ownerAddress\": \"0x1234567890123456789012345678901234567890\",\n  \"guardians\": [\"0x1111111111111111111111111111111111111111\", \"0x2222222222222222222222222222222222222222\"],\n  \"threshold\": 2,\n  \"salt\": \"0x0000000000000000000000000000000000000000000000000000000000000001\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/account/address",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "account", "address"]
+                }
+              }
+            },
+            {
+              "name": "查询账户信息",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/account/0x1234567890123456789012345678901234567890",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "account", "0x1234567890123456789012345678901234567890"]
+                }
+              }
+            },
+            {
+              "name": "获取账户Nonce",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/account/0x1234567890123456789012345678901234567890/nonce",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "account", "0x1234567890123456789012345678901234567890", "nonce"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.2 守护者管理",
+          "item": [
+            {
+              "name": "构建添加守护者UserOp",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"accountAddress\": \"0x1234567890123456789012345678901234567890\",\n  \"guardianAddress\": \"0x3333333333333333333333333333333333333333\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/guardian/build",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "guardian", "build"]
+                }
+              }
+            },
+            {
+              "name": "查询守护者列表",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/guardian/0x1234567890123456789012345678901234567890",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "guardian", "0x1234567890123456789012345678901234567890"]
+                }
+              }
+            },
+            {
+              "name": "构建修改阈值UserOp",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"accountAddress\": \"0x1234567890123456789012345678901234567890\",\n  \"newThreshold\": 3\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/guardian/threshold/build",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "guardian", "threshold", "build"]
+                }
+              }
+            },
+            {
+              "name": "提交已签名UserOp",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"userOp\": {\n    \"sender\": \"0x1234567890123456789012345678901234567890\",\n    \"nonce\": \"0x0\",\n    \"initCode\": \"0x\",\n    \"callData\": \"0xabcdef...\",\n    \"callGasLimit\": \"300000\",\n    \"verificationGasLimit\": \"500000\",\n    \"preVerificationGas\": \"50000\",\n    \"maxFeePerGas\": \"2000000000\",\n    \"maxPriorityFeePerGas\": \"1000000000\",\n    \"paymasterAndData\": \"0x375884F74bBc06D1F2C6551456279D328244543f\",\n    \"signature\": \"0xabcdef...\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/guardian/submit",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "guardian", "submit"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "4.3 社交恢复",
+          "item": [
+            {
+              "name": "构建发起恢复UserOp",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"accountAddress\": \"0x1234567890123456789012345678901234567890\",\n  \"guardianAccountAddress\": \"0x1111111111111111111111111111111111111111\",\n  \"newOwnerAddress\": \"0x9999999999999999999999999999999999999999\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/recovery/initiate/build",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "recovery", "initiate", "build"]
+                }
+              }
+            },
+            {
+              "name": "构建支持恢复UserOp",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"accountAddress\": \"0x1234567890123456789012345678901234567890\",\n  \"guardianAccountAddress\": \"0x2222222222222222222222222222222222222222\",\n  \"newOwnerAddress\": \"0x9999999999999999999999999999999999999999\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/recovery/support/build",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "recovery", "support", "build"]
+                }
+              }
+            },
+            {
+              "name": "构建取消恢复UserOp",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"accountAddress\": \"0x1234567890123456789012345678901234567890\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/recovery/cancel/build",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "recovery", "cancel", "build"]
+                }
+              }
+            },
+            {
+              "name": "提交恢复UserOp",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"userOp\": {\n    \"sender\": \"0x1111111111111111111111111111111111111111\",\n    \"nonce\": \"0x0\",\n    \"initCode\": \"0x\",\n    \"callData\": \"0xabcdef...\",\n    \"callGasLimit\": \"300000\",\n    \"verificationGasLimit\": \"500000\",\n    \"preVerificationGas\": \"50000\",\n    \"maxFeePerGas\": \"2000000000\",\n    \"maxPriorityFeePerGas\": \"1000000000\",\n    \"paymasterAndData\": \"0x375884F74bBc06D1F2C6551456279D328244543f\",\n    \"signature\": \"0xabcdef...\"\n  }\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/recovery/submit",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "recovery", "submit"]
+                }
+              }
+            },
+            {
+              "name": "查询恢复状态",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/erc4337/recovery/status/0x1234567890123456789012345678901234567890",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["erc4337", "recovery", "status", "0x1234567890123456789012345678901234567890"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. 账户迁移",
+      "item": [
+        {
+          "name": "创建迁移会话",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"mig_{{$timestamp}}_test\",\n  \"status\": \"pending\",\n  \"createdAt\": {{$timestamp}}000,\n  \"expiresAt\": {{$timestamp}}300000,\n  \"oldDeviceId\": \"device_old_001\",\n  \"confirmCode\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/migration/create",
+              "host": ["{{baseUrl}}"],
+              "path": ["migration", "create"]
+            }
+          }
+        },
+        {
+          "name": "获取迁移会话",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/migration/session/mig_1234567890_test",
+              "host": ["{{baseUrl}}"],
+              "path": ["migration", "session", "mig_1234567890_test"]
+            }
+          }
+        },
+        {
+          "name": "验证确认码",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"migrationId\": \"mig_1234567890_test\",\n  \"confirmCode\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/migration/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["migration", "verify"]
+            }
+          }
+        },
+        {
+          "name": "确认迁移完成",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"migrationId\": \"mig_1234567890_test\",\n  \"newDeviceId\": \"device_new_002\",\n  \"status\": \"completed\",\n  \"timestamp\": {{$timestamp}}000\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/migration/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["migration", "confirm"]
+            }
+          }
+        },
+        {
+          "name": "查询迁移状态",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/migration/status/mig_1234567890_test",
+              "host": ["{{baseUrl}}"],
+              "path": ["migration", "status", "mig_1234567890_test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. 关系管理 (需要认证)",
+      "item": [
+        {
+          "name": "6.1 访问组管理",
+          "item": [
+            {
+              "name": "创建访问组",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"group_name\": \"主治医生组\",\n  \"description\": \"负责日常医疗监护\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/relation/access-groups",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "access-groups"]
+                }
+              }
+            },
+            {
+              "name": "获取访问组列表",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/relation/access-groups",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "access-groups"]
+                }
+              }
+            },
+            {
+              "name": "获取访问组统计",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/relation/access-groups/stats",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "access-groups", "stats"]
+                }
+              }
+            },
+            {
+              "name": "获取访问组成员",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/relation/access-groups/1/members",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "access-groups", "1", "members"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.2 邀请管理",
+          "item": [
+            {
+              "name": "发送标准邀请",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"invitee_phone\": \"13800138001\",\n  \"access_group_id\": 1,\n  \"message\": \"邀请您成为我的医疗监护人\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/relation/invitations",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "invitations"]
+                }
+              }
+            },
+            {
+              "name": "发送医院预授权邀请",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"invitee_phone\": \"13800138002\",\n  \"access_group_id\": 1,\n  \"hospital_name\": \"北京协和医院\",\n  \"message\": \"医院预授权邀请\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/relation/invitations/hospital",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "invitations", "hospital"]
+                }
+              }
+            },
+            {
+              "name": "获取我的邀请",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/relation/invitations/my?status=pending",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "invitations", "my"],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "pending"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "取消邀请",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"invitation_id\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/relation/invitations/cancel",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "invitations", "cancel"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "6.3 关系管理",
+          "item": [
+            {
+              "name": "接受邀请",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"invitation_id\": 1\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/relation/relationships/accept",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "relationships", "accept"]
+                }
+              }
+            },
+            {
+              "name": "暂停关系",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/relation/relationships/1/suspend",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "relationships", "1", "suspend"]
+                }
+              }
+            },
+            {
+              "name": "恢复关系",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/relation/relationships/1/resume",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "relationships", "1", "resume"]
+                }
+              }
+            },
+            {
+              "name": "撤销关系",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/relation/relationships/1",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["relation", "relationships", "1"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

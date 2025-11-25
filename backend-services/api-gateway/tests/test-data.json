@@ -1,0 +1,163 @@
+{
+  "elder": {
+    "role": "老人",
+    "username": "王秀英",
+    "id_card_number": "110101195803151234",
+    "phone_number": "13810010001",
+    "email": "wang.xiuying@example.net",
+    "eoaAddress": "0x745dEBe1faA7bc662E75f84DC330b82316A12f23",
+    "eoaPrivateKey": "0x3b31f450ed08d4b44bbbb9730cb312517b71f847d4e9142fe701afd8d8ff7bf3",
+    "smartAccount": "0xeD00df221BfF8C1339F70AE3FFcaB7F3C1dfa1c1",
+    "salt": 858974,
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYTJhMWFmYWYtMTEzZC00YjRiLThjZDktNjRhN2RjNjEyNGYyIiwiZW9hX2FkZHJlc3MiOiIweDc0NWRlYmUxZmFhN2JjNjYyZTc1Zjg0ZGMzMzBiODIzMTZhMTJmMjMiLCJzbWFydF9hY2NvdW50IjoiMHhlZDAwZGYyMjFiZmY4YzEzMzlmNzBhZTNmZmNhYjdmM2MxZGZhMWMxIiwicm9sZXMiOlsiZWxkZXJseSJdLCJpYXQiOjE3NjE4MzI5NDEsImV4cCI6MTc2MTkxOTM0MX0.Cr8ufnNr7075u0H7cgtb4LSXSiBIkXQJhr3AbSTEAh8",
+    "accessGroups": [
+      {
+        "id": 368,
+        "owner_address": "0xed00df221bff8c1339f70ae3ffcab7f3c1dfa1c1",
+        "group_name": "主治医生组",
+        "description": "有全面医疗数据访问权限的主治医生",
+        "created_at": "2025-10-30T14:02:03.437Z",
+        "group_type": "PRIMARY_DOCTOR",
+        "is_system_default": true,
+        "icon": "👨‍⚕️",
+        "sort_order": 1,
+        "max_members": 3,
+        "permissions": {
+          "canView": true,
+          "emergency": true,
+          "canViewDiagnosis": true,
+          "canViewTestResults": true,
+          "canViewPrescription": true,
+          "canViewMedicalHistory": true
+        },
+        "updated_at": "2025-10-30T14:02:03.437Z",
+        "active_member_count": "0",
+        "total_member_count": "0"
+      },
+      {
+        "id": 369,
+        "owner_address": "0xed00df221bff8c1339f70ae3ffcab7f3c1dfa1c1",
+        "group_name": "医护团队",
+        "description": "参与日常护理的医护人员",
+        "created_at": "2025-10-30T14:02:03.437Z",
+        "group_type": "HEALTHCARE_TEAM",
+        "is_system_default": true,
+        "icon": "🏥",
+        "sort_order": 2,
+        "max_members": 10,
+        "permissions": {
+          "canView": true,
+          "emergency": false,
+          "canViewVitalSigns": true,
+          "canViewPrescription": true,
+          "canViewMedicalHistory": true
+        },
+        "updated_at": "2025-10-30T14:02:03.437Z",
+        "active_member_count": "0",
+        "total_member_count": "0"
+      },
+      {
+        "id": 370,
+        "owner_address": "0xed00df221bff8c1339f70ae3ffcab7f3c1dfa1c1",
+        "group_name": "家人",
+        "description": "主要照护家属",
+        "created_at": "2025-10-30T14:02:03.437Z",
+        "group_type": "FAMILY_PRIMARY",
+        "is_system_default": true,
+        "icon": "👨‍👩‍👧‍👦",
+        "sort_order": 3,
+        "max_members": 5,
+        "permissions": {
+          "canView": true,
+          "emergency": true,
+          "receiveAlerts": true,
+          "canViewBasicInfo": true,
+          "canViewMedication": true,
+          "canViewAppointments": true
+        },
+        "updated_at": "2025-10-30T14:02:03.437Z",
+        "active_member_count": "0",
+        "total_member_count": "0"
+      },
+      {
+        "id": 371,
+        "owner_address": "0xed00df221bff8c1339f70ae3ffcab7f3c1dfa1c1",
+        "group_name": "紧急联系人",
+        "description": "紧急情况下可访问关键信息",
+        "created_at": "2025-10-30T14:02:03.437Z",
+        "group_type": "EMERGENCY_CONTACT",
+        "is_system_default": true,
+        "icon": "🚨",
+        "sort_order": 4,
+        "max_members": 3,
+        "permissions": {
+          "canView": true,
+          "emergency": true,
+          "canViewAllergies": true,
+          "canViewBasicInfo": true,
+          "canViewEmergencyInfo": true,
+          "receiveEmergencyAlerts": true
+        },
+        "updated_at": "2025-10-30T14:02:03.437Z",
+        "active_member_count": "0",
+        "total_member_count": "0"
+      },
+      {
+        "id": 372,
+        "owner_address": "0xed00df221bff8c1339f70ae3ffcab7f3c1dfa1c1",
+        "group_name": "康复师/理疗师",
+        "description": "负责康复训练的专业人员",
+        "created_at": "2025-10-30T14:02:03.437Z",
+        "group_type": "THERAPIST",
+        "is_system_default": true,
+        "icon": "🧘",
+        "sort_order": 5,
+        "max_members": 5,
+        "permissions": {
+          "canView": true,
+          "emergency": false,
+          "canViewProgress": true,
+          "canViewDiagnosis": true,
+          "canViewTreatmentPlan": true
+        },
+        "updated_at": "2025-10-30T14:02:03.437Z",
+        "active_member_count": "0",
+        "total_member_count": "0"
+      }
+    ],
+    "encryptionPublicKey": "0x02fcd2313687146ca8d6ccc04bf489b72e292990f5868306c63dfa9b6c0a33b740",
+    "encryptionPrivateKey": "0x3b31f450ed08d4b44bbbb9730cb312517b71f847d4e9142fe701afd8d8ff7bf3"
+  },
+  "doctor": {
+    "role": "医生",
+    "username": "李建国",
+    "id_card_number": "310101196207222345",
+    "phone_number": "13910010002",
+    "email": "li.jianguo@clinic.com",
+    "eoaAddress": "0x63B62Fa585895B7dC7636b4fD7852b41248f1822",
+    "eoaPrivateKey": "0x847b459075896765c8955b8c6799a9355ba5f00d41a0ae02ba330788c18e7328",
+    "smartAccount": "0x0eda7118fC8Bdb08935892116Bcfa640E80926F1",
+    "salt": 601637,
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMDQxOTU1NTYtYzFjNS00MDk5LWE5ZTctY2NkODBkZmVlZWZlIiwiZW9hX2FkZHJlc3MiOiIweDYzYjYyZmE1ODU4OTViN2RjNzYzNmI0ZmQ3ODUyYjQxMjQ4ZjE4MjIiLCJzbWFydF9hY2NvdW50IjoiMHgwZWRhNzExOGZjOGJkYjA4OTM1ODkyMTE2YmNmYTY0MGU4MDkyNmYxIiwicm9sZXMiOlsiZG9jdG9yIl0sImlhdCI6MTc2MTgzMjk0MiwiZXhwIjoxNzYxOTE5MzQyfQ.agtEm-qkxENOpPro6Ox32SUNgO_BimS7QcJKpTZ1H_Y",
+    "encryptionPublicKey": "0x0252190eee7c66e7dce198357bc601c21a1155bae5cd548c9572c8c1482c0bfd46",
+    "encryptionPrivateKey": "0x847b459075896765c8955b8c6799a9355ba5f00d41a0ae02ba330788c18e7328"
+  },
+  "family": {
+    "role": "家属",
+    "username": "张敏",
+    "id_card_number": "440111197011013456",
+    "phone_number": "13711110003",
+    "email": "zhang1.min@example.net",
+    "eoaAddress": "0x161DfD551256b7aB88f4e5B70123304055903c2E",
+    "eoaPrivateKey": "0x157deb69b231fb3ee834c1bafbf841487d59ba45fd4d49f0adfa6cdfcb2b5d44",
+    "smartAccount": "0xDE81fD71857bC0D7bB7be1505B2df66BeC0E1f06",
+    "salt": 272882,
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiM2UzNjA1ZWItOGQ3Yy00NTA2LWEzZTMtNjU2YTE3YWIzYjVkIiwiZW9hX2FkZHJlc3MiOiIweDE2MWRmZDU1MTI1NmI3YWI4OGY0ZTViNzAxMjMzMDQwNTU5MDNjMmUiLCJzbWFydF9hY2NvdW50IjoiMHhkZTgxZmQ3MTg1N2JjMGQ3YmI3YmUxNTA1YjJkZjY2YmVjMGUxZjA2Iiwicm9sZXMiOlsiZ3VhcmRpYW4iXSwiaWF0IjoxNzYxODMyOTQyLCJleHAiOjE3NjE5MTkzNDJ9.GgCFXWMRmy9zB1kyo5ZmD9LmcMPXeL5FtzqDZNJHR-g",
+    "encryptionPublicKey": "0x02c490a5306a75d992791f62b1a6df939b2237e9baebdb7aa095e43538e97a064e",
+    "encryptionPrivateKey": "0x157deb69b231fb3ee834c1bafbf841487d59ba45fd4d49f0adfa6cdfcb2b5d44"
+  },
+  "metadata": {
+    "createdAt": "2025-10-30T14:02:22.788Z",
+    "apiBaseUrl": "http://localhost:3000"
+  }
+}

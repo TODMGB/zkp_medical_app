@@ -1,0 +1,93 @@
+### Secure Exchange Service API 测试
+
+### 变量定义
+@baseUrl = http://localhost:3007
+@apiUrl = http://localhost:3007/api
+@token = your_jwt_token_here
+@requesterAddress = 0x1234567890123456789012345678901234567890
+@recipientAddress = 0x0987654321098765432109876543210987654321
+
+### 1. Health Check
+GET {{baseUrl}}/api/health
+
+###
+
+### 2. 请求公钥交换
+POST {{apiUrl}}/secure-exchange/request-pubkey
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "recipientAddress": "{{recipientAddress}}",
+  "dataType": "medication_plan",
+  "requesterPublicKey": "0x04abc123...",
+  "metadata": {
+    "planId": "plan_001",
+    "accessGroupId": "group_001"
+  },
+  "expiresIn": 600
+}
+
+###
+
+### 3. 提供公钥
+POST {{apiUrl}}/secure-exchange/provide-pubkey
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "your_session_id_here",
+  "publicKey": "0x04def456..."
+}
+
+###
+
+### 4. 发送加密数据
+POST {{apiUrl}}/secure-exchange/send
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "sessionId": "your_session_id_here",
+  "encryptedData": "0xencrypted_hex_data...",
+  "signature": "0xsignature_hex...",
+  "timestamp": 1698765432100,
+  "nonce": "random_nonce_string_12345",
+  "dataType": "medication_plan",
+  "metadata": {
+    "version": "1.0"
+  }
+}
+
+###
+
+### 5. 查询待处理消息
+GET {{apiUrl}}/secure-exchange/pending?dataType=medication_plan&limit=10
+Authorization: Bearer {{token}}
+
+###
+
+### 6. 查询会话详情
+GET {{apiUrl}}/secure-exchange/sessions/{{sessionId}}
+Authorization: Bearer {{token}}
+
+###
+
+### 7. 确认接收消息
+POST {{apiUrl}}/secure-exchange/acknowledge
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "messageId": "your_message_id_here",
+  "status": "decrypted"
+}
+
+###
+
+### 8. 取消会话
+DELETE {{apiUrl}}/secure-exchange/sessions/{{sessionId}}
+Authorization: Bearer {{token}}
+
+###
+

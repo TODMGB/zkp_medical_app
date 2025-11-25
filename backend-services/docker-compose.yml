@@ -1,0 +1,438 @@
+version: '3.8'
+
+services:
+  # ====================================
+  # 基础服务 - Database & Messaging
+  # ====================================
+  
+  postgres:
+    image: postgres:15-alpine
+    container_name: medical_postgres
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    ports:
+      - "5400:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db-init:/docker-entrypoint-initdb.d
+    networks:
+      - medical_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: medical_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - medical_network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: medical_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - medical_network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ====================================
+  # 微服务 - Backend Services
+  # ====================================
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: medical_user_service
+    environment:
+      PORT: 3001
+      GRPC_PORT: 50051
+      JWT_SECRET: your-super-secret-and-long-string-for-jwt
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_user_service_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      MQ_URL: amqp://guest:guest@rabbitmq:5672
+      MQ_EXCHANGE_NAME: app_events
+      USER_INFO_SERVICE_URL: http://userinfo-service:5000
+      RELATIONSHIP_RPC_SERVER: relationship-service:50053
+    ports:
+      - "3001:3001"
+      - "50051:50051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  relationship-service:
+    build:
+      context: ./relationship-service
+      dockerfile: Dockerfile
+    container_name: medical_relationship_service
+    environment:
+      PORT: 3002
+      GRPC_PORT: 50053
+      JWT_SECRET: your-super-secret-and-long-string-for-jwt
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_relationship_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      MQ_URL: amqp://guest:guest@rabbitmq:5672
+      MQ_EXCHANGE_NAME: exchange.notifications
+    ports:
+      - "3002:3002"
+      - "50053:50053"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  migration-service:
+    build:
+      context: ./migration-service
+      dockerfile: Dockerfile
+    container_name: medical_migration_service
+    environment:
+      PORT: 3003
+      GRPC_PORT: 50051
+      NODE_ENV: development
+      JWT_SECRET: your-super-secret-and-long-string-for-jwt
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: migration_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      MQ_URL: amqp://guest:guest@rabbitmq:5672
+      MQ_EXCHANGE_NAME: exchange.notifications
+      MIGRATION_SESSION_TIMEOUT: 300000
+      MIGRATION_CLEANUP_INTERVAL: 3600000
+      MIGRATION_MAX_SESSIONS_PER_DEVICE: 5
+      MIGRATION_RATE_LIMIT: 10
+      MIGRATION_CONFIRM_CODE_LENGTH: 6
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: medical_notification_service
+    environment:
+      PORT: 3004
+      GRPC_PORT: 50056
+      JWT_SECRET: your-super-secret-and-long-string-for-jwt
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8080,http://localhost:5173
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_notification_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      MQ_URL: amqp://guest:guest@rabbitmq:5672
+      MQ_EXCHANGE_NAME: exchange.notifications
+      WS_PATH: /ws
+      WS_HEARTBEAT_INTERVAL: 30000
+    ports:
+      - "3004:3004"
+      - "50056:50056"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  zkp-service:
+    build:
+      context: ./zkp-service
+      dockerfile: Dockerfile
+    container_name: medical_zkp_service
+    environment:
+      PORT: 3005
+      GRPC_PORT: 50057
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_zkp_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      MQ_URL: amqp://guest:guest@rabbitmq:5672
+      MQ_EXCHANGE_NAME: exchange.notifications
+    ports:
+      - "3005:3005"
+      - "50057:50057"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  secure-exchange-service:
+    build:
+      context: ./secure-exchange-service
+      dockerfile: Dockerfile
+    container_name: medical_secure_exchange_service
+    environment:
+      PORT: 3006
+      GRPC_PORT: 50052
+      JWT_SECRET: your-super-secret-and-long-string-for-jwt
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8080
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_secure_exchange_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      MQ_URL: amqp://guest:guest@rabbitmq:5672
+      MQ_EXCHANGE_NAME: exchange.notifications
+      WS_PATH: /ws
+      WS_HEARTBEAT_INTERVAL: 30000
+      SESSION_EXPIRES_IN: 600
+      MESSAGE_EXPIRES_IN: 86400
+    ports:
+      - "3006:3006"
+      - "50052:50052"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  medication-service:
+    build:
+      context: ./medication-service
+      dockerfile: Dockerfile
+    container_name: medical_medication_service
+    environment:
+      PORT: 3007
+      GRPC_PORT: 50057
+      NODE_ENV: development
+      JWT_SECRET: your-super-secret-and-long-string-for-jwt
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_medication_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      MQ_URL: amqp://guest:guest@rabbitmq:5672
+      MQ_EXCHANGE_NAME: exchange.notifications
+      SECURE_EXCHANGE_RPC_SERVICE: secure-exchange-service:50052
+      USER_RPC_SERVICE: user-service:50051
+    ports:
+      - "3007:3007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  userinfo-service:
+    build:
+      context: ./userinfo-service
+      dockerfile: Dockerfile
+    container_name: medical_userinfo_service
+    environment:
+      PORT: 5000
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_userInfo_db
+      DB_PASSWORD: 123456
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  chain-service:
+    build:
+      context: ./chain-service
+      dockerfile: Dockerfile
+    container_name: medical_chain_service
+    environment:
+      PORT: 4337
+      JWT_SECRET: your-super-secret-and-long-string-for-jwt
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_chain_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      MQ_URL: amqp://guest:guest@rabbitmq:5672
+      MQ_EXCHANGE_NAME: app_events
+      PRIVATE_KEY: 626a9e2fb86bf8a65f75d00c4323153148b5165a4bfde165e2196ae4b751194d
+      ETH_NODE_URL: http://localhost:8545
+      CHAIN_ID: 887766
+      IPFS_API_KEY: b4afab428160f97b5c27
+      IPFS_API_SECRET: 67b91ef2a2acb4d209566da9c55bd6eca29c3fb89a9e12bf7e2c0c8615de0343
+      IPFS_JWT: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJlMzc2MDFlNy1kNDA5LTRiNTYtOGU4MS1kMDNlZTE0NzQ5YWMiLCJlbWFpbCI6InRtZG9nNjY2NkBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwicGluX3BvbGljeSI6eyJyZWdpb25zIjpbeyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJGUkExIn0seyJkZXNpcmVkUmVwbGljYXRpb25Db3VudCI6MSwiaWQiOiJOWUMxIn1dLCJ2ZXJzaW9uIjoxfSwibWZhX2VuYWJsZWQiOmZhbHNlLCJzdGF0dXMiOiJBQ1RJVkUifSwiYXV0aGVudGljYXRpb25UeXBlIjoic2NvcGVkS2V5Iiwic2NvcGVkS2V5S2V5IjoiYjRhZmFiNDI4MTYwZjk3YjVjMjciLCJzY29wZWRLZXlTZWNyZXQiOiI2N2I5MWVmMmEyYWNiNGQyMDk1NjZkYTljNTViZDZlY2EyOWMzZmI4OWE5ZTEyYmY3ZTJjMGM4NjE1ZGUwMzQzIiwiZXhwIjoxNzk1MjczNjYwfQ.LQZDBkLu9UHODArqRM4lc3pR9eKnAprOP0bnApIJUNc
+      IPFS_GATEWAY: https://tomato-legislative-coyote-504.mypinata.cloud
+    ports:
+      - "4337:4337"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: medical_api_gateway
+    environment:
+      PORT: 3000
+      JWT_SECRET: your-super-secret-and-long-string-for-jwt
+      CORS_ALLOW_ALL: "true"
+      CORS_ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+      DB_USER: root
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: bs_gateway_db
+      DB_PASSWORD: 123456
+      REDIS_URL: redis://redis:6379
+      USER_SERVICE_URL: http://user-service:3001
+      RELATIONSHIP_SERVICE_URL: http://relationship-service:3002
+      MIGRATION_SERVICE_URL: http://migration-service:3003
+      NOTIFICATION_SERVICE_URL: http://notification-service:3004
+      ZKP_SERVICE_URL: http://zkp-service:3005
+      SECURE_EXCHANGE_SERVICE_URL: http://secure-exchange-service:3006
+      MEDICATION_SERVICE_URL: http://medication-service:3007
+      USERINFO_SERVICE_URL: http://userinfo-service:5000
+      CHAIN_SERVICE_URL: http://chain-service:4337
+      NOTIFICATION_WS_URL: ws://notification-service:3004
+      SECURE_EXCHANGE_WS_URL: ws://secure-exchange-service:3006
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      relationship-service:
+        condition: service_started
+      migration-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
+      zkp-service:
+        condition: service_started
+      secure-exchange-service:
+        condition: service_started
+      medication-service:
+        condition: service_started
+      userinfo-service:
+        condition: service_started
+      chain-service:
+        condition: service_started
+    networks:
+      - medical_network
+    restart: unless-stopped
+
+networks:
+  medical_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+

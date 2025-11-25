@@ -1,0 +1,22 @@
+# 模板 Dockerfile - 在每个服务目录下创建 Dockerfile，复制此模板内容
+
+FROM node:18-alpine
+
+WORKDIR /app
+
+# 复制 package.json 和 package-lock.json
+COPY package*.json ./
+
+# 安装依赖
+RUN npm install --production
+
+# 复制应用代码
+COPY . .
+
+# 暴露端口（根据服务调整）
+# EXPOSE 3000
+# EXPOSE 50051
+
+# 启动应用
+CMD ["node", "server.js"]
+

@@ -1,0 +1,34 @@
+// Common user service proto - used by multiple services as gRPC client
+syntax = "proto3";
+
+package user;
+
+// 定义用户服务
+service UserService {
+  // 通过ID获取用户信息的RPC方法
+  rpc GetUserById(GetUserRequest) returns (UserReply);
+  
+  // 新增：创建新用户的RPC方法
+  rpc CreateUser(CreateUserRequest) returns (UserReply);
+}
+
+// GetUserById方法的请求消息体
+message GetUserRequest {
+  int32 id = 1;
+}
+
+// 新增：CreateUser方法的请求消息体
+// 我们需要传递用户名和邮箱来创建一个新用户
+message CreateUserRequest {
+  string username = 1;
+  string email = 2;
+}
+
+// 响应消息体 (可被复用)
+// 无论是查找还是创建，最终都返回完整的用户信息
+message UserReply {
+  int32 id = 1;
+  string username = 2;
+  string email = 3;
+}
+
