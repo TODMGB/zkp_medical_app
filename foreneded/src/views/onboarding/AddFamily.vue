@@ -175,7 +175,7 @@ const handleInviteCode = async () => {
 <style scoped>
 .add-family-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   display: flex;
   flex-direction: column;
 }
@@ -300,7 +300,7 @@ const handleInviteCode = async () => {
 
 .scan-btn {
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   border-radius: 16px;

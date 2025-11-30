@@ -101,6 +101,7 @@ const switchTab = (tab: 'circle' | 'relationships') => {
   color: #667eea;
 }
 
+
 .tab-btn.active::after {
   content: '';
   position: absolute;
@@ -108,7 +109,7 @@ const switchTab = (tab: 'circle' | 'relationships') => {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   border-radius: 3px 3px 0 0;
 }
 

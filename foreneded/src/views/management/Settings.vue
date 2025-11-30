@@ -2,8 +2,11 @@
   <div class="settings-page">
     <!-- 顶部导航 -->
     <div class="header">
-      <button class="back-btn" @click="goBack">←</button>
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="icon" />
+      </button>
       <h1 class="page-title">设置</h1>
+      <div class="placeholder"></div>
     </div>
     
     <!-- 设置选项 -->
@@ -13,7 +16,9 @@
         <h2 class="section-title">显示设置</h2>
         
         <div class="setting-item">
-          <div class="setting-icon">🔤</div>
+          <div class="setting-icon-wrapper blue">
+            <Type class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">字体大小</h3>
             <p class="setting-desc">调整App内的字体大小</p>
@@ -29,7 +34,9 @@
         </div>
         
         <div class="setting-item">
-          <div class="setting-icon">🌙</div>
+          <div class="setting-icon-wrapper purple">
+            <Moon class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">深色模式</h3>
             <p class="setting-desc">切换到深色主题</p>
@@ -48,7 +55,9 @@
         <h2 class="section-title">通知设置</h2>
         
         <div class="setting-item">
-          <div class="setting-icon">⏰</div>
+          <div class="setting-icon-wrapper orange">
+            <AlarmClock class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">用药提醒</h3>
             <p class="setting-desc">按时提醒您服药</p>
@@ -62,7 +71,9 @@
         </div>
         
         <div class="setting-item">
-          <div class="setting-icon">💝</div>
+          <div class="setting-icon-wrapper pink">
+            <Heart class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">家人关怀提醒</h3>
             <p class="setting-desc">接收家人的关心消息</p>
@@ -76,7 +87,9 @@
         </div>
         
         <div class="setting-item">
-          <div class="setting-icon">🔔</div>
+          <div class="setting-icon-wrapper green">
+            <Bell class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">系统通知</h3>
             <p class="setting-desc">接收系统重要通知</p>
@@ -95,21 +108,25 @@
         <h2 class="section-title">数据设置</h2>
         
         <div class="setting-item" @click="clearCache">
-          <div class="setting-icon">🗑️</div>
+          <div class="setting-icon-wrapper gray">
+            <Trash2 class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">清理缓存</h3>
             <p class="setting-desc">清理临时文件和缓存数据</p>
           </div>
-          <div class="setting-arrow">›</div>
+          <ChevronRight class="setting-arrow" />
         </div>
         
         <div class="setting-item" @click="exportData">
-          <div class="setting-icon">📤</div>
+          <div class="setting-icon-wrapper cyan">
+            <Upload class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">导出数据</h3>
             <p class="setting-desc">备份您的健康数据</p>
           </div>
-          <div class="setting-arrow">›</div>
+          <ChevronRight class="setting-arrow" />
         </div>
       </div>
       
@@ -117,23 +134,26 @@
       <div class="settings-section">
         <h2 class="section-title">区块链与账户</h2>
         
-        
         <div class="setting-item" @click="goToAccountMigration">
-          <div class="setting-icon">📱</div>
+          <div class="setting-icon-wrapper indigo">
+            <Smartphone class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">账户迁移</h3>
             <p class="setting-desc">将账户迁移到新设备</p>
           </div>
-          <div class="setting-arrow">›</div>
+          <ChevronRight class="setting-arrow" />
         </div>
         
         <div class="setting-item danger-item" @click="resetAllAccounts">
-          <div class="setting-icon">🗑️</div>
+          <div class="setting-icon-wrapper red">
+            <Trash2 class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title danger-text">重置所有账户</h3>
             <p class="setting-desc">删除所有钱包和账户数据（不可恢复）</p>
           </div>
-          <div class="setting-arrow">›</div>
+          <ChevronRight class="setting-arrow" />
         </div>
       </div>
       
@@ -142,12 +162,14 @@
         <h2 class="section-title">开发测试</h2>
         
         <div class="setting-item" @click="goToTestCenter">
-          <div class="setting-icon">🧪</div>
+          <div class="setting-icon-wrapper teal">
+            <FlaskConical class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">测试中心</h3>
             <p class="setting-desc">开发和测试功能集合</p>
           </div>
-          <div class="setting-arrow">›</div>
+          <ChevronRight class="setting-arrow" />
         </div>
       </div>
       
@@ -156,21 +178,25 @@
         <h2 class="section-title">应用设置</h2>
         
         <div class="setting-item" @click="checkUpdate">
-          <div class="setting-icon">🔄</div>
+          <div class="setting-icon-wrapper blue">
+            <RefreshCw class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">检查更新</h3>
             <p class="setting-desc">检查是否有新版本</p>
           </div>
-          <div class="setting-arrow">›</div>
+          <ChevronRight class="setting-arrow" />
         </div>
         
         <div class="setting-item" @click="resetSettings">
-          <div class="setting-icon">⚙️</div>
+          <div class="setting-icon-wrapper gray">
+            <Settings class="setting-icon" />
+          </div>
           <div class="setting-content">
             <h3 class="setting-title">恢复默认设置</h3>
             <p class="setting-desc">将所有设置恢复为默认值</p>
           </div>
-          <div class="setting-arrow">›</div>
+          <ChevronRight class="setting-arrow" />
         </div>
       </div>
     </div>
@@ -181,8 +207,22 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Preferences } from '@capacitor/preferences'
-import { RPC_CONFIG, API_CONFIG } from '../../config/api.config'
-import { biometricService } from '../../service/biometric'
+import { biometricService } from '@/service/biometric'
+import { 
+  ArrowLeft, 
+  Type, 
+  Moon, 
+  AlarmClock, 
+  Heart, 
+  Bell, 
+  Trash2, 
+  Upload, 
+  Smartphone, 
+  FlaskConical, 
+  RefreshCw, 
+  Settings, 
+  ChevronRight 
+} from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -197,7 +237,6 @@ const goBack = () => {
   router.back()
 }
 
-
 const goToAccountMigration = () => {
   router.push('/account-migration')
 }
@@ -205,7 +244,6 @@ const goToAccountMigration = () => {
 const goToTestCenter = () => {
   router.push('/test-center')
 }
-
 
 const resetAllAccounts = async () => {
   // 二次确认
@@ -367,66 +405,114 @@ onMounted(() => {
 .header {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 20px;
+  justify-content: space-between;
+  padding: 16px 20px;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .back-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: #4299e1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2d3748;
   cursor: pointer;
-  padding: 8px;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: var(--bg-body);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .page-title {
-  font-size: 1.3rem;
+  font-size: 18px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
 }
 
+.placeholder {
+  width: 40px;
+}
+
 .settings-content {
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .settings-section {
-  margin-bottom: 25px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .section-title {
-  font-size: 1.1rem;
+  font-size: 14px;
   font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 15px 0;
-  padding-left: 5px;
+  color: #718096;
+  margin: 0 0 4px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .setting-item {
   background-color: white;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 8px;
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.3s;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid transparent;
 }
 
 .setting-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-100);
 }
 
+.setting-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.setting-icon-wrapper.blue { background: #e0f2fe; color: #0ea5e9; }
+.setting-icon-wrapper.purple { background: #f3e8ff; color: #a855f7; }
+.setting-icon-wrapper.orange { background: #ffedd5; color: #f97316; }
+.setting-icon-wrapper.pink { background: #fce7f3; color: #ec4899; }
+.setting-icon-wrapper.green { background: #dcfce7; color: #22c55e; }
+.setting-icon-wrapper.gray { background: #f3f4f6; color: #6b7280; }
+.setting-icon-wrapper.cyan { background: #cffafe; color: #06b6d4; }
+.setting-icon-wrapper.indigo { background: #e0e7ff; color: #6366f1; }
+.setting-icon-wrapper.red { background: #fee2e2; color: #ef4444; }
+.setting-icon-wrapper.teal { background: #ccfbf1; color: #14b8a6; }
+
 .setting-icon {
-  font-size: 1.3rem;
-  width: 30px;
-  text-align: center;
+  width: 20px;
+  height: 20px;
 }
 
 .setting-content {
@@ -434,14 +520,14 @@ onMounted(() => {
 }
 
 .setting-title {
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 600;
   color: #2d3748;
-  margin: 0 0 5px 0;
+  margin: 0 0 4px 0;
 }
 
 .setting-desc {
-  font-size: 0.9rem;
+  font-size: 13px;
   color: #718096;
   margin: 0;
 }
@@ -454,36 +540,30 @@ onMounted(() => {
 .font-select {
   background-color: #f7fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 8px 12px;
-  font-size: 0.9rem;
-  color: #4a5568;
+  font-size: 14px;
+  color: #2d3748;
   cursor: pointer;
+  outline: none;
 }
 
 .font-select:focus {
-  outline: none;
-  border-color: #4299e1;
-}
-
-.setting-value {
-  font-size: 0.9rem;
-  color: #718096;
-  font-weight: 500;
+  border-color: #667eea;
 }
 
 .setting-arrow {
-  font-size: 1.2rem;
+  width: 20px;
+  height: 20px;
   color: #a0aec0;
-  font-weight: 300;
 }
 
 /* 开关样式 */
 .switch {
   position: relative;
   display: inline-block;
-  width: 50px;
-  height: 28px;
+  width: 44px;
+  height: 24px;
 }
 
 .switch input {
@@ -501,16 +581,16 @@ onMounted(() => {
   bottom: 0;
   background-color: #cbd5e0;
   transition: 0.3s;
-  border-radius: 28px;
+  border-radius: 24px;
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 20px;
-  width: 20px;
-  left: 4px;
-  bottom: 4px;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
   background-color: white;
   transition: 0.3s;
   border-radius: 50%;
@@ -518,19 +598,34 @@ onMounted(() => {
 }
 
 input:checked + .slider {
-  background-color: #4299e1;
+  background-color: #667eea;
 }
 
 input:checked + .slider:before {
-  transform: translateX(22px);
+  transform: translateX(20px);
+}
+
+/* 危险操作样式 */
+.danger-item {
+  border: 1px solid #fee2e2;
+  background-color: #fef2f2;
+}
+
+.danger-item:hover {
+  border-color: #fecaca;
+  background-color: #fee2e2;
+  box-shadow: var(--shadow-md);
+}
+
+.danger-text {
+  color: #ef4444;
+}
+
+.danger-item .setting-desc {
+  color: #f87171;
 }
 
 /* 深色模式样式 */
-:global(.dark-mode) {
-  background-color: #1a202c;
-  color: #e2e8f0;
-}
-
 :global(.dark-mode) .settings-page {
   background-color: #1a202c;
 }
@@ -550,35 +645,16 @@ input:checked + .slider:before {
   color: #a0aec0;
 }
 
-/* 危险操作样式 */
-.danger-item {
-  border: 2px solid #fed7d7;
-  background-color: #fff5f5;
-}
-
-.danger-item:hover {
-  border-color: #fc8181;
-  background-color: #fff5f5;
-}
-
-.danger-text {
-  color: #e53e3e;
-}
-
-.danger-item .setting-desc {
-  color: #c53030;
-}
-
 :global(.dark-mode) .danger-item {
-  border: 2px solid #742a2a;
-  background-color: #2d1515;
+  border-color: #7f1d1d;
+  background-color: #450a0a;
 }
 
 :global(.dark-mode) .danger-text {
-  color: #fc8181;
+  color: #fca5a5;
 }
 
 :global(.dark-mode) .danger-item .setting-desc {
-  color: #feb2b2;
+  color: #fecaca;
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div class="bottom-nav">
     <router-link to="/home" class="nav-item" :class="{ active: currentRoute === 'home' }">
-      <div class="nav-icon">🏠</div>
+      <Home class="nav-icon" />
       <span>首页</span>
     </router-link>
     <!-- 只有老人（elderly）角色才显示"记录"和"周汇总" -->
@@ -11,7 +11,7 @@
       class="nav-item" 
       :class="{ active: currentRoute === 'medication-history' }"
     >
-      <div class="nav-icon">📊</div>
+      <BarChart3 class="nav-icon" />
       <span>记录</span>
     </router-link>
     <router-link 
@@ -20,16 +20,16 @@
       class="nav-item" 
       :class="{ active: currentRoute === 'weekly-summary' }"
     >
-      <div class="nav-icon">📋</div>
+      <ClipboardList class="nav-icon" />
       <span>周汇总</span>
     </router-link>
     <router-link to="/relationships" class="nav-item" :class="{ active: currentRoute === 'relationships' }">
-      <div class="nav-icon">👥</div>
+      <Users class="nav-icon" />
       <span>关系</span>
     </router-link>
     <router-link to="/profile" class="nav-item" :class="{ active: currentRoute === 'profile' }">
       <div class="nav-icon-wrapper">
-        <div class="nav-icon">👤</div>
+        <User class="nav-icon" />
         <span v-if="unreadCount > 0" class="badge">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
       </div>
       <span>我的</span>
@@ -42,6 +42,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { unreadCount, notificationBadgeService } from '@/service/notificationBadge'
 import { authService } from '@/service/auth'
+import { Home, BarChart3, ClipboardList, Users, User } from 'lucide-vue-next'
 
 const route = useRoute()
 const isElderly = ref(false)
@@ -128,8 +129,9 @@ onMounted(async () => {
 }
 
 .nav-icon {
-  font-size: 1.5rem;
-  line-height: 1;
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
 }
 
 .badge {
@@ -167,4 +169,3 @@ onMounted(async () => {
   white-space: nowrap;
 }
 </style>
-

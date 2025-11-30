@@ -3,7 +3,7 @@
     <!-- 顶部导航 -->
     <div class="header">
       <button class="back-btn" @click="goBack">
-        <span class="arrow">←</span>
+        <ArrowLeft class="arrow" />
       </button>
       <div class="progress-dots">
         <span class="dot completed"></span>
@@ -25,7 +25,7 @@
         <!-- 密码输入 -->
         <div class="form-group" :class="{ 'focused': focusedField === 'password', 'error': errors.password }">
           <label class="label">
-            <span class="label-icon">🔑</span>
+            <Key class="label-icon" />
             <span class="label-text">设置密码</span>
           </label>
           <div class="password-wrapper">
@@ -42,7 +42,8 @@
               class="toggle-password"
               @click="showPassword = !showPassword"
             >
-              {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+              <Eye v-if="showPassword" class="eye-icon" />
+              <EyeOff v-else class="eye-icon" />
             </button>
           </div>
           <transition name="error">
@@ -53,7 +54,7 @@
         <!-- 确认密码 -->
         <div class="form-group" :class="{ 'focused': focusedField === 'confirmPassword', 'error': errors.confirmPassword }">
           <label class="label">
-            <span class="label-icon">🔐</span>
+            <Lock class="label-icon" />
             <span class="label-text">确认密码</span>
           </label>
           <div class="password-wrapper">
@@ -70,7 +71,8 @@
               class="toggle-password"
               @click="showConfirmPassword = !showConfirmPassword"
             >
-              {{ showConfirmPassword ? '👁️' : '👁️‍🗨️' }}
+              <Eye v-if="showConfirmPassword" class="eye-icon" />
+              <EyeOff v-else class="eye-icon" />
             </button>
           </div>
           <transition name="error">
@@ -82,7 +84,9 @@
         <div v-if="biometricAvailable" class="biometric-option">
           <div class="option-card" @click="enableBiometric = !enableBiometric">
             <div class="option-left">
-              <span class="option-icon">🔐</span>
+              <div class="option-icon-wrapper">
+                <Fingerprint class="option-icon" />
+              </div>
               <div class="option-text">
                 <div class="option-title">启用{{ biometricName }}</div>
                 <div class="option-subtitle">快速安全登录</div>
@@ -99,7 +103,7 @@
         <!-- 错误提示 -->
         <transition name="slide-fade">
           <div v-if="globalError" class="global-error">
-            <span class="error-icon">⚠️</span>
+            <AlertTriangle class="error-icon" />
             <span>{{ globalError }}</span>
           </div>
         </transition>
@@ -113,10 +117,10 @@
         >
           <span v-if="!isLoading" class="btn-text">
             完成注册
-            <span class="btn-arrow">✓</span>
+            <Check class="btn-arrow" />
           </span>
           <span v-else class="btn-loading">
-            <span class="spinner"></span>
+            <Loader2 class="spinner" />
             注册中...
           </span>
         </button>
@@ -131,6 +135,17 @@ import { useRouter, useRoute } from 'vue-router';
 import { aaService } from '../../service/accountAbstraction';
 import { biometricService } from '../../service/biometric';
 import { authService } from '../../service/auth';
+import { 
+  ArrowLeft, 
+  Key, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  Fingerprint, 
+  AlertTriangle, 
+  Check, 
+  Loader2 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 const route = useRoute();
@@ -303,7 +318,7 @@ const handleSubmit = async () => {
 <style scoped>
 .set-pin-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   display: flex;
   flex-direction: column;
 }
@@ -337,7 +352,8 @@ const handleSubmit = async () => {
 
 .arrow {
   color: white;
-  font-size: 1.5rem;
+  width: 24px;
+  height: 24px;
 }
 
 /* 进度指示器 */
@@ -391,23 +407,23 @@ const handleSubmit = async () => {
 .title {
   font-size: 2rem;
   font-weight: 700;
-  color: #1a202c;
+  color: var(--text-primary);
   margin: 0 0 12px 0;
 }
 
 .subtitle {
   font-size: 1.2rem;
-  color: #667eea;
+  color: var(--color-primary);
   margin: 0 0 4px 0;
   font-weight: 600;
 }
 
 .user-role {
   font-size: 0.9rem;
-  color: #a0aec0;
+  color: var(--text-secondary);
   margin: 0 0 12px 0;
   padding: 4px 12px;
-  background: #f7fafc;
+  background: var(--gray-100);
   border-radius: 12px;
   display: inline-block;
   font-weight: 500;
@@ -415,7 +431,7 @@ const handleSubmit = async () => {
 
 .hint {
   font-size: 0.95rem;
-  color: #718096;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -436,12 +452,13 @@ const handleSubmit = async () => {
   gap: 8px;
   margin-bottom: 10px;
   font-weight: 500;
-  color: #4a5568;
+  color: var(--text-secondary);
   font-size: 0.95rem;
 }
 
 .label-icon {
-  font-size: 1.2rem;
+  width: 18px;
+  height: 18px;
 }
 
 .password-wrapper {
@@ -451,18 +468,19 @@ const handleSubmit = async () => {
 .input {
   width: 100%;
   padding: 16px 50px 16px 20px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid var(--border-color);
   border-radius: 16px;
   font-size: 1rem;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  background: #f7fafc;
+  background: var(--bg-body);
+  color: var(--text-primary);
 }
 
 .input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--color-primary);
   background: white;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 4px var(--primary-100);
 }
 
 .toggle-password {
@@ -472,27 +490,33 @@ const handleSubmit = async () => {
   transform: translateY(-50%);
   background: none;
   border: none;
-  font-size: 1.3rem;
   cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 0.3s;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eye-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .toggle-password:hover {
-  opacity: 1;
+  color: var(--text-primary);
 }
 
 .form-group.focused .label {
-  color: #667eea;
+  color: var(--color-primary);
 }
 
 .form-group.error .input {
-  border-color: #fc8181;
+  border-color: var(--error);
   background: #fff5f5;
 }
 
 .error-message {
-  color: #e53e3e;
+  color: var(--error);
   font-size: 0.85rem;
   margin-top: 6px;
   display: block;
@@ -513,7 +537,7 @@ const handleSubmit = async () => {
 }
 
 .option-card {
-  background: linear-gradient(135deg, #f6f8fb 0%, #e9ecef 100%);
+  background: #f6f8fb;
   border-radius: 16px;
   padding: 20px;
   display: flex;
@@ -526,7 +550,8 @@ const handleSubmit = async () => {
 
 .option-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--primary-200);
 }
 
 .option-left {
@@ -535,8 +560,21 @@ const handleSubmit = async () => {
   gap: 16px;
 }
 
+.option-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+
 .option-icon {
-  font-size: 2rem;
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary);
 }
 
 .option-text {
@@ -548,26 +586,26 @@ const handleSubmit = async () => {
 .option-title {
   font-size: 1rem;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text-primary);
 }
 
 .option-subtitle {
   font-size: 0.85rem;
-  color: #718096;
+  color: var(--text-secondary);
 }
 
 /* 开关按钮 */
 .toggle-switch {
   width: 52px;
   height: 28px;
-  background: #cbd5e0;
+  background: var(--gray-300);
   border-radius: 14px;
   position: relative;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .toggle-switch.active {
-  background: #667eea;
+  background: var(--color-primary);
 }
 
 .toggle-knob {
@@ -612,7 +650,7 @@ const handleSubmit = async () => {
 .submit-btn {
   width: 100%;
   padding: 18px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   border-radius: 16px;
@@ -621,12 +659,12 @@ const handleSubmit = async () => {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   margin-top: 16px;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .submit-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
+  box-shadow: var(--shadow-lg);
 }
 
 .submit-btn:active:not(:disabled) {
@@ -646,7 +684,8 @@ const handleSubmit = async () => {
 }
 
 .btn-arrow {
-  font-size: 1.3rem;
+  width: 20px;
+  height: 20px;
 }
 
 .btn-loading {
@@ -657,17 +696,13 @@ const handleSubmit = async () => {
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  width: 18px;
+  height: 18px;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

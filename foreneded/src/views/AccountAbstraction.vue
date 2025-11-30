@@ -1,37 +1,45 @@
 <template>
   <div class="aa-page">
-    <header>
-      <h1>🔐 ERC-4337 账户抽象</h1>
+    <header class="header">
+      <div class="icon-wrapper">
+        <ShieldCheck class="header-icon" />
+      </div>
+      <h1>ERC-4337 账户抽象</h1>
       <p class="subtitle">基于智能合约的账户系统</p>
       
       <!-- 网络状态 -->
       <div class="network-status">
         <div class="network-info">
           <div class="network-item">
-            <span class="network-label">RPC:</span>
+            <span class="network-label">RPC</span>
             <span class="network-value" :class="networkStatus.rpc">
               {{ RPC_CONFIG.url }}
-              <span class="status-indicator" :class="networkStatus.rpc"></span>
+              <div class="status-dot" :class="networkStatus.rpc"></div>
             </span>
           </div>
           <div class="network-item">
-            <span class="network-label">API:</span>
+            <span class="network-label">API</span>
             <span class="network-value" :class="networkStatus.api">
               {{ API_CONFIG.baseUrl }}
-              <span class="status-indicator" :class="networkStatus.api"></span>
+              <div class="status-dot" :class="networkStatus.api"></div>
             </span>
           </div>
         </div>
-        <button @click="testConnection" :disabled="isLoading" class="test-btn">
-          {{ isLoading ? '测试中...' : '🔍 测试网络' }}
+        <button @click="testConnection" :disabled="isLoading" class="btn btn-sm btn-outline">
+          <Activity class="btn-icon-sm" :class="{ 'spin': isLoading }" />
+          {{ isLoading ? '测试中...' : '测试网络' }}
         </button>
       </div>
     </header>
 
     <main>
       <!-- 未注册/未登录状态 -->
-      <div class="container" v-if="!isLoggedIn">
-        <h2>{{ isRegistered ? '登录账户' : '注册新账户' }}</h2>
+      <div class="card" v-if="!isLoggedIn">
+        <div class="card-header">
+          <User v-if="isRegistered" class="card-icon" />
+          <UserPlus v-else class="card-icon" />
+          <h2>{{ isRegistered ? '登录账户' : '注册新账户' }}</h2>
+        </div>
         <p class="description">
           {{ isRegistered 
             ? '请输入密码以解锁您的账户' 
@@ -41,19 +49,24 @@
 
         <div class="form-group">
           <label>密码</label>
-          <input 
-            v-model="password" 
-            type="password" 
-            placeholder="请输入密码（至少6位）"
-            @keyup.enter="handleAuth"
-          />
+          <div class="input-wrapper">
+            <input 
+              v-model="password" 
+              type="password" 
+              placeholder="请输入密码（至少6位）"
+              @keyup.enter="handleAuth"
+              class="input"
+            />
+          </div>
         </div>
 
         <button 
           @click="handleAuth" 
           :disabled="isLoading || password.length < 6"
-          class="primary-btn"
+          class="btn btn-primary"
         >
+          <LogIn v-if="isRegistered" class="btn-icon" />
+          <UserPlus v-else class="btn-icon" />
           {{ isLoading 
             ? (isRegistered ? '登录中...' : '注册中...') 
             : (isRegistered ? '登录' : '注册并创建账户') 
@@ -65,22 +78,24 @@
           v-if="isRegistered && biometricAvailable && biometricEnabled"
           @click="handleBiometricLogin" 
           :disabled="isLoading"
-          class="biometric-btn"
+          class="btn btn-biometric"
         >
-          {{ isLoading ? '验证中...' : `🔐 使用${biometricName}登录` }}
+          <Fingerprint class="btn-icon" />
+          {{ isLoading ? '验证中...' : `使用${biometricName}登录` }}
         </button>
 
         <div class="biometric-info" v-if="isRegistered && biometricAvailable && !biometricEnabled">
-          <p>💡 您可以启用{{ biometricName }}快速登录</p>
+          <Lightbulb class="info-icon" />
+          <p>您可以启用{{ biometricName }}快速登录</p>
         </div>
 
         <div class="info-box" v-if="!isRegistered">
-          <h4>📋 什么是账户抽象？</h4>
+          <h4><HelpCircle class="info-icon-sm" /> 什么是账户抽象？</h4>
           <ul>
-            <li>✅ 无需持有ETH即可使用（Gas由Paymaster支付）</li>
-            <li>✅ 智能合约账户，支持社交恢复</li>
-            <li>✅ 更安全的密钥管理方式</li>
-            <li>✅ 一键部署，无需手动操作</li>
+            <li><CheckCircle2 class="list-icon" /> 无需持有ETH即可使用（Gas由Paymaster支付）</li>
+            <li><CheckCircle2 class="list-icon" /> 智能合约账户，支持社交恢复</li>
+            <li><CheckCircle2 class="list-icon" /> 更安全的密钥管理方式</li>
+            <li><CheckCircle2 class="list-icon" /> 一键部署，无需手动操作</li>
           </ul>
         </div>
       </div>
@@ -88,15 +103,20 @@
       <!-- 已登录状态 -->
       <div v-else>
         <!-- 账户信息 -->
-        <div class="container">
-          <h2>👤 账户信息</h2>
+        <div class="card">
+          <div class="card-header">
+            <User class="card-icon" />
+            <h2>账户信息</h2>
+          </div>
           
           <div class="account-info">
             <div class="info-item">
               <label>EOA地址（签名账户）</label>
               <div class="address-display">
                 <span class="address">{{ eoaAddress }}</span>
-                <button class="copy-btn" @click="copyToClipboard(eoaAddress)">📋</button>
+                <button class="copy-btn" @click="copyToClipboard(eoaAddress)" title="复制">
+                  <Copy class="icon-sm" />
+                </button>
               </div>
             </div>
 
@@ -104,30 +124,36 @@
               <label>智能账户地址（抽象账户）</label>
               <div class="address-display">
                 <span class="address">{{ abstractAddress }}</span>
-                <button class="copy-btn" @click="copyToClipboard(abstractAddress)">📋</button>
+                <button class="copy-btn" @click="copyToClipboard(abstractAddress)" title="复制">
+                  <Copy class="icon-sm" />
+                </button>
               </div>
             </div>
 
             <div class="balance-row">
               <div class="balance-item">
                 <label>账户余额</label>
-                <div class="balance">{{ balance }} ETH</div>
+                <div class="balance">{{ balance }} <span class="unit">ETH</span></div>
               </div>
               <div class="balance-item">
                 <label>EntryPoint存款</label>
-                <div class="balance">{{ depositBalance }} ETH</div>
+                <div class="balance">{{ depositBalance }} <span class="unit">ETH</span></div>
               </div>
             </div>
 
-            <button @click="refreshBalances" class="secondary-btn">
-              🔄 刷新余额
+            <button @click="refreshBalances" class="btn btn-secondary">
+              <RefreshCw class="btn-icon" :class="{ 'spin': status.includes('刷新') }" />
+              刷新余额
             </button>
           </div>
         </div>
 
         <!-- 发送交易 -->
-        <div class="container">
-          <h2>💸 发送交易</h2>
+        <div class="card">
+          <div class="card-header">
+            <Send class="card-icon" />
+            <h2>发送交易</h2>
+          </div>
           <p class="description">
             使用智能账户发送交易，Gas由Paymaster支付
           </p>
@@ -137,6 +163,7 @@
             <input 
               v-model="txForm.to" 
               placeholder="0x..."
+              class="input"
             />
           </div>
 
@@ -147,6 +174,7 @@
               type="number" 
               step="0.01"
               placeholder="0.1"
+              class="input"
             />
           </div>
 
@@ -155,21 +183,26 @@
             <input 
               v-model="txForm.data" 
               placeholder="0x (十六进制数据)"
+              class="input"
             />
           </div>
 
           <button 
             @click="handleSendTransaction" 
             :disabled="isLoading || !txForm.to"
-            class="primary-btn"
+            class="btn btn-primary"
           >
+            <Send class="btn-icon" />
             {{ isLoading ? '发送中...' : '发送交易' }}
           </button>
         </div>
 
         <!-- 流程说明 -->
-        <div class="container info-container">
-          <h2>🔄 账户抽象流程</h2>
+        <div class="card info-card">
+          <div class="card-header">
+            <GitMerge class="card-icon" />
+            <h2>账户抽象流程</h2>
+          </div>
           <div class="flow-steps">
             <div class="step">
               <div class="step-number">1</div>
@@ -205,7 +238,10 @@
 
       <!-- 状态消息 -->
       <div class="status-box" :class="statusType">
-        <p><strong>状态:</strong> {{ status }}</p>
+        <Info v-if="statusType === 'info'" class="status-icon" />
+        <CheckCircle2 v-else-if="statusType === 'success'" class="status-icon" />
+        <AlertTriangle v-else class="status-icon" />
+        <p>{{ status }}</p>
       </div>
     </main>
   </div>
@@ -217,6 +253,23 @@ import { aaService } from '../service/accountAbstraction';
 import { biometricService } from '../service/biometric';
 import { ethers } from 'ethers';
 import { RPC_CONFIG, API_CONFIG } from '../config/api.config';
+import { 
+  ShieldCheck, 
+  Activity, 
+  User, 
+  UserPlus, 
+  LogIn, 
+  Fingerprint, 
+  Lightbulb, 
+  HelpCircle, 
+  CheckCircle2, 
+  Copy, 
+  RefreshCw, 
+  Send, 
+  GitMerge, 
+  Info, 
+  AlertTriangle 
+} from 'lucide-vue-next';
 
 // 表单数据
 const password = ref('');
@@ -289,6 +342,7 @@ onMounted(async () => {
 // 测试网络连接
 const testConnection = async () => {
   console.log('🔍 开始测试网络连接...');
+  isLoading.value = true;
   
   try {
     const result = await aaService.testAllConnections();
@@ -320,6 +374,8 @@ const testConnection = async () => {
     networkStatus.value.rpc = 'disconnected';
     networkStatus.value.api = 'disconnected';
     setStatus(`❌ 网络测试失败: ${error.message}`, 'error');
+  } finally {
+    isLoading.value = false;
   }
 };
 
@@ -432,25 +488,12 @@ const handleSendTransaction = async () => {
     
     console.log('==== Vue层：准备发送交易 ====');
     console.log('表单数据:', txForm.value);
-    console.log('金额输入值:', txForm.value.amount, '类型:', typeof txForm.value.amount);
     
-    // 确保amount是字符串类型（HTML input type="number" 会返回数字）
+    // 确保amount是字符串类型
     const amountStr = String(txForm.value.amount || '0');
-    console.log('转换为字符串:', amountStr, '类型:', typeof amountStr);
-    
     const parsedValue = ethers.parseEther(amountStr);
-    console.log('parseEther结果:', parsedValue, '类型:', typeof parsedValue);
-    
     const value = parsedValue.toString();
-    console.log('toString结果:', value, '类型:', typeof value);
-    
     const data = txForm.value.data || '0x';
-    console.log('data:', data, '类型:', typeof data);
-    
-    console.log('调用executeTransaction，参数:');
-    console.log('  - to:', txForm.value.to);
-    console.log('  - value:', value);
-    console.log('  - data:', data);
     
     const result = await aaService.executeTransaction(
       txForm.value.to,
@@ -466,7 +509,7 @@ const handleSendTransaction = async () => {
     // 刷新余额
     await refreshBalances();
     
-    // 清空表单（确保使用字符串类型）
+    // 清空表单
     txForm.value = { to: '', amount: '0', data: '0x' };
     
   } catch (error: any) {
@@ -498,140 +541,151 @@ const setStatus = (message: string, type: 'info' | 'success' | 'error' = 'info')
 .aa-page {
   max-width: 800px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 24px 20px;
+  min-height: 100vh;
+  background: var(--bg-body);
 }
 
-header {
+.header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
-header h1 {
-  font-size: 2rem;
-  color: #2d3748;
-  margin: 0 0 10px 0;
+.icon-wrapper {
+  width: 64px;
+  height: 64px;
+  background: #667eea;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 8px;
+}
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  color: white;
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin: 0;
+  font-weight: 700;
 }
 
 .subtitle {
-  color: #718096;
-  font-size: 1.1rem;
-  margin: 0 0 15px 0;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
 }
 
 /* 网络状态样式 */
 .network-status {
-  background-color: white;
-  border-radius: 12px;
-  padding: 15px;
-  margin-top: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: var(--bg-surface);
+  border-radius: var(--border-radius-lg);
+  padding: 16px;
+  margin-top: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .network-info {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  flex: 1;
 }
 
 .network-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   font-size: 0.85rem;
 }
 
 .network-label {
   font-weight: 600;
-  color: #4a5568;
-  min-width: 40px;
+  color: var(--text-secondary);
+  min-width: 30px;
 }
 
 .network-value {
-  font-family: 'Courier New', monospace;
-  color: #718096;
+  font-family: 'SF Mono', monospace;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1;
+  background: var(--gray-50);
+  padding: 4px 8px;
+  border-radius: 4px;
   font-size: 0.8rem;
 }
 
-.status-indicator {
+.status-dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  display: inline-block;
-  animation: pulse 2s ease-in-out infinite;
+  background-color: var(--gray-400);
 }
 
-.status-indicator.connected {
-  background-color: #48bb78;
-  box-shadow: 0 0 8px rgba(72, 187, 120, 0.6);
+.status-dot.connected {
+  background-color: var(--color-success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
-.status-indicator.disconnected {
-  background-color: #e53e3e;
-  box-shadow: 0 0 8px rgba(229, 62, 62, 0.6);
+.status-dot.disconnected {
+  background-color: var(--color-danger);
 }
 
-.status-indicator.unknown {
-  background-color: #a0aec0;
+.card {
+  background: var(--bg-surface);
+  padding: 24px;
+  border-radius: var(--border-radius-xl);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.test-btn {
-  width: 100%;
-  padding: 10px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.test-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
-.test-btn:disabled {
-  background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
-  cursor: not-allowed;
-}
-
-.container {
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-h2 {
-  font-size: 1.5rem;
-  color: #2d3748;
-  margin: 0 0 20px 0;
-  border-bottom: 2px solid #e2e8f0;
-  padding-bottom: 10px;
+.card-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary);
+}
+
+.card-header h2 {
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin: 0;
+  font-weight: 600;
 }
 
 .description {
-  color: #718096;
-  margin-bottom: 20px;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
   line-height: 1.6;
+  font-size: 0.95rem;
 }
 
 .form-group {
@@ -640,115 +694,165 @@ h2 {
 
 .form-group label {
   display: block;
-  font-weight: 600;
-  color: #4a5568;
+  font-weight: 500;
+  color: var(--text-primary);
   margin-bottom: 8px;
+  font-size: 0.9rem;
 }
 
-.form-group input {
+.input {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
   font-size: 1rem;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+  background: var(--bg-body);
+  color: var(--text-primary);
 }
 
-.form-group input:focus {
+.input:focus {
   outline: none;
-  border-color: #4299e1;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--primary-100);
 }
 
-.primary-btn,
-.secondary-btn,
-.biometric-btn {
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   padding: 14px 20px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.primary-btn {
-  background-color: #4299e1;
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  width: auto;
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-outline:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.btn-primary {
+  background: var(--color-primary);
   color: white;
 }
 
-.primary-btn:hover:not(:disabled) {
-  background-color: #3182ce;
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
 }
 
-.primary-btn:disabled {
-  background-color: #a0aec0;
+.btn-primary:disabled {
+  background: var(--gray-300);
   cursor: not-allowed;
 }
 
-.secondary-btn {
-  background-color: #e2e8f0;
-  color: #4a5568;
-  margin-top: 15px;
+.btn-secondary {
+  background: var(--gray-100);
+  color: var(--text-primary);
+  margin-top: 16px;
 }
 
-.secondary-btn:hover {
-  background-color: #cbd5e0;
+.btn-secondary:hover {
+  background: var(--gray-200);
 }
 
-.biometric-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.btn-biometric {
+  background: #667eea;
   color: white;
   margin-top: 12px;
 }
 
-.biometric-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+.btn-biometric:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: var(--shadow-md);
 }
 
-.biometric-btn:disabled {
-  background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
-  cursor: not-allowed;
+.btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.btn-icon-sm {
+  width: 16px;
+  height: 16px;
 }
 
 .biometric-info {
-  background-color: #fef5e7;
-  border: 1px solid #f9e79f;
-  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--border-radius-lg);
   padding: 12px;
-  margin-top: 15px;
-  text-align: center;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #b45309;
 }
 
-.biometric-info p {
-  margin: 0;
-  color: #7d6608;
-  font-size: 0.9rem;
+.info-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .info-box {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
-  padding: 20px;
-  border-radius: 12px;
-  margin-top: 20px;
+  padding: 24px;
+  border-radius: var(--border-radius-xl);
+  margin-top: 24px;
 }
 
 .info-box h4 {
-  margin: 0 0 15px 0;
+  margin: 0 0 16px 0;
   font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-icon-sm {
+  width: 18px;
+  height: 18px;
 }
 
 .info-box ul {
   margin: 0;
-  padding-left: 20px;
+  padding: 0;
+  list-style: none;
 }
 
 .info-box li {
-  margin-bottom: 8px;
-  line-height: 1.5;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.list-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .account-info {
@@ -758,145 +862,178 @@ h2 {
 }
 
 .info-item label {
-  display: block;
-  font-weight: 600;
-  color: #4a5568;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
 }
 
 .address-display {
   display: flex;
   align-items: center;
   gap: 10px;
-  background-color: #f7fafc;
+  background: var(--gray-50);
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
 }
 
 .address {
   flex: 1;
-  font-family: 'Courier New', monospace;
+  font-family: 'SF Mono', monospace;
   font-size: 0.9rem;
   word-break: break-all;
-  color: #2d3748;
+  color: var(--text-primary);
 }
 
 .copy-btn {
-  width: auto;
-  padding: 8px 12px;
-  background-color: #4299e1;
-  color: white;
+  padding: 6px;
+  background: transparent;
+  color: var(--text-secondary);
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 1rem;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .copy-btn:hover {
-  background-color: #3182ce;
+  background: var(--gray-200);
+  color: var(--color-primary);
+}
+
+.icon-sm {
+  width: 16px;
+  height: 16px;
 }
 
 .balance-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 15px;
+  gap: 16px;
 }
 
 .balance-item label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
   display: block;
-  font-weight: 600;
-  color: #4a5568;
-  margin-bottom: 8px;
-  font-size: 0.9rem;
 }
 
 .balance {
   font-size: 1.5rem;
-  font-weight: bold;
-  color: #48bb78;
-  background-color: #f7fafc;
-  padding: 15px;
-  border-radius: 8px;
+  font-weight: 700;
+  color: var(--color-primary);
+  background: var(--primary-50);
+  padding: 16px;
+  border-radius: var(--border-radius-lg);
   text-align: center;
+}
+
+.unit {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
+
+.info-card {
+  background: var(--gray-50);
+  border: none;
 }
 
 .flow-steps {
   display: grid;
-  gap: 15px;
+  gap: 16px;
 }
 
 .step {
   display: flex;
   align-items: flex-start;
-  gap: 15px;
-  padding: 15px;
-  background-color: #f7fafc;
-  border-radius: 8px;
+  gap: 16px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
 }
 
 .step-number {
-  width: 35px;
-  height: 35px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  width: 32px;
+  height: 32px;
+  background: var(--primary-100);
+  color: var(--color-primary);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 700;
   flex-shrink: 0;
 }
 
 .step-content h4 {
-  margin: 0 0 5px 0;
-  color: #2d3748;
+  margin: 0 0 4px 0;
+  color: var(--text-primary);
+  font-size: 1rem;
 }
 
 .step-content p {
   margin: 0;
-  color: #718096;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
 .status-box {
-  padding: 15px;
-  border-radius: 8px;
-  margin-top: 20px;
-  text-align: center;
+  padding: 16px;
+  border-radius: var(--border-radius-lg);
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
 }
 
 .status-box.info {
-  background-color: #bee3f8;
-  border: 1px solid #90cdf4;
-  color: #2c5282;
+  background: var(--primary-50);
+  border: 1px solid var(--primary-200);
+  color: var(--primary-700);
 }
 
 .status-box.success {
-  background-color: #c6f6d5;
-  border: 1px solid #9ae6b4;
-  color: #22543d;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #047857;
 }
 
 .status-box.error {
-  background-color: #fed7d7;
-  border: 1px solid #feb2b2;
-  color: #742a2a;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
 }
 
-.status-box p {
-  margin: 0;
-  word-wrap: break-word;
+.status-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
-.info-container {
-  background: linear-gradient(135deg, #f6f8fb 0%, #e9ecef 100%);
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {
   .balance-row {
     grid-template-columns: 1fr;
+  }
+  
+  .network-status {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 </style>

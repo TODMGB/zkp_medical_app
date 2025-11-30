@@ -340,7 +340,7 @@ onUnmounted(async () => {
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #4299e1, transparent);
+  background: #4299e1;
   animation: scan 2s linear infinite;
 }
 
@@ -629,7 +629,7 @@ onUnmounted(async () => {
   width: 80px;
   height: 80px;
   margin: 0 auto 20px;
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  background: #48bb78;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -657,7 +657,7 @@ onUnmounted(async () => {
 .success-btn {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  background: #48bb78;
   color: white;
   border: none;
   border-radius: 12px;

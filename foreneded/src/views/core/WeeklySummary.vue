@@ -2,11 +2,14 @@
   <div class="weekly-summary-page">
     <!-- 顶部导航 -->
     <div class="header">
-      <button class="back-btn" @click="goBack">←</button>
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="icon" />
+      </button>
       <h1 class="page-title">每周汇总打卡</h1>
       <div class="header-actions">
         <button class="refresh-btn" @click="refreshData" :disabled="loading">
-          {{ loading ? '加载中...' : '刷新' }}
+          <RefreshCw v-if="!loading" class="icon-small" />
+          <Loader2 v-else class="icon-small spinner" />
         </button>
       </div>
     </div>
@@ -14,21 +17,27 @@
     <!-- 本周信息卡片 -->
     <div class="this-week-section">
       <div class="week-header">
-        <h2 class="week-title">{{ thisWeekTitle }}</h2>
+        <h2 class="week-title">
+          <Calendar class="title-icon" />
+          {{ thisWeekTitle }}
+        </h2>
         <span class="week-range">{{ thisWeekRange }}</span>
       </div>
 
       <!-- 本周统计 -->
       <div class="week-stats">
         <div class="stat-item">
+          <CheckCircle2 class="stat-icon" />
           <div class="stat-value">{{ thisWeekData?.stats.totalCount || 0 }}</div>
           <div class="stat-label">打卡次数</div>
         </div>
         <div class="stat-item">
+          <CalendarDays class="stat-icon" />
           <div class="stat-value">{{ thisWeekData?.stats.daysCovered || 0 }}/7</div>
           <div class="stat-label">覆盖天数</div>
         </div>
         <div class="stat-item">
+          <TrendingUp class="stat-icon" />
           <div class="stat-value">{{ thisWeekData?.stats.completionRate || 0 }}%</div>
           <div class="stat-label">完成率</div>
         </div>
@@ -36,13 +45,17 @@
 
       <!-- 本周打卡列表 -->
       <div v-if="thisWeekData && thisWeekData.records.length > 0" class="week-records">
-        <h3 class="records-title">本周打卡记录</h3>
+        <h3 class="records-title">
+          <List class="title-icon" />
+          本周打卡记录
+        </h3>
         <div class="records-list">
           <div
             v-for="record in thisWeekData.records"
             :key="record.id"
             class="record-item"
           >
+            <Clock class="record-icon" />
             <div class="record-time">{{ formatTime(record.timestamp) }}</div>
             <div class="record-info">
               <div class="record-name">{{ record.medication_name }}</div>
@@ -62,6 +75,8 @@
             @click="() => generateWeeklyProof()"
             :disabled="!thisWeekData || thisWeekData.records.length === 0 || proofGenerating"
           >
+            <Shield v-if="!proofGenerating" class="btn-icon" />
+            <Loader2 v-else class="btn-icon spinner" />
             {{ proofGenerating ? '生成中...' : '生成周总结证明' }}
           </button>
           <p class="proof-hint">
@@ -76,18 +91,33 @@
             {{ getStatusLabel(thisWeekProofStatus.status) }}
           </div>
           <div v-if="thisWeekProofStatus.status === 'completed'" class="proof-result">
-            <p class="result-text">✅ 证明生成成功</p>
+            <p class="result-text">
+              <CheckCircle2 class="result-icon" />
+              证明生成成功
+            </p>
             <div class="result-actions">
-              <button class="action-btn" @click="() => copyCalldata()">复制 Calldata</button>
-              <button class="action-btn" @click="() => viewProofDetail()">查看详情</button>
+              <button class="action-btn" @click="() => copyCalldata()">
+                <Copy class="btn-icon" />
+                复制 Calldata
+              </button>
+              <button class="action-btn" @click="() => viewProofDetail()">
+                <Eye class="btn-icon" />
+                查看详情
+              </button>
             </div>
           </div>
           <div v-else-if="thisWeekProofStatus.status === 'failed'" class="proof-error">
-            <p class="error-text">❌ {{ thisWeekProofStatus.error || '证明生成失败' }}</p>
-            <button class="retry-btn" @click="() => generateWeeklyProof()">重试</button>
+            <p class="error-text">
+              <XCircle class="error-icon" />
+              {{ thisWeekProofStatus.error || '证明生成失败' }}
+            </p>
+            <button class="retry-btn" @click="() => generateWeeklyProof()">
+              <RotateCw class="btn-icon" />
+              重试
+            </button>
           </div>
           <div v-else class="proof-polling">
-            <div class="spinner"></div>
+            <Loader2 class="polling-spinner" />
             <p>证明生成中，请稍候...</p>
           </div>
         </div>
@@ -96,7 +126,10 @@
 
     <!-- 历史周卡片列表 -->
     <div class="previous-weeks-section">
-      <h2 class="section-title">历史周汇总</h2>
+      <h2 class="section-title">
+        <History class="title-icon" />
+        历史周汇总
+      </h2>
       <div class="weeks-list">
         <div
           v-for="weekData in previousWeeksData"
@@ -109,9 +142,18 @@
           </div>
 
           <div class="card-stats">
-            <span class="stat-badge">{{ weekData.stats.totalCount }} 次打卡</span>
-            <span class="stat-badge">{{ weekData.stats.daysCovered }}/7 天</span>
-            <span class="stat-badge">{{ weekData.stats.completionRate }}%</span>
+            <span class="stat-badge">
+              <Activity class="badge-icon" />
+              {{ weekData.stats.totalCount }} 次打卡
+            </span>
+            <span class="stat-badge">
+              <CalendarCheck class="badge-icon" />
+              {{ weekData.stats.daysCovered }}/7 天
+            </span>
+            <span class="stat-badge">
+              <Percent class="badge-icon" />
+              {{ weekData.stats.completionRate }}%
+            </span>
           </div>
 
           <div class="card-actions">
@@ -121,13 +163,15 @@
               @click="() => generateWeeklyProof(weekData.weekKey)"
               :disabled="weekData.stats.totalCount === 0"
             >
-              补打卡
+              <Plus class="btn-icon" />
+              补生成
             </button>
             <button
               v-else
               class="action-btn secondary"
               @click="() => viewProofDetail(weekData.weekKey)"
             >
+              <Eye class="btn-icon" />
               查看证明
             </button>
           </div>
@@ -147,6 +191,27 @@ import BottomNav from '@/components/BottomNav.vue'
 import { weeklyCheckinService, type WeeklyCheckinData, type WeeklyProofResult } from '@/service/weeklyCheckinService'
 import { API_GATEWAY_URL } from '@/config/api.config'
 import { authService } from '@/service/auth'
+import { 
+  ArrowLeft, 
+  RefreshCw, 
+  Loader2, 
+  Calendar, 
+  CheckCircle2, 
+  CalendarDays, 
+  TrendingUp, 
+  List, 
+  Clock, 
+  Shield, 
+  Copy, 
+  Eye, 
+  XCircle, 
+  RotateCw, 
+  History, 
+  Activity, 
+  CalendarCheck, 
+  Percent, 
+  Plus 
+} from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -225,7 +290,6 @@ const generateWeeklyProof = async (weekKey: string = thisWeekKey.value) => {
   try {
     proofGenerating.value = true
 
-    // 获取该周的数据
     const weekData = weekKey === thisWeekKey.value 
       ? thisWeekData.value 
       : previousWeeksData.value.find(w => w.weekKey === weekKey)
@@ -235,14 +299,9 @@ const generateWeeklyProof = async (weekKey: string = thisWeekKey.value) => {
       return
     }
 
-    // 计算 Merkle 根
     const merkleRoot = await weeklyCheckinService.calculateMerkleRoot(weekData.leaves)
-    console.log('📊 Merkle 根:', merkleRoot)
-
-    // 获取 JWT Token
     const token = await authService.getToken()
 
-    // 调用后端 API 生成证明
     const response = await fetch(`${API_GATEWAY_URL}/zkp/prove/weekly-summary`, {
       method: 'POST',
       headers: {
@@ -264,7 +323,6 @@ const generateWeeklyProof = async (weekKey: string = thisWeekKey.value) => {
     const data = await response.json()
 
     if (data.success && data.jobId) {
-      // 保存初始状态
       const proofResult: WeeklyProofResult = {
         weekKey,
         jobId: data.jobId,
@@ -280,7 +338,6 @@ const generateWeeklyProof = async (weekKey: string = thisWeekKey.value) => {
         thisWeekProofStatus.value = proofResult
       }
 
-      // 开始轮询状态
       pollProofStatus(weekKey, data.jobId)
       console.log('✅ 证明生成任务已启动，jobId:', data.jobId)
     } else {
@@ -290,7 +347,6 @@ const generateWeeklyProof = async (weekKey: string = thisWeekKey.value) => {
     console.error('生成周度证明失败:', error)
     const errorMsg = error.message || '生成失败，请重试'
     
-    // 保存错误状态
     const proofResult: WeeklyProofResult = {
       weekKey: weekKey || thisWeekKey.value,
       jobId: '',
@@ -332,7 +388,6 @@ const pollProofStatus = (weekKey: string, jobId: string, maxAttempts: number = 1
       if (data.success) {
         const status = data.status
 
-        // 更新状态
         const proofResult: WeeklyProofResult = {
           weekKey,
           jobId,
@@ -341,7 +396,6 @@ const pollProofStatus = (weekKey: string, jobId: string, maxAttempts: number = 1
           updatedAt: Date.now(),
         }
 
-        // 如果完成，保存完整结果
         if (status === 'completed' && data.data) {
           proofResult.proof = data.data.proof
           proofResult.publicSignals = data.data.publicSignals
@@ -359,7 +413,6 @@ const pollProofStatus = (weekKey: string, jobId: string, maxAttempts: number = 1
           thisWeekProofStatus.value = proofResult
         }
 
-        // 如果完成或失败，停止轮询
         if (status === 'completed' || status === 'failed') {
           clearInterval(pollingIntervals.value[weekKey])
           delete pollingIntervals.value[weekKey]
@@ -378,10 +431,7 @@ const pollProofStatus = (weekKey: string, jobId: string, maxAttempts: number = 1
     }
   }
 
-  // 立即执行一次
   poll()
-
-  // 每 2 秒轮询一次
   pollingIntervals.value[weekKey] = setInterval(poll, 2000)
 }
 
@@ -411,7 +461,6 @@ onMounted(async () => {
   await refreshData()
 })
 
-// 清理轮询
 onBeforeUnmount(() => {
   Object.values(pollingIntervals.value).forEach(interval => clearInterval(interval))
 })
@@ -420,7 +469,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .weekly-summary-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f5f7fa;
   padding-bottom: 80px;
 }
 
@@ -428,10 +477,15 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 16px 20px;
+
+  background: #667eea;
+
+  color: white;
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .back-btn,
@@ -440,19 +494,28 @@ onBeforeUnmount(() => {
   border: none;
   color: white;
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 12px;
-  font-weight: 600;
+  border-radius: 50%;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(5px);
 }
 
 .back-btn {
-  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+}
+
+.refresh-btn {
+  width: 36px;
+  height: 36px;
 }
 
 .back-btn:hover,
 .refresh-btn:hover {
   background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
 }
 
 .refresh-btn:disabled {
@@ -460,12 +523,22 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-small {
+  width: 18px;
+  height: 18px;
+}
+
 .page-title {
-  font-size: 1.3rem;
+  flex: 1;
+  font-size: 18px;
   font-weight: 700;
   color: white;
-  margin: 0;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 0 12px;
 }
 
 .this-week-section {
@@ -476,72 +549,94 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .week-title {
-  font-size: 1.2rem;
+  font-size: 18px;
   font-weight: 700;
-  color: white;
+  color: #2d3748;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-icon {
+  width: 20px;
+  height: 20px;
+  color: #667eea;
 }
 
 .week-range {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.1);
+  font-size: 13px;
+  color: #718096;
+  background: white;
   padding: 6px 12px;
   border-radius: 12px;
+  border: 1px solid #e2e8f0;
 }
 
 .week-stats {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .stat-item {
-  flex: 1;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.85) 100%);
-  backdrop-filter: blur(10px);
+  background: white;
   border-radius: 16px;
   padding: 16px;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.stat-icon {
+  width: 28px;
+  height: 28px;
+  color: #667eea;
+  margin: 0 auto 8px;
 }
 
 .stat-value {
-  font-size: 1.8rem;
+  font-size: 24px;
   font-weight: 800;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #667eea;
   margin-bottom: 4px;
+  line-height: 1;
 }
 
 .stat-label {
-  font-size: 0.85rem;
-  color: #4a5568;
-  font-weight: 600;
+  font-size: 13px;
+  color: #718096;
+  font-weight: 500;
 }
 
 .week-records {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
-  backdrop-filter: blur(10px);
+  background: white;
   border-radius: 20px;
   padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid #e2e8f0;
 }
 
 .records-title {
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 700;
   color: #2d3748;
   margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .records-list {
@@ -555,16 +650,28 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: #f7fafc;
   border-radius: 12px;
-  border-left: 4px solid #667eea;
+  border-left: 3px solid #667eea;
+  transition: all 0.3s;
+}
+
+.record-item:hover {
+  background: #ebf4ff;
+  transform: translateX(4px);
+}
+
+.record-icon {
+  width: 18px;
+  height: 18px;
+  color: #667eea;
 }
 
 .record-time {
-  font-weight: 700;
+  font-weight: 600;
   color: #667eea;
   min-width: 50px;
-  font-size: 0.9rem;
+  font-size: 14px;
 }
 
 .record-info {
@@ -572,28 +679,28 @@ onBeforeUnmount(() => {
 }
 
 .record-name {
-  font-size: 0.95rem;
+  font-size: 14px;
   font-weight: 600;
   color: #2d3748;
+  margin-bottom: 2px;
 }
 
 .record-dosage {
-  font-size: 0.85rem;
+  font-size: 13px;
   color: #718096;
 }
 
 .record-date {
-  font-size: 0.85rem;
+  font-size: 12px;
   color: #a0aec0;
 }
 
 .proof-section {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
-  backdrop-filter: blur(10px);
+  background: white;
   border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid #e2e8f0;
 }
 
 .proof-action {
@@ -601,21 +708,25 @@ onBeforeUnmount(() => {
 }
 
 .generate-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   padding: 14px 32px;
   border-radius: 12px;
-  font-size: 1rem;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .generate-btn:hover:not(:disabled) {
+  background: #5a67d8;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+  box-shadow: var(--shadow-md);
 }
 
 .generate-btn:disabled {
@@ -623,8 +734,13 @@ onBeforeUnmount(() => {
   cursor: not-allowed;
 }
 
+.btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .proof-hint {
-  font-size: 0.9rem;
+  font-size: 13px;
   color: #718096;
   margin: 12px 0 0 0;
 }
@@ -639,7 +755,7 @@ onBeforeUnmount(() => {
   display: inline-block;
   padding: 8px 16px;
   border-radius: 12px;
-  font-size: 0.9rem;
+  font-size: 13px;
   font-weight: 700;
   width: fit-content;
 }
@@ -650,7 +766,7 @@ onBeforeUnmount(() => {
 }
 
 .status-badge.completed {
-  background: #d1fae5;
+  background: #dcfce7;
   color: #065f46;
 }
 
@@ -663,13 +779,19 @@ onBeforeUnmount(() => {
 .proof-error {
   padding: 16px;
   border-radius: 12px;
-  background: rgba(102, 126, 234, 0.05);
+}
+
+.proof-result {
+  background: #ebf4ff;
 }
 
 .result-text,
 .error-text {
   margin: 0 0 12px 0;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .result-text {
@@ -680,6 +802,12 @@ onBeforeUnmount(() => {
   color: #7f1d1d;
 }
 
+.result-icon,
+.error-icon {
+  width: 20px;
+  height: 20px;
+}
+
 .result-actions,
 .proof-error {
   display: flex;
@@ -688,34 +816,53 @@ onBeforeUnmount(() => {
 
 .action-btn {
   flex: 1;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--color-primary);
   color: white;
   border: none;
   padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .action-btn:hover {
+  background: var(--primary-700);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.action-btn.secondary {
+  background: white;
+  color: var(--color-primary);
+  border: 1px solid var(--border-color);
+}
+
+.action-btn.secondary:hover {
+  background: var(--primary-50);
+  border-color: var(--color-primary);
 }
 
 .retry-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--color-primary);
   color: white;
   border: none;
   padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .retry-btn:hover {
+  background: var(--primary-700);
   transform: translateY(-2px);
 }
 
@@ -727,19 +874,19 @@ onBeforeUnmount(() => {
   padding: 20px;
 }
 
-.spinner {
+.polling-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid rgba(102, 126, 234, 0.2);
-  border-top-color: #667eea;
-  border-radius: 50%;
+  color: var(--color-primary);
+  animation: spin 1s linear infinite;
+}
+
+.spinner {
   animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  to { transform: rotate(360deg); }
 }
 
 .previous-weeks-section {
@@ -747,10 +894,13 @@ onBeforeUnmount(() => {
 }
 
 .section-title {
-  font-size: 1.1rem;
+  font-size: 18px;
   font-weight: 700;
-  color: white;
+  color: var(--text-primary);
   margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .weeks-list {
@@ -760,18 +910,17 @@ onBeforeUnmount(() => {
 }
 
 .week-card {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
+  background: white;
+  border-radius: 20px;
   padding: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
   transition: all 0.3s;
 }
 
 .week-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
 .card-header {
@@ -779,15 +928,15 @@ onBeforeUnmount(() => {
 }
 
 .card-title {
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 700;
-  color: #667eea;
-  margin: 0;
+  color: var(--color-primary);
+  margin: 0 0 4px 0;
 }
 
 .card-range {
-  font-size: 0.85rem;
-  color: #718096;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .card-stats {
@@ -798,32 +947,24 @@ onBeforeUnmount(() => {
 }
 
 .stat-badge {
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-body);
   padding: 4px 10px;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.badge-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .card-actions {
   display: flex;
   gap: 8px;
-}
-
-.action-btn.secondary {
-  flex: 1;
-  background: rgba(102, 126, 234, 0.1);
-  color: #667eea;
-  border: 1px solid rgba(102, 126, 234, 0.3);
-}
-
-.action-btn.secondary:hover:not(:disabled) {
-  background: rgba(102, 126, 234, 0.2);
-}
-
-.action-btn.secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

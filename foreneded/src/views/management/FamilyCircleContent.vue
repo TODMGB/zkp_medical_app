@@ -250,10 +250,11 @@ onActivated(async () => {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
+
 .create-group-btn {
   width: 100%;
   padding: 14px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   border: none;
   border-radius: 12px;
   color: white;
@@ -269,6 +270,7 @@ onActivated(async () => {
 
 .create-group-btn:hover {
   transform: translateY(-2px);
+  background: #5a67d8;
 }
 
 .btn-icon {
@@ -379,12 +381,13 @@ onActivated(async () => {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #ebf4ff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
   flex-shrink: 0;
+  color: #667eea;
 }
 
 .group-info {
@@ -519,18 +522,20 @@ onActivated(async () => {
 }
 
 .btn-confirm {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
 }
 
 .btn-confirm:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  background: #5a67d8;
 }
 
 .btn-confirm:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  background: #a0aec0;
 }
 </style>
 

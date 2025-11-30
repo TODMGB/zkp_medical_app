@@ -3,28 +3,28 @@
     <!-- 顶部导航栏 -->
     <div class="top-bar">
       <button @click="goBack" class="back-btn">
-        <span class="icon">←</span>
+        <ArrowLeft class="icon" />
       </button>
       <h1 class="title">我的用药计划</h1>
       <button @click="createPlan" class="add-btn">
-        <span class="icon">+</span>
+        <Plus class="icon" />
       </button>
     </div>
 
     <div class="content">
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+        <Loader2 class="spinner" />
         <p>加载中...</p>
       </div>
 
       <!-- 空状态 -->
       <div v-else-if="plans.length === 0" class="empty-state">
-        <div class="empty-icon">📋</div>
+        <ClipboardList class="empty-icon" />
         <p>暂无用药计划</p>
         <p class="hint">点击右上角"+"创建新计划</p>
         <button @click="createPlan" class="create-btn">
-          <span class="icon">+</span>
+          <Plus class="icon-small" />
           <span>创建用药计划</span>
         </button>
       </div>
@@ -61,11 +61,11 @@
             
             <div class="plan-info">
               <div class="info-item">
-                <span class="label">🔐</span>
+                <Lock class="info-icon" />
                 <span class="value">端到端加密</span>
               </div>
               <div class="info-item">
-                <span class="label">📅</span>
+                <Calendar class="info-icon" />
                 <span class="value">
                   {{ formatDate(plan.start_date) }} - {{ formatDate(plan.end_date) }}
                 </span>
@@ -91,6 +91,7 @@
           :disabled="currentPage === 1"
           class="page-btn"
         >
+          <ChevronLeft class="icon-small" />
           上一页
         </button>
         <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
@@ -100,6 +101,7 @@
           class="page-btn"
         >
           下一页
+          <ChevronRight class="icon-small" />
         </button>
       </div>
     </div>
@@ -116,6 +118,16 @@ import { medicationService, type MedicationPlan } from '@/service/medication';
 import { authService } from '@/service/auth';
 import { memberInfoService } from '@/service/memberInfo';
 import BottomNav from '@/components/BottomNav.vue';
+import { 
+  ArrowLeft, 
+  Plus, 
+  Loader2, 
+  ClipboardList, 
+  Lock, 
+  Calendar, 
+  ChevronLeft, 
+  ChevronRight 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 
@@ -289,7 +301,7 @@ function goBack() {
 <style scoped>
 .medication-plans-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f5f7fa;
   padding-bottom: 80px;
 }
 
@@ -311,7 +323,6 @@ function goBack() {
   background: rgba(255, 255, 255, 0.2);
   color: white;
   border: none;
-  font-size: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -322,6 +333,11 @@ function goBack() {
 .back-btn:hover, .add-btn:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .title {
@@ -341,16 +357,17 @@ function goBack() {
   text-align: center;
   padding: 60px 20px;
   color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
+  width: 32px;
+  height: 32px;
   animation: spin 1s linear infinite;
-  margin: 0 auto 20px;
+  color: white;
 }
 
 @keyframes spin {
@@ -370,8 +387,10 @@ function goBack() {
 }
 
 .empty-icon {
-  font-size: 64px;
+  width: 64px;
+  height: 64px;
   margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .empty-state p {
@@ -402,11 +421,12 @@ function goBack() {
 
 .create-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
 }
 
-.create-btn .icon {
-  font-size: 20px;
+.icon-small {
+  width: 20px;
+  height: 20px;
 }
 
 /* 计划列表 */
@@ -421,14 +441,14 @@ function goBack() {
   background: white;
   border-radius: 16px;
   padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .plan-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
 }
 
 /* 计划头部 */
@@ -482,7 +502,7 @@ function goBack() {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   display: flex;
   align-items: center;
@@ -498,7 +518,7 @@ function goBack() {
 .patient-name {
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #2d3748;
   margin-bottom: 4px;
 }
 
@@ -521,8 +541,9 @@ function goBack() {
   color: #718096;
 }
 
-.info-item .label {
-  font-size: 16px;
+.info-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .info-item .value {
@@ -547,7 +568,7 @@ function goBack() {
 }
 
 .action-btn.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
 }
 
@@ -557,12 +578,12 @@ function goBack() {
 }
 
 .action-btn.secondary {
-  background: #f5f7fa;
+  background: #f7fafc;
   color: #667eea;
 }
 
 .action-btn.secondary:hover {
-  background: #e0e6ed;
+  background: #ebf4ff;
 }
 
 /* 分页 */
@@ -584,6 +605,9 @@ function goBack() {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .page-btn:disabled {
@@ -602,4 +626,3 @@ function goBack() {
   font-weight: 500;
 }
 </style>
-

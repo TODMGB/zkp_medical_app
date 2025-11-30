@@ -1,28 +1,66 @@
 <!-- src/views/ZkpTest.vue -->
 <template>
   <div class="page-container">
-    <header>
-      <h1>ZKP健康打卡MVP - 全流程自动化测试</h1>
+    <header class="header">
+      <div class="icon-wrapper">
+        <ShieldCheck class="header-icon" />
+      </div>
+      <h1>ZKP健康打卡MVP</h1>
+      <p class="subtitle">全流程自动化测试与验证</p>
     </header>
 
     <main>
-      <div class="container">
-        <h2>端到端全流程测试</h2>
-        <p>
-          点击下方按钮，将执行一个完整的自动化流程：<br>
-          1. 自动在内存中生成 <strong>{{ BATCH_SIZE }}</strong> 份随机的每日打卡输入。<br>
-          2. 为这 {{ BATCH_SIZE }} 份输入批量生成ZKP证明并收集Commitment。<br>
-          3. 自动对Commitment进行排序、填充并计算默克尔根。<br>
-          4. 最终，生成一份周度汇总证明。
-        </p>
-        <div class="button-container">
-          <button @click="runFullProcess" :disabled="isLoading">
+      <div class="card">
+        <div class="card-header">
+          <PlayCircle class="card-icon" />
+          <h2>端到端全流程测试</h2>
+        </div>
+        
+        <div class="info-box">
+          <p class="description">
+            点击下方按钮，将执行一个完整的自动化流程：
+          </p>
+          <ul class="steps-list">
+            <li>
+              <span class="step-num">1</span>
+              <span>自动在内存中生成 <strong>{{ BATCH_SIZE }}</strong> 份随机的每日打卡输入</span>
+            </li>
+            <li>
+              <span class="step-num">2</span>
+              <span>为这 {{ BATCH_SIZE }} 份输入批量生成ZKP证明并收集Commitment</span>
+            </li>
+            <li>
+              <span class="step-num">3</span>
+              <span>自动对Commitment进行排序、填充并计算默克尔根</span>
+            </li>
+            <li>
+              <span class="step-num">4</span>
+              <span>最终，生成一份周度汇总证明</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="action-area">
+          <button @click="runFullProcess" :disabled="isLoading" class="btn btn-primary btn-lg">
+            <Play v-if="!isLoading" class="btn-icon" />
+            <Loader2 v-else class="btn-icon spin" />
             {{ isLoading ? '正在执行全流程...' : '开始一键自动化测试' }}
           </button>
         </div>
-        <div v-if="logMessages.length > 0" class="result-box">
-          <h4>执行日志:</h4>
-          <pre>{{ logMessages.join('\n') }}</pre>
+
+        <div v-if="logMessages.length > 0" class="logs-container">
+          <div class="logs-header">
+            <Terminal class="logs-icon" />
+            <h4>执行日志</h4>
+          </div>
+          <div class="logs-content" ref="logsContainer">
+            <div v-for="(log, index) in logMessages" :key="index" class="log-line">
+              <span class="log-time">{{ new Date().toLocaleTimeString() }}</span>
+              <span class="log-text" :class="{ 'highlight': log.includes('✅') || log.includes('▶'), 'error': log.includes('❌') }">
+                {{ log }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -30,10 +68,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, nextTick, watch } from 'vue';
 import * as snarkjs from 'snarkjs';
 // @ts-ignore
 import * as circomlibjs from 'circomlibjs';
+import { 
+  ShieldCheck, 
+  PlayCircle, 
+  Play, 
+  Loader2, 
+  Terminal 
+} from 'lucide-vue-next';
 
 // --- 配置 ---
 const BATCH_SIZE = 6; // 定义一次自动化测试生成的打卡数量
@@ -42,10 +87,20 @@ const TREE_LEAVES_COUNT = 32;
 // --- 状态管理 ---
 const isLoading = ref(false);
 const logMessages = ref<string[]>([]);
+const logsContainer = ref<HTMLElement | null>(null);
+
+// 自动滚动日志
+watch(logMessages.value, () => {
+  nextTick(() => {
+    if (logsContainer.value) {
+      logsContainer.value.scrollTop = logsContainer.value.scrollHeight;
+    }
+  });
+});
 
 // --- 核心业务逻辑 ---
 
-// 辅助函数：添加日志，并自动滚动
+// 辅助函数：添加日志
 const log = (message: string) => {
   logMessages.value.push(message);
 };
@@ -157,15 +212,252 @@ const runFullProcess = async () => {
 </script>
 
 <style scoped>
-/* 页面特定样式 */
-.page-container { max-width: 800px; margin: 20px auto; padding: 20px; }
-header h1 { text-align: center; color: #333; }
-.container { background: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-h2 { margin-top: 0; color: #1a202c; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
-.button-container { text-align: center; margin: 20px 0; }
-button { background-color: #4299e1; color: white; border: none; padding: 15px 25px; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
-button:disabled { background-color: #a0aec0; cursor: not-allowed; }
-button:hover:not(:disabled) { background-color: #2b6cb0; }
-.result-box { margin-top: 20px; background-color: #1a202c; color: #90cdf4; padding: 15px; border-radius: 8px; max-height: 400px; overflow-y: auto; }
-pre { white-space: pre-wrap; word-wrap: break-word; font-family: 'SF Mono', 'Courier New', monospace; font-size: 14px; }
+.page-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  min-height: 100vh;
+  background: var(--bg-body);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-wrapper {
+  width: 64px;
+  height: 64px;
+  background: #667eea;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+  margin-bottom: 8px;
+}
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  color: white;
+}
+
+.header h1 {
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  margin: 0;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin: 0;
+}
+
+.card {
+  background: var(--bg-surface);
+  padding: 24px;
+  border-radius: var(--border-radius-xl);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary);
+}
+
+.card-header h2 {
+  font-size: 1.25rem;
+  color: var(--text-primary);
+  margin: 0;
+  font-weight: 600;
+}
+
+.info-box {
+  background: var(--gray-50);
+  padding: 20px;
+  border-radius: var(--border-radius-lg);
+  margin-bottom: 24px;
+}
+
+.description {
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.steps-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.steps-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.step-num {
+  width: 24px;
+  height: 24px;
+  background: var(--primary-100);
+  color: var(--color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.action-area {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: var(--border-radius-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-lg {
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-primary:disabled {
+  background: var(--gray-300);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.logs-container {
+  background: #1e293b;
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.logs-header {
+  background: #0f172a;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #334155;
+}
+
+.logs-icon {
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+}
+
+.logs-header h4 {
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.logs-content {
+  padding: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-line {
+  display: flex;
+  gap: 12px;
+  line-height: 1.5;
+}
+
+.log-time {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.log-text {
+  color: #cbd5e1;
+  word-break: break-all;
+}
+
+.log-text.highlight {
+  color: #4ade80;
+}
+
+.log-text.error {
+  color: #f87171;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 </style>

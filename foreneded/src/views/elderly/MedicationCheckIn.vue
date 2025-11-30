@@ -3,11 +3,11 @@
     <!-- 顶部导航栏 -->
     <div class="top-bar">
       <button @click="goBack" class="back-btn">
-        <span class="icon">←</span>
+        <ArrowLeft class="icon" />
       </button>
       <h1 class="title">用药打卡</h1>
       <button @click="goToHistory" class="history-btn">
-        <span class="icon">📋</span>
+        <ClipboardList class="icon" />
       </button>
     </div>
 
@@ -19,7 +19,9 @@
           :class="{ active: checkInMode === 'scan' }"
           @click="checkInMode = 'scan'"
         >
-          <div class="mode-icon">📷</div>
+          <div class="mode-icon-wrapper">
+            <Camera class="mode-icon" />
+          </div>
           <div class="mode-title">扫码打卡</div>
           <div class="mode-desc">扫描药品二维码</div>
         </div>
@@ -28,7 +30,9 @@
           :class="{ active: checkInMode === 'manual' }"
           @click="checkInMode = 'manual'"
         >
-          <div class="mode-icon">✍️</div>
+          <div class="mode-icon-wrapper">
+            <PenTool class="mode-icon" />
+          </div>
           <div class="mode-title">手动打卡</div>
           <div class="mode-desc">从列表选择药物</div>
         </div>
@@ -48,8 +52,8 @@
         </div>
         
         <button @click="startScan" class="scan-btn" :disabled="scanning">
-          <span v-if="!scanning">开始扫描</span>
-          <span v-else>扫描中...</span>
+          <Loader2 v-if="scanning" class="spinner-small" />
+          <span v-else>开始扫描</span>
         </button>
       </div>
 
@@ -57,7 +61,10 @@
       <div v-else class="manual-mode">
         <!-- 今日待服药列表 -->
         <div v-if="todayMedications.length > 0" class="today-section">
-          <h2 class="section-title">📅 今日待服药</h2>
+          <h2 class="section-title">
+            <Calendar class="section-icon" />
+            今日待服药
+          </h2>
           <div class="medications-list">
             <div 
               v-for="med in todayMedications"
@@ -79,7 +86,10 @@
 
         <!-- 所有药物列表 -->
         <div class="all-section">
-          <h2 class="section-title">💊 所有药物</h2>
+          <h2 class="section-title">
+            <Pill class="section-icon" />
+            所有药物
+          </h2>
           <div v-if="allMedications.length === 0" class="empty-medications">
             <p>暂无用药计划</p>
             <button @click="goToPlans" class="view-plans-btn">查看计划</button>
@@ -91,7 +101,9 @@
               class="med-item"
               @click="selectMedication(med)"
             >
-              <div class="med-icon">💊</div>
+              <div class="med-icon-circle">
+                <Pill class="med-icon" />
+              </div>
               <div class="med-name">{{ med.medication_name }}</div>
             </div>
           </div>
@@ -101,7 +113,9 @@
       <!-- 打卡成功提示 -->
       <div v-if="showSuccess" class="success-overlay" @click="showSuccess = false">
         <div class="success-card" @click.stop>
-          <div class="success-icon">✅</div>
+          <div class="success-icon-wrapper">
+            <CheckCircle class="success-icon" />
+          </div>
           <h2 class="success-title">打卡成功！</h2>
           <p class="success-message">{{ successMessage }}</p>
           <div class="success-time">{{ currentTime }}</div>
@@ -131,6 +145,16 @@ import { aaService } from '@/service/accountAbstraction';
 import { secureExchangeService } from '@/service/secureExchange';
 import { medicationPlanStorageService } from '@/service/medicationPlanStorage';
 import { checkinStorageService } from '@/service/checkinStorage';
+import { 
+  ArrowLeft, 
+  ClipboardList, 
+  Camera, 
+  PenTool, 
+  Loader2, 
+  Calendar, 
+  Pill, 
+  CheckCircle 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 const route = useRoute();
@@ -157,6 +181,7 @@ onMounted(async () => {
   const planId = route.query.planId as string;
   if (planId) {
     await loadPlanMedications(planId);
+    checkInMode.value = 'manual'; // 切换到手动模式以便查看药物
   }
 });
 
@@ -448,8 +473,10 @@ function goBack() {
 <style scoped>
 .checkin-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f5f7fa;
   padding-bottom: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 顶部导航栏 */
@@ -458,9 +485,9 @@ function goBack() {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  background: #667eea;
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .back-btn, .history-btn {
@@ -470,7 +497,6 @@ function goBack() {
   background: rgba(255, 255, 255, 0.2);
   color: white;
   border: none;
-  font-size: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -481,6 +507,11 @@ function goBack() {
 .back-btn:hover, .history-btn:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .title {
@@ -509,35 +540,51 @@ function goBack() {
   padding: 24px;
   text-align: center;
   cursor: pointer;
-  transition: all 0.3s;
-  border: 3px solid transparent;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  position: relative;
+  overflow: hidden;
 }
 
 .mode-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-lg);
 }
 
 .mode-card.active {
   border-color: #667eea;
-  background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%);
+  background: #f0fdfa;
+  box-shadow: 0 10px 15px -3px rgba(102, 126, 234, 0.1), 0 4px 6px -2px rgba(102, 126, 234, 0.05);
+}
+
+.mode-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--primary-50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: var(--color-primary);
 }
 
 .mode-icon {
-  font-size: 3rem;
-  margin-bottom: 12px;
+  width: 32px;
+  height: 32px;
 }
 
 .mode-title {
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .mode-desc {
   font-size: 13px;
-  color: #718096;
+  color: var(--text-secondary);
 }
 
 /* 扫码模式 */
@@ -546,6 +593,7 @@ function goBack() {
   border-radius: 24px;
   padding: 40px 20px;
   text-align: center;
+  box-shadow: var(--shadow-lg);
 }
 
 .scan-container {
@@ -553,12 +601,14 @@ function goBack() {
 }
 
 .scan-frame {
-  width: 250px;
-  height: 250px;
+  width: 70vw;
+  height: 70vw;
+  max-width: 280px;
+  max-height: 280px;
   margin: 0 auto 20px;
   position: relative;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8edff 100%);
-  border-radius: 20px;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 24px;
   overflow: hidden;
 }
 
@@ -571,7 +621,7 @@ function goBack() {
 .corner::before {
   content: '';
   position: absolute;
-  background: #667eea;
+  background: var(--color-primary);
 }
 
 .corner.top-left {
@@ -593,7 +643,7 @@ function goBack() {
   left: 0;
   width: 3px;
   height: 100%;
-  background: #667eea;
+  background: var(--color-primary);
 }
 
 .corner.top-right {
@@ -615,7 +665,7 @@ function goBack() {
   right: 0;
   width: 3px;
   height: 100%;
-  background: #667eea;
+  background: var(--color-primary);
 }
 
 .corner.bottom-left {
@@ -637,7 +687,7 @@ function goBack() {
   left: 0;
   width: 3px;
   height: 100%;
-  background: #667eea;
+  background: var(--color-primary);
 }
 
 .corner.bottom-right {
@@ -659,14 +709,14 @@ function goBack() {
   right: 0;
   width: 3px;
   height: 100%;
-  background: #667eea;
+  background: var(--color-primary);
 }
 
 .scan-line {
   position: absolute;
   width: 80%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #667eea, transparent);
+  background: #667eea;
   left: 10%;
   top: 50%;
   animation: scan 2s ease-in-out infinite;
@@ -682,7 +732,7 @@ function goBack() {
 }
 
 .scan-hint {
-  color: #718096;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -690,13 +740,16 @@ function goBack() {
   width: 100%;
   padding: 16px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .scan-btn:disabled {
@@ -706,7 +759,18 @@ function goBack() {
 
 .scan-btn:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+  box-shadow: var(--shadow-lg);
+}
+
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* 手动模式 */
@@ -717,16 +781,30 @@ function goBack() {
 }
 
 .section-title {
-  color: white;
+  color: #2d3748;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-icon {
+  width: 20px;
+  height: 20px;
+  color: #667eea;
 }
 
 .today-section {
   background: white;
   border-radius: 24px;
   padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.today-section .section-title {
+  color: var(--text-primary);
 }
 
 .medications-list {
@@ -741,7 +819,7 @@ function goBack() {
   gap: 16px;
   padding: 16px;
   border-radius: 16px;
-  background: linear-gradient(135deg, #fff5f5 0%, #ffe4e1 100%);
+  background: #fff5f5;
   border: 2px solid #ffc9c9;
   cursor: pointer;
   transition: all 0.3s;
@@ -766,19 +844,19 @@ function goBack() {
 .med-name {
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .med-dosage {
   font-size: 13px;
-  color: #718096;
+  color: var(--text-secondary);
 }
 
 .med-action .checkin-btn {
   padding: 8px 20px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #ff6b6b 0%, #e53e3e 100%);
+  background: #e53e3e;
   color: white;
   border: none;
   font-size: 14px;
@@ -791,61 +869,75 @@ function goBack() {
   background: white;
   border-radius: 24px;
   padding: 24px;
+  box-shadow: var(--shadow-md);
+}
+
+.all-section .section-title {
+  color: var(--text-primary);
 }
 
 .empty-medications {
   text-align: center;
   padding: 40px 20px;
-  color: #718096;
-}
-
-.empty-medications p {
-  margin-bottom: 16px;
+  color: var(--text-secondary);
 }
 
 .view-plans-btn {
-  padding: 12px 24px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: var(--primary-100);
+  color: var(--color-primary);
   border: none;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
   cursor: pointer;
 }
 
 .medications-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 16px;
 }
 
 .med-item {
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
   border-radius: 16px;
-  background: #f5f7fa;
-  text-align: center;
+  background: var(--bg-body);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .med-item:hover {
-  background: #e8edff;
-  transform: translateY(-2px);
+  background: var(--primary-50);
 }
 
-.med-item .med-icon {
-  font-size: 2rem;
-  margin-bottom: 8px;
+.med-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  color: var(--color-primary);
+}
+
+.med-icon {
+  width: 24px;
+  height: 24px;
 }
 
 .med-item .med-name {
-  font-size: 13px;
-  color: #2c3e50;
-  font-weight: 500;
+  font-size: 14px;
+  text-align: center;
 }
 
-/* 成功提示 */
+/* 打卡成功提示 */
 .success-overlay {
   position: fixed;
   top: 0;
@@ -856,96 +948,91 @@ function goBack() {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 20px;
+  z-index: 100;
+  backdrop-filter: blur(4px);
 }
 
 .success-card {
   background: white;
+  width: 85%;
+  max-width: 320px;
   border-radius: 24px;
-  padding: 40px;
+  padding: 30px;
   text-align: center;
-  max-width: 400px;
-  width: 100%;
-  animation: bounceIn 0.5s;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-@keyframes bounceIn {
-  0% {
-    transform: scale(0.5);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
+@keyframes popIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.success-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #d4f4dd;
+  color: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
 }
 
 .success-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-  animation: checkmark 0.8s;
-}
-
-@keyframes checkmark {
-  0%, 50% {
-    transform: scale(0);
-  }
-  100% {
-    transform: scale(1);
-  }
+  width: 40px;
+  height: 40px;
 }
 
 .success-title {
   font-size: 24px;
-  font-weight: 600;
-  color: #22c55e;
-  margin: 0 0 12px 0;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin-bottom: 8px;
 }
 
 .success-message {
   font-size: 16px;
-  color: #718096;
-  margin: 0 0 8px 0;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
 }
 
 .success-time {
-  font-size: 14px;
-  color: #a0aec0;
+  font-size: 32px;
+  font-weight: bold;
+  color: var(--color-primary);
   margin-bottom: 24px;
 }
 
 .success-actions {
   display: flex;
+  flex-direction: column;
   gap: 12px;
 }
 
 .action-btn {
-  flex: 1;
+  width: 100%;
   padding: 14px;
   border-radius: 12px;
   border: none;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
 }
 
 .action-btn.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
 }
 
 .action-btn.secondary {
-  background: #f5f7fa;
-  color: #667eea;
+  background: var(--bg-body);
+  color: var(--text-primary);
 }
 
 .action-btn:hover {
   transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 </style>
-

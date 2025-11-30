@@ -8,7 +8,7 @@
       <!-- Logo部分 -->
       <div class="logo-section">
         <div class="logo-circle">
-          <div class="icon">💊</div>
+          <Pill class="icon" />
         </div>
         <h1 class="app-name">健康守护</h1>
         <p class="welcome-back">欢迎回来</p>
@@ -19,7 +19,7 @@
         <div class="biometric-card" @click="handleBiometricLogin">
           <div class="biometric-icon">
             <div class="icon-wrapper">
-              <span class="fingerprint-icon">🔐</span>
+              <Fingerprint class="fingerprint-icon" />
               <div class="ripple"></div>
             </div>
           </div>
@@ -41,7 +41,7 @@
       >
         <div class="form-group" :class="{ 'error': errorMessage }">
           <label class="label">
-            <span class="label-icon">🔑</span>
+            <Key class="label-icon" />
             <span class="label-text">密码</span>
           </label>
           <div class="password-wrapper">
@@ -57,14 +57,15 @@
               class="toggle-password"
               @click="showPassword = !showPassword"
             >
-              {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+              <Eye v-if="showPassword" class="eye-icon" />
+              <EyeOff v-else class="eye-icon" />
             </button>
           </div>
         </div>
         
         <transition name="error">
           <div v-if="errorMessage" class="error-message">
-            <span class="error-icon">⚠️</span>
+            <AlertTriangle class="error-icon" />
             <span>{{ errorMessage }}</span>
           </div>
         </transition>
@@ -77,7 +78,7 @@
         >
           <span v-if="!isLoading">登录</span>
           <span v-else class="btn-loading">
-            <span class="spinner"></span>
+            <Loader2 class="spinner" />
             登录中...
           </span>
         </button>
@@ -108,8 +109,15 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { aaService } from '../../service/accountAbstraction';
 import { biometricService } from '../../service/biometric';
-import { authService } from '../../service/auth';
-import { ethers } from 'ethers';
+import { 
+  Pill, 
+  Fingerprint, 
+  Key, 
+  Eye, 
+  EyeOff, 
+  AlertTriangle,
+  Loader2 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 
@@ -251,7 +259,7 @@ const handlePasswordLogin = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   animation: gradientShift 10s ease infinite;
 }
 
@@ -307,7 +315,9 @@ const handlePasswordLogin = async () => {
 }
 
 .icon {
-  font-size: 3rem;
+  width: 48px;
+  height: 48px;
+  color: white;
 }
 
 @keyframes float {
@@ -376,7 +386,9 @@ const handlePasswordLogin = async () => {
 }
 
 .fingerprint-icon {
-  font-size: 4rem;
+  width: 64px;
+  height: 64px;
+  color: white;
   display: block;
   animation: pulse 2s ease-in-out infinite;
 }
@@ -436,7 +448,7 @@ const handlePasswordLogin = async () => {
 .divider-text {
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.9rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   padding: 0 16px;
   position: relative;
   z-index: 1;
@@ -490,7 +502,8 @@ const handlePasswordLogin = async () => {
 }
 
 .label-icon {
-  font-size: 1.2rem;
+  width: 18px;
+  height: 18px;
 }
 
 .password-wrapper {
@@ -527,10 +540,18 @@ const handlePasswordLogin = async () => {
   transform: translateY(-50%);
   background: none;
   border: none;
-  font-size: 1.3rem;
   cursor: pointer;
   opacity: 0.6;
   transition: opacity 0.3s;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eye-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .toggle-password:hover {
@@ -551,6 +572,12 @@ const handlePasswordLogin = async () => {
   margin-bottom: 16px;
 }
 
+.error-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
 .error-enter-active, .error-leave-active {
   transition: all 0.3s;
 }
@@ -564,7 +591,7 @@ const handlePasswordLogin = async () => {
   width: 100%;
   padding: 18px;
   background: rgba(255, 255, 255, 0.95);
-  color: #667eea;
+  color: var(--primary-600);
   border: none;
   border-radius: 16px;
   font-size: 1.1rem;
@@ -596,18 +623,14 @@ const handlePasswordLogin = async () => {
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(102, 126, 234, 0.3);
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  width: 18px;
+  height: 18px;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* 使用密码登录按钮 */

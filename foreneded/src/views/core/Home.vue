@@ -12,16 +12,18 @@
       <div class="header-actions">
         <!-- 开发者入口 -->
         <button v-if="isDevelopment" class="dev-btn" @click="goToTestCenter" title="测试中心">
-          🧪
+          <FlaskConical class="icon" />
         </button>
         
         <!-- 消息通知图标 -->
         <div class="notification-bell" @click="goToNotifications">
-          <div class="bell-icon">🔔</div>
+          <Bell class="bell-icon" />
           <div v-if="unreadCount > 0" class="badge">
             {{ unreadCount > 99 ? '99+' : unreadCount }}
           </div>
-          <div v-if="!isBackendOnline" class="offline-indicator" title="离线模式">📡</div>
+          <div v-if="!isBackendOnline" class="offline-indicator" title="离线模式">
+            <Wifi class="offline-icon" />
+          </div>
         </div>
       </div>
     </div>
@@ -35,7 +37,7 @@
           :class="{ active: activeTab === 'today' }"
           @click="activeTab = 'today'"
         >
-          <span class="tab-icon">✅</span>
+          <CheckCircle2 class="tab-icon" />
           <span class="tab-text">今日用药任务</span>
         </div>
         <div 
@@ -43,7 +45,7 @@
           :class="{ active: activeTab === 'plans' }"
           @click="activeTab = 'plans'"
         >
-          <span class="tab-icon">💊</span>
+          <Pill class="tab-icon" />
           <span class="tab-text">我的用药计划</span>
       </div>
     </div>
@@ -77,7 +79,7 @@
         </div>
 
         <div v-else-if="todayTasks.length === 0" class="empty-state">
-          <div class="empty-icon">📋</div>
+          <ClipboardList class="empty-icon" />
           <p class="empty-text">今日暂无用药任务</p>
           <button class="view-plans-btn" @click="activeTab = 'plans'">查看用药计划</button>
         </div>
@@ -93,7 +95,10 @@
           <div class="task-info">
             <h3 class="task-medication">{{ task.medication }}</h3>
             <p class="task-dosage">{{ task.dosage }}</p>
-              <p v-if="task.instructions" class="task-instructions">📋 {{ task.instructions }}</p>
+              <p v-if="task.instructions" class="task-instructions">
+                <ClipboardList class="instruction-icon" />
+                {{ task.instructions }}
+              </p>
           </div>
           <div class="task-action">
             <button
@@ -122,8 +127,8 @@
         <div class="section-header">
           <h2 class="section-title">用药计划列表</h2>
           <button class="refresh-btn" @click="loadPlans" title="刷新">
-            🔄
-            </button>
+            <RefreshCw class="icon-small" />
+          </button>
             </div>
 
         <div v-if="loadingPlans" class="loading-state">
@@ -132,7 +137,7 @@
         </div>
 
         <div v-else-if="medicationPlans.length === 0" class="empty-state">
-          <div class="empty-icon">💊</div>
+          <Pill class="empty-icon" />
           <p class="empty-text">暂无用药计划</p>
           <p class="empty-hint">等待医生为您创建用药计划</p>
         </div>
@@ -145,7 +150,7 @@
             @click="goToPlanDetail(plan.plan_id)"
           >
             <div class="plan-header">
-              <div class="plan-icon">💊</div>
+              <Pill class="plan-icon" />
               <div class="plan-info">
                 <h3 class="plan-title">用药计划 #{{ plan.plan_id.slice(-6) }}</h3>
                 <p class="plan-doctor">医生: {{ shortAddress(plan.doctor_address) }}</p>
@@ -166,13 +171,16 @@
     <!-- 医生/家属专属区域 -->
     <div v-else-if="isDoctor || isGuardian" class="role-specific-section">
       <div class="section-header">
-        <h2 class="section-title">{{ isDoctor ? '👨‍⚕️ 患者管理' : '👨‍👩‍👧 老人管理' }}</h2>
+        <h2 class="section-title">
+          <component :is="isDoctor ? Stethoscope : Users" class="title-icon" />
+          {{ isDoctor ? '患者管理' : '老人管理' }}
+        </h2>
       </div>
       
       <!-- 医生专属：用药计划管理 -->
       <div v-if="isDoctor" class="quick-action-cards">
         <div class="action-card medication-card" @click="goToMedicationPlans">
-          <div class="card-icon">💊</div>
+          <Pill class="card-icon" />
           <div class="card-content">
             <h3 class="card-title">用药计划</h3>
             <p class="card-desc">创建和管理患者用药计划</p>
@@ -184,7 +192,7 @@
       <div class="quick-patients" @click="goToMyPatients">
         <div class="patients-card">
           <div class="patients-icon-wrapper">
-            <div class="patients-icon">{{ isDoctor ? '👨‍⚕️' : '👵👴' }}</div>
+            <component :is="isDoctor ? Stethoscope : Users" class="patients-icon" />
             <div class="icon-glow"></div>
           </div>
           <div class="patients-content">
@@ -202,15 +210,15 @@
     <!-- 快捷操作区域 -->
     <div class="quick-actions">
       <button class="action-btn" @click="goToScanner">
-        <div class="action-icon">📷</div>
+        <Camera class="action-icon" />
         <span>扫码</span>
       </button>
       <button class="action-btn" @click="goToMigration">
-        <div class="action-icon">📱</div>
+        <Smartphone class="action-icon" />
         <span>迁移</span>
       </button>
       <button class="action-btn" @click="goToSettings">
-        <div class="action-icon">⚙️</div>
+        <Settings class="action-icon" />
         <span>设置</span>
       </button>
     </div>
@@ -235,6 +243,20 @@ import { zkpService } from '@/service/zkp'
 import type { MedicationPlan } from '@/service/medication'
 import BottomNav from '@/components/BottomNav.vue'
 import { API_GATEWAY_URL } from '@/config/api.config'
+import { 
+  FlaskConical, 
+  Bell, 
+  Wifi, 
+  CheckCircle2, 
+  Pill, 
+  RefreshCw, 
+  ClipboardList, 
+  Stethoscope, 
+  Users, 
+  Camera, 
+  Smartphone, 
+  Settings 
+} from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -390,13 +412,25 @@ const handleCheckIn = async (task: any) => {
 const loadTodayTasks = async () => {
   try {
     loading.value = true
+    console.log('🔍 === 开始加载今日用药任务 ===')
     
     // 1. 获取今天的打卡记录
     const allRecords = await checkinStorageService.getAllRecords()
     const today = new Date().toDateString()
+    console.log(`📋 打卡记录数量: ${allRecords.length}`)
+    console.log(`📅 今天日期: ${today}`)
     
     // 2. 获取活跃的用药计划
     const plans = await medicationPlanStorageService.getActivePlans()
+    console.log(`💊 活跃用药计划数量: ${plans.length}`)
+    if (plans.length === 0) {
+      console.warn('⚠️ 没有找到活跃的用药计划！')
+      todayTasks.value = []
+      totalTasks.value = 0
+      completedTasks.value = 0
+      loading.value = false
+      return
+    }
     
     // 3. 解密计划并提取药物信息
     const tasks: any[] = []
@@ -407,15 +441,18 @@ const loadTodayTasks = async () => {
       loading.value = false
       return
     }
+    console.log('✅ 钱包已获取')
     
     for (const plan of plans) {
       try {
-        console.log(`  解密计划: ${plan.plan_id}`)
+        console.log(`\n📦 处理计划: ${plan.plan_id}`)
+        console.log(`  - 医生地址: ${plan.doctor_address}`)
         
         // 获取医生公钥
         const doctorPublicKey = await secureExchangeService.getRecipientPublicKey(
           plan.doctor_address
         )
+        console.log(`  ✅ 获取医生公钥成功`)
         
         // 解密计划数据
         const planData = await medicationService.decryptPlanData(
@@ -429,6 +466,9 @@ const loadTodayTasks = async () => {
         // 提取药物列表和提醒
         const medications = planData.medications || []
         const reminders = planData.reminders || []
+        
+        console.log(`  - 药物数量: ${medications.length}`)
+        console.log(`  - 提醒数量: ${reminders.length}`)
         
         // 为每个提醒创建任务
         for (const reminder of reminders) {
@@ -457,6 +497,8 @@ const loadTodayTasks = async () => {
             const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
             const isTimeReached = currentTime >= time
             
+            console.log(`    ➕ 添加任务: ${med.medication_name} at ${time} (${isCompleted ? '已完成' : '待完成'})`)
+            
             tasks.push({
               id: taskId,
               time: time,
@@ -468,10 +510,13 @@ const loadTodayTasks = async () => {
               status: isCompleted ? 'completed' : 'pending',
               isTimeReached: isTimeReached, // 是否到达打卡时间
             })
+          } else {
+            console.warn(`    ⚠️ 未找到药物代码 ${reminder.medication_code} 对应的药物信息`)
           }
         }
       } catch (error: any) {
         console.error(`  ❌ 解密计划失败 ${plan.plan_id}:`, error.message)
+        console.error(`  错误详情:`, error)
         // 如果解密失败，显示简化信息
         tasks.push({
           id: plan.plan_id,
@@ -497,7 +542,9 @@ const loadTodayTasks = async () => {
     totalTasks.value = tasks.length
     completedTasks.value = tasks.filter(t => t.status === 'completed').length
     
-    console.log(`✅ 今日任务加载完成: ${tasks.length} 个任务`)
+    console.log(`\n✅ === 今日任务加载完成 ===`)
+    console.log(`📊 统计: 总任务 ${tasks.length} 个，已完成 ${completedTasks.value} 个，待完成 ${tasks.length - completedTasks.value} 个`)
+    console.log(`📝 任务列表:`, tasks)
   } catch (error) {
     console.error('❌ 加载今日任务失败:', error)
   } finally {
@@ -652,27 +699,28 @@ onBeforeUnmount(() => {
 <style scoped>
 * {
   box-sizing: border-box;
-  max-width: 100%;
 }
 
 .home-page {
   min-height: 100vh;
   background-color: #f5f7fa;
-  padding-bottom: 80px;
+  padding-bottom: 90px;
   width: 100%;
-  max-width: 100vw;
   overflow-x: hidden;
 }
 
 .header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
-  padding: 24px 20px;
+  padding: 24px 20px 40px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  border-radius: 0 0 24px 24px;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  border-radius: 0 0 30px 30px;
+  box-shadow: 0 10px 30px -10px rgba(102, 126, 234, 0.5);
+  margin-bottom: -20px;
+  position: relative;
+  z-index: 10;
 }
 
 .header-actions {
@@ -754,7 +802,9 @@ onBeforeUnmount(() => {
 }
 
 .bell-icon {
-  font-size: 1.8rem;
+  width: 28px;
+  height: 28px;
+  color: white;
 }
 
 .notification-bell .badge {
@@ -763,7 +813,7 @@ onBeforeUnmount(() => {
   right: 0;
   min-width: 20px;
   height: 20px;
-  background: linear-gradient(135deg, #ff6b6b 0%, #e53e3e 100%);
+  background: #e53e3e;
   color: white;
   border-radius: 10px;
   font-size: 0.7rem;
@@ -780,15 +830,20 @@ onBeforeUnmount(() => {
   position: absolute;
   bottom: -2px;
   right: -2px;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   background-color: #fc8181;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.65rem;
   border: 2px solid white;
+}
+
+.offline-icon {
+  width: 14px;
+  height: 14px;
+  color: white;
 }
 
 /* Tab 切换 */
@@ -820,18 +875,15 @@ onBeforeUnmount(() => {
 }
 
 .tab.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .tab-icon {
-  font-size: 1.5rem;
-}
-
-.tab-text {
-  font-size: 0.9rem;
-  font-weight: 600;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 .tab-content {
@@ -865,10 +917,12 @@ onBeforeUnmount(() => {
   color: #667eea;
 }
 
-.stat-label {
-  font-size: 0.9rem;
-  color: #718096;
-  margin-top: 4px;
+.st.action-icon {
+  width: 28px;
+  height: 28px;
+  color: #667eea;
+  margin-bottom: 6px;
+  flex-shrink: 0;
 }
 
 /* 区块标题 */
@@ -884,10 +938,20 @@ onBeforeUnmount(() => {
   font-weight: 700;
   color: #2d3748;
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
+.title-icon {
+  width: 24px;
+  height: 24px;
+  color: #667eea;
 }
 
 .history-btn, .refresh-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   width: 44px;
@@ -928,8 +992,10 @@ onBeforeUnmount(() => {
 }
 
 .empty-icon {
-  font-size: 4rem;
-  margin-bottom: 16px;
+  width: 64px;
+  height: 64px;
+  color: #cbd5e0;
+  margin-bottom: 12px;
   opacity: 0.5;
 }
 
@@ -946,7 +1012,7 @@ onBeforeUnmount(() => {
 }
 
 .view-plans-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   padding: 12px 24px;
@@ -971,32 +1037,52 @@ onBeforeUnmount(() => {
 }
 
 .task-card {
-  background-color: white;
-  border-radius: 16px;
-  padding: 16px;
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  transition: all 0.3s;
-  border: 2px solid transparent;
+  gap: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.task-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #cbd5e0;
+  transition: background 0.3s;
 }
 
 .task-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  border-color: #667eea;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
 }
 
 .task-card.completed {
-  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  background: #f0fff4;
+  border-color: #c6f6d5;
+}
+
+.task-card.completed::before {
+  background: #48bb78;
 }
 
 .task-card.error {
-  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  border-color: rgba(239, 68, 68, 0.2);
+  background: #fff5f5;
+  border-color: #fed7d7;
 }
 
+.task-card.error::before {
+  background: #f56565;
+}
 .task-time {
   font-size: 1rem;
   font-weight: 600;
@@ -1024,17 +1110,24 @@ onBeforeUnmount(() => {
 }
 
 .task-instructions {
-  font-size: 0.8rem;
-  color: #4a5568;
-  margin: 0;
-  background: rgba(102, 126, 234, 0.1);
-  padding: 6px 10px;
+  font-size: 0.85rem;
+  color: #718096;
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: #f7fafc;
+  padding: 8px 12px;
   border-radius: 8px;
   line-height: 1.4;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.instruction-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: #a0aec0;
 }
 
 .task-action {
@@ -1044,32 +1137,40 @@ onBeforeUnmount(() => {
 }
 
 .checkin-btn {
-  padding: 8px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
-  border-radius: 20px;
+  padding: 8px 16px;
+  border-radius: 12px;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s;
   white-space: nowrap;
+  box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.4);
 }
 
 .checkin-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 8px -1px rgba(102, 126, 234, 0.5);
 }
 
 .checkin-btn:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.95);
+}
+
+.checkin-btn.disabled,
+.checkin-btn:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 /* 未到时间的禁用状态 */
 .checkin-btn.disabled,
 .checkin-btn:disabled {
-  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  background: #cbd5e1;
   color: #64748b;
   cursor: not-allowed;
   opacity: 0.6;
@@ -1089,12 +1190,12 @@ onBeforeUnmount(() => {
 }
 
 .status-icon.completed {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: #10b981;
   color: white;
 }
 
 .status-icon.error {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  background: #ef4444;
   color: white;
 }
 
@@ -1123,14 +1224,14 @@ onBeforeUnmount(() => {
 }
 
 .plan-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 40px;
+  height: 40px;
+  background: #667eea;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  color: white;
   flex-shrink: 0;
 }
 
@@ -1215,7 +1316,7 @@ onBeforeUnmount(() => {
 }
 
 .action-card.medication-card {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  background: #f0f9ff;
   border-color: rgba(56, 189, 248, 0.2);
 }
 
@@ -1225,14 +1326,14 @@ onBeforeUnmount(() => {
 }
 
 .action-card .card-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+  width: 48px;
+  height: 48px;
+  background: #fef3c7;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
+  color: #92400e;
   flex-shrink: 0;
   box-shadow: 0 4px 16px rgba(56, 189, 248, 0.3);
 }
@@ -1266,7 +1367,7 @@ onBeforeUnmount(() => {
 }
 
 .quick-patients {
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  background: #ffffff;
   border-radius: 24px;
   padding: 30px;
   box-shadow: 0 4px 20px rgba(102, 126, 234, 0.08);
@@ -1294,15 +1395,10 @@ onBeforeUnmount(() => {
 }
 
 .patients-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2.5rem;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  width: 48px;
+  height: 48px;
+  color: white;
+  z-index: 1;
 }
 
 .icon-glow {
@@ -1313,7 +1409,7 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   opacity: 0.2;
   filter: blur(20px);
 }
@@ -1336,7 +1432,7 @@ onBeforeUnmount(() => {
 }
 
 .view-all-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   border: none;
   padding: 12px 24px;

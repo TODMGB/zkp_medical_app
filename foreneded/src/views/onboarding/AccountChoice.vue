@@ -3,7 +3,7 @@
     <!-- 顶部导航 -->
     <div class="header">
       <button class="back-btn" @click="goBack">
-        <span class="arrow">←</span>
+        <ArrowLeft class="arrow" />
       </button>
     </div>
     
@@ -11,7 +11,9 @@
     <div class="content">
       <div class="title-section">
         <div class="icon-container">
-          <div class="icon">👤</div>
+          <div class="icon-circle">
+            <User class="icon" />
+          </div>
         </div>
         <h1 class="title">选择账户类型</h1>
         <p class="subtitle">请选择您要创建的账户类型</p>
@@ -21,7 +23,9 @@
       <div class="options">
         <!-- 创建新账户 -->
         <div class="option-card" @click="createNewAccount">
-          <div class="card-icon">✨</div>
+          <div class="card-icon-wrapper">
+            <Sparkles class="card-icon" />
+          </div>
           <div class="card-content">
             <h3 class="card-title">创建新账户</h3>
             <p class="card-description">
@@ -33,12 +37,14 @@
               <span class="feature">• 生物识别</span>
             </div>
           </div>
-          <div class="card-arrow">→</div>
+          <ArrowRight class="card-arrow" />
         </div>
         
         <!-- 导入已有账户 -->
         <div class="option-card" @click="importExistingAccount">
-          <div class="card-icon">📱</div>
+          <div class="card-icon-wrapper">
+            <Smartphone class="card-icon" />
+          </div>
           <div class="card-content">
             <h3 class="card-title">导入已有账户</h3>
             <p class="card-description">
@@ -50,14 +56,14 @@
               <span class="feature">• 数据同步</span>
             </div>
           </div>
-          <div class="card-arrow">→</div>
+          <ArrowRight class="card-arrow" />
         </div>
       </div>
       
       <!-- 底部提示 -->
       <div class="footer-hint">
         <p class="hint-text">
-          <span class="hint-icon">🔒</span>
+          <Lock class="hint-icon" />
           所有数据都经过端到端加密保护
         </p>
       </div>
@@ -67,6 +73,14 @@
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
+import { 
+  ArrowLeft, 
+  User, 
+  Sparkles, 
+  Smartphone, 
+  ArrowRight, 
+  Lock 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 
@@ -88,7 +102,7 @@ const importExistingAccount = () => {
 <style scoped>
 .account-choice-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   display: flex;
   flex-direction: column;
 }
@@ -125,8 +139,8 @@ const importExistingAccount = () => {
 
 .arrow {
   color: white;
-  font-size: 1.5rem;
-  line-height: 1;
+  width: 24px;
+  height: 24px;
 }
 
 /* 主要内容 */
@@ -158,31 +172,37 @@ const importExistingAccount = () => {
 
 .icon-container {
   margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
 }
 
-.icon {
+.icon-circle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   border-radius: 50%;
-  font-size: 2.5rem;
-  color: white;
   box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+}
+
+.icon {
+  width: 40px;
+  height: 40px;
+  color: white;
 }
 
 .title {
   font-size: 2rem;
   font-weight: 700;
-  color: #1a202c;
+  color: var(--text-primary);
   margin: 0 0 12px 0;
 }
 
 .subtitle {
   font-size: 1rem;
-  color: #718096;
+  color: var(--text-secondary);
   margin: 0;
   font-weight: 400;
 }
@@ -197,7 +217,7 @@ const importExistingAccount = () => {
 
 .option-card {
   background: white;
-  border: 2px solid #f7fafc;
+  border: 2px solid var(--gray-100);
   border-radius: 20px;
   padding: 24px;
   cursor: pointer;
@@ -205,29 +225,33 @@ const importExistingAccount = () => {
   display: flex;
   align-items: flex-start;
   gap: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .option-card:hover {
-  border-color: #667eea;
+  border-color: var(--color-primary);
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.15);
+  box-shadow: var(--shadow-lg);
 }
 
 .option-card:active {
   transform: translateY(-2px);
 }
 
-.card-icon {
-  font-size: 2rem;
+.card-icon-wrapper {
   flex-shrink: 0;
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.card-icon {
+  width: 32px;
+  height: 32px;
   color: white;
 }
 
@@ -238,13 +262,13 @@ const importExistingAccount = () => {
 .card-title {
   font-size: 1.3rem;
   font-weight: 600;
-  color: #1a202c;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
 }
 
 .card-description {
   font-size: 0.95rem;
-  color: #718096;
+  color: var(--text-secondary);
   margin: 0 0 16px 0;
   line-height: 1.5;
 }
@@ -257,13 +281,14 @@ const importExistingAccount = () => {
 
 .feature {
   font-size: 0.85rem;
-  color: #667eea;
+  color: var(--color-primary);
   font-weight: 500;
 }
 
 .card-arrow {
-  color: #667eea;
-  font-size: 1.5rem;
+  color: var(--color-primary);
+  width: 24px;
+  height: 24px;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
   align-self: center;
@@ -280,7 +305,7 @@ const importExistingAccount = () => {
 }
 
 .hint-text {
-  color: #a0aec0;
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin: 0;
   display: flex;
@@ -290,7 +315,8 @@ const importExistingAccount = () => {
 }
 
 .hint-icon {
-  font-size: 1rem;
+  width: 16px;
+  height: 16px;
 }
 
 /* 响应式 */
@@ -303,12 +329,6 @@ const importExistingAccount = () => {
     font-size: 1.75rem;
   }
   
-  .icon {
-    width: 70px;
-    height: 70px;
-    font-size: 2rem;
-  }
-  
   .option-card {
     padding: 20px;
     gap: 16px;
@@ -316,16 +336,18 @@ const importExistingAccount = () => {
     text-align: center;
   }
   
-  .card-icon {
-    width: 50px;
-    height: 50px;
-    font-size: 1.5rem;
+  .card-icon-wrapper {
     align-self: center;
   }
   
   .card-arrow {
     align-self: center;
     margin-top: 8px;
+    transform: rotate(90deg);
+  }
+  
+  .option-card:hover .card-arrow {
+    transform: rotate(90deg) translateY(4px);
   }
   
   .card-features {

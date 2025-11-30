@@ -615,16 +615,18 @@ onActivated(async () => {
   background: #f7fafc;
 }
 
+
 .card-icon {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #ebf4ff;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
   flex-shrink: 0;
+  color: #667eea;
 }
 
 .card-content {

@@ -4,13 +4,18 @@
     <div class="profile-header">
       <div class="user-card">
         <div class="user-avatar">
-          <span class="avatar-icon">{{ avatarEmoji }}</span>
+          <div class="avatar-icon-wrapper">
+            <User v-if="isElderly" class="avatar-icon" />
+            <Stethoscope v-else-if="isDoctor" class="avatar-icon" />
+            <Heart v-else-if="isGuardian" class="avatar-icon" />
+            <User v-else class="avatar-icon" />
+          </div>
         </div>
-      <div class="user-info">
+        <div class="user-info">
           <h2 class="user-name">
             {{ isEditingName ? '' : userName }}
             <button v-if="!isEditingName" class="edit-name-btn" @click="startEditName">
-              ✏️
+              <Edit2 class="icon-small" />
             </button>
           </h2>
           <div v-if="isEditingName" class="name-edit-form">
@@ -39,37 +44,51 @@
       
       <div class="info-card">
         <div class="info-row">
-          <span class="info-label">👤 EOA 地址</span>
+          <span class="info-label">
+            <User class="label-icon" />
+            EOA 地址
+          </span>
           <div class="info-value-group">
-            <span class="info-value">{{ eoaAddress || '未设置' }}</span>
+            <span class="info-value">{{ formatAddress(eoaAddress) || '未设置' }}</span>
             <button class="copy-btn" @click="copyAddress(eoaAddress)" title="复制">
-              📋
+              <Copy class="icon-mini" />
             </button>
+          </div>
         </div>
-      </div>
         
         <div class="info-row">
-          <span class="info-label">🔐 智能账户地址</span>
+          <span class="info-label">
+            <Shield class="label-icon" />
+            智能账户地址
+          </span>
           <div class="info-value-group">
-            <span class="info-value">{{ smartAccount || '未设置' }}</span>
+            <span class="info-value">{{ formatAddress(smartAccount) || '未设置' }}</span>
             <button class="copy-btn" @click="copyAddress(smartAccount)" title="复制">
-              📋
-      </button>
+              <Copy class="icon-mini" />
+            </button>
           </div>
         </div>
         
         <div class="info-row">
-          <span class="info-label">📱 设备ID</span>
+          <span class="info-label">
+            <Smartphone class="label-icon" />
+            设备ID
+          </span>
           <div class="info-value-group">
-            <span class="info-value">{{ deviceId || '加载中...' }}</span>
+            <span class="info-value">{{ formatDeviceId(deviceId) || '加载中...' }}</span>
           </div>
         </div>
         
         <div class="info-row">
-          <span class="info-label">🌐 账户状态</span>
+          <span class="info-label">
+            <Globe class="label-icon" />
+            账户状态
+          </span>
           <div class="info-value-group">
             <span class="status-badge" :class="{ online: isBackendOnline, offline: !isBackendOnline }">
-              {{ isBackendOnline ? '✓ 在线' : '✗ 离线' }}
+              <CheckCircle2 v-if="isBackendOnline" class="status-icon" />
+              <XCircle v-else class="status-icon" />
+              {{ isBackendOnline ? '在线' : '离线' }}
             </span>
           </div>
         </div>
@@ -79,54 +98,66 @@
     <!-- 功能菜单 -->
     <div class="menu-section">
       <div class="menu-item" @click="goToFamilyCircle">
-        <div class="menu-icon">👨‍👩‍👧‍👦</div>
+        <div class="menu-icon-wrapper blue">
+          <Users class="menu-icon" />
+        </div>
         <div class="menu-content">
           <h3 class="menu-title">我的家庭圈</h3>
           <p class="menu-desc">管理家人和医生</p>
         </div>
-        <div class="menu-arrow">›</div>
+        <ChevronRight class="menu-arrow" />
       </div>
       
       <div class="menu-item" @click="goToGuardianSetup">
-        <div class="menu-icon">🛡️</div>
+        <div class="menu-icon-wrapper orange">
+          <Shield class="menu-icon" />
+        </div>
         <div class="menu-content">
           <h3 class="menu-title">守护者设置</h3>
           <p class="menu-desc">设置账户恢复守护者</p>
         </div>
-        <div class="menu-arrow">›</div>
+        <ChevronRight class="menu-arrow" />
       </div>
       
       <div class="menu-item" @click="goToAccountMigration">
-        <div class="menu-icon">📱</div>
+        <div class="menu-icon-wrapper purple">
+          <Smartphone class="menu-icon" />
+        </div>
         <div class="menu-content">
           <h3 class="menu-title">账户迁移</h3>
           <p class="menu-desc">迁移到新设备</p>
         </div>
-        <div class="menu-arrow">›</div>
+        <ChevronRight class="menu-arrow" />
       </div>
       
       <div class="menu-item" @click="goToNotifications">
-        <div class="menu-icon">🔔</div>
+        <div class="menu-icon-wrapper red">
+          <Bell class="menu-icon" />
+        </div>
         <div class="menu-content">
           <h3 class="menu-title">消息通知</h3>
           <p class="menu-desc">系统消息和家人关怀</p>
         </div>
         <div class="menu-badge" v-if="unreadCount > 0">{{ unreadCount }}</div>
-        <div class="menu-arrow">›</div>
+        <ChevronRight class="menu-arrow" />
       </div>
       
       <div class="menu-item" @click="goToSettings">
-        <div class="menu-icon">⚙️</div>
+        <div class="menu-icon-wrapper gray">
+          <Settings class="menu-icon" />
+        </div>
         <div class="menu-content">
           <h3 class="menu-title">设置</h3>
           <p class="menu-desc">字体大小、通知提醒</p>
         </div>
-        <div class="menu-arrow">›</div>
+        <ChevronRight class="menu-arrow" />
       </div>
-      </div>
+    </div>
       
     <!-- Toast 提示 -->
     <div v-if="showToast" class="toast" :class="toastType">
+      <CheckCircle2 v-if="toastType === 'success'" class="toast-icon" />
+      <AlertCircle v-else class="toast-icon" />
       {{ toastMessage }}
     </div>
     
@@ -143,6 +174,23 @@ import { authService } from '@/service/auth'
 import { aaService } from '@/service/accountAbstraction'
 import { unreadCount, notificationBadgeService } from '@/service/notificationBadge'
 import BottomNav from '@/components/BottomNav.vue'
+import { 
+  User, 
+  Stethoscope, 
+  Heart, 
+  Edit2, 
+  Copy, 
+  Shield, 
+  Smartphone, 
+  Globe, 
+  CheckCircle2, 
+  XCircle, 
+  Users, 
+  Bell, 
+  Settings, 
+  ChevronRight, 
+  AlertCircle 
+} from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -163,13 +211,10 @@ const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error'>('success')
 
-// 头像表情
-const avatarEmoji = computed(() => {
-  if (userRoles.value.includes('elderly')) return '👴'
-  if (userRoles.value.includes('doctor')) return '👨‍⚕️'
-  if (userRoles.value.includes('guardian')) return '👨‍👩‍👧'
-  return '👤'
-})
+// 角色判断
+const isElderly = computed(() => userRoles.value.includes('elderly'))
+const isDoctor = computed(() => userRoles.value.includes('doctor'))
+const isGuardian = computed(() => userRoles.value.includes('guardian'))
 
 // 获取角色文本
 const getRoleText = (role: string) => {
@@ -179,6 +224,19 @@ const getRoleText = (role: string) => {
     guardian: '家属'
   }
   return roleMap[role] || role
+}
+
+// 格式化地址
+const formatAddress = (address: string) => {
+  if (!address) return ''
+  return `${address.slice(0, 6)}...${address.slice(-4)}`
+}
+
+// 格式化设备ID
+const formatDeviceId = (id: string) => {
+  if (!id) return ''
+  if (id.length > 10) return `${id.slice(0, 10)}...`
+  return id
 }
 
 // 开始编辑用户名
@@ -334,19 +392,26 @@ onMounted(async () => {
 }
 
 /* 顶部个人信息 */
+
 .profile-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 30px 20px 40px;
-  border-radius: 0 0 24px 24px;
+  background: #667eea;
+
+  padding: 30px 20px 50px;
+  border-radius: 0 0 30px 30px;
+  box-shadow: var(--shadow-lg);
 }
 
 .user-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 20px;
 }
 
 .user-avatar {
+  flex-shrink: 0;
+}
+
+.avatar-icon-wrapper {
   width: 80px;
   height: 80px;
   border-radius: 50%;
@@ -356,12 +421,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  color: white;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .avatar-icon {
-  font-size: 3rem;
+  width: 40px;
+  height: 40px;
 }
 
 .user-info {
@@ -371,12 +437,12 @@ onMounted(async () => {
 
 .user-name {
   color: white;
-  font-size: 1.8rem;
+  font-size: 24px;
   font-weight: 700;
   margin: 0 0 12px 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
 
 .edit-name-btn {
@@ -385,7 +451,7 @@ onMounted(async () => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  font-size: 0.9rem;
+  color: white;
   cursor: pointer;
   transition: all 0.3s;
   display: flex;
@@ -398,6 +464,11 @@ onMounted(async () => {
   transform: scale(1.1);
 }
 
+.icon-small {
+  width: 16px;
+  height: 16px;
+}
+
 .name-edit-form {
   display: flex;
   gap: 8px;
@@ -406,11 +477,11 @@ onMounted(async () => {
 
 .name-input {
   flex: 1;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.9);
-  font-size: 1rem;
+  font-size: 14px;
   color: #2d3748;
   outline: none;
 }
@@ -421,10 +492,10 @@ onMounted(async () => {
 }
 
 .save-btn, .cancel-btn {
-  padding: 10px 16px;
+  padding: 8px 12px;
   border: none;
-  border-radius: 12px;
-  font-size: 0.9rem;
+  border-radius: 10px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
@@ -432,20 +503,12 @@ onMounted(async () => {
 
 .save-btn {
   background: white;
-  color: #667eea;
-}
-
-.save-btn:hover {
-  transform: scale(1.05);
+  color: var(--color-primary);
 }
 
 .cancel-btn {
   background: rgba(255, 255, 255, 0.2);
   color: white;
-}
-
-.cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
 }
 
 .role-tags {
@@ -457,62 +520,82 @@ onMounted(async () => {
 .role-tag {
   display: inline-block;
   padding: 6px 14px;
-  border-radius: 14px;
-  font-size: 0.85rem;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.25);
   color: white;
   backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .role-tag.elderly {
-  background: rgba(72, 187, 120, 0.3);
+  background: rgba(34, 197, 94, 0.3);
 }
 
 .role-tag.doctor {
-  background: rgba(66, 153, 225, 0.3);
+  background: rgba(59, 130, 246, 0.3);
 }
 
 .role-tag.guardian {
-  background: rgba(237, 137, 54, 0.3);
+  background: rgba(249, 115, 22, 0.3);
 }
 
 /* 账户信息区块 */
 .account-section {
-  padding: 20px;
-  margin-top: -20px;
+  padding: 0 20px;
+  margin-top: -30px;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 10;
 }
 
 .section-title {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #2d3748;
-  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #718096;
+  margin: 0 0 12px 0;
+  padding-left: 4px;
+  display: none; /* 隐藏标题，因为卡片已经很明显了 */
 }
 
 .info-card {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 20px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .info-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 0;
-  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .info-row:last-child {
   border-bottom: none;
+  padding-bottom: 0;
+}
+
+.info-row:first-child {
+  padding-top: 0;
 }
 
 .info-label {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+  color: #718096;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label-icon {
+  width: 16px;
+  height: 16px;
+  color: #a0aec0;
 }
 
 .info-value-group {
@@ -525,7 +608,7 @@ onMounted(async () => {
 }
 
 .info-value {
-  font-size: 0.85rem;
+  font-size: 13px;
   color: #2d3748;
   font-family: 'Courier New', monospace;
   background: #f7fafc;
@@ -534,16 +617,16 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 200px;
+  max-width: 160px;
 }
 
 .copy-btn {
-  background: #667eea;
+  background: var(--primary-50);
   border: none;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 8px;
-  font-size: 0.9rem;
+  color: var(--color-primary);
   cursor: pointer;
   transition: all 0.3s;
   flex-shrink: 0;
@@ -553,62 +636,86 @@ onMounted(async () => {
 }
 
 .copy-btn:hover {
-  background: #5568d3;
-  transform: scale(1.1);
+  background: var(--primary-100);
+  transform: scale(1.05);
+}
+
+.icon-mini {
+  width: 14px;
+  height: 14px;
 }
 
 .status-badge {
-  padding: 6px 14px;
-  border-radius: 12px;
-  font-size: 0.85rem;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .status-badge.online {
-  background: #c6f6d5;
-  color: #2f855a;
+  background: #d4f4dd;
+  color: #22c55e;
 }
 
 .status-badge.offline {
-  background: #fed7d7;
-  color: #c53030;
+  background: #ffebee;
+  color: #ef4444;
+}
+
+.status-icon {
+  width: 14px;
+  height: 14px;
 }
 
 /* 功能菜单 */
 .menu-section {
-  padding: 20px;
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .menu-item {
   background-color: white;
-  border-radius: 14px;
-  padding: 18px;
-  margin-bottom: 12px;
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
   align-items: center;
   gap: 16px;
   cursor: pointer;
   transition: all 0.3s;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-  border: 2px solid transparent;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid transparent;
 }
 
 .menu-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  border-color: #667eea;
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-100);
 }
 
-.menu-icon {
-  font-size: 1.8rem;
+.menu-icon-wrapper {
   width: 48px;
   height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f0f4ff 0%, #e6eeff 100%);
-  border-radius: 12px;
   flex-shrink: 0;
+}
+
+.menu-icon-wrapper.blue { background: #e0f2fe; color: #0ea5e9; }
+.menu-icon-wrapper.orange { background: #ffedd5; color: #f97316; }
+.menu-icon-wrapper.purple { background: #f3e8ff; color: #a855f7; }
+.menu-icon-wrapper.red { background: #fee2e2; color: #ef4444; }
+.menu-icon-wrapper.gray { background: #f3f4f6; color: #6b7280; }
+
+.menu-icon {
+  width: 24px;
+  height: 24px;
 }
 
 .menu-content {
@@ -617,48 +724,51 @@ onMounted(async () => {
 }
 
 .menu-title {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
   color: #2d3748;
   margin: 0 0 4px 0;
 }
 
 .menu-desc {
-  font-size: 0.85rem;
+  font-size: 13px;
   color: #718096;
   margin: 0;
 }
 
 .menu-badge {
-  background-color: #e53e3e;
+  background-color: #ef4444;
   color: white;
-  font-size: 0.75rem;
+  font-size: 12px;
   font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
   min-width: 20px;
   text-align: center;
 }
 
 .menu-arrow {
-  font-size: 1.5rem;
-  color: #a0aec0;
-  font-weight: 300;
+  width: 20px;
+  height: 20px;
+  color: #cbd5e0;
 }
 
 /* Toast 提示 */
 .toast {
   position: fixed;
-  top: 80px;
+  top: 100px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 14px 24px;
-  border-radius: 12px;
-  font-size: 0.95rem;
+  padding: 12px 20px;
+  border-radius: 30px;
+  font-size: 14px;
   font-weight: 600;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
   z-index: 1000;
-  animation: slideDown 0.3s;
+  animation: slideDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 @keyframes slideDown {
@@ -673,12 +783,19 @@ onMounted(async () => {
 }
 
 .toast.success {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-  color: white;
+  background: white;
+  color: #22c55e;
+  border: 1px solid #d4f4dd;
 }
 
 .toast.error {
-  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
-  color: white;
+  background: white;
+  color: #ef4444;
+  border: 1px solid #ffebee;
+}
+
+.toast-icon {
+  width: 18px;
+  height: 18px;
 }
 </style>

@@ -3,24 +3,25 @@
     <!-- 顶部导航栏 -->
     <div class="top-bar">
       <button @click="goBack" class="back-btn">
-        <span class="icon">←</span>
+        <ArrowLeft class="icon" />
       </button>
       <h1 class="title">我的用药计划</h1>
       <button @click="refreshPlans" class="refresh-btn" :disabled="loading">
-        <span class="icon">{{ loading ? '⏳' : '🔄' }}</span>
+        <Loader2 v-if="loading" class="icon spinning" />
+        <RefreshCw v-else class="icon" />
       </button>
     </div>
 
     <div class="content">
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+        <Loader2 class="spinner" />
         <p>加载中...</p>
       </div>
 
       <!-- 错误状态 -->
       <div v-else-if="syncError" class="error-state">
-        <div class="error-icon">⚠️</div>
+        <AlertTriangle class="error-icon" />
         <p class="error-title">同步失败</p>
         <p class="error-message">{{ syncError }}</p>
         <button @click="retrySync" class="retry-btn">重试</button>
@@ -28,7 +29,7 @@
 
       <!-- 空状态 -->
       <div v-else-if="plans.length === 0" class="empty-state">
-        <div class="empty-icon">💊</div>
+        <Pill class="empty-icon" />
         <p>暂无用药计划</p>
         <p class="hint">等待医生为您创建用药计划</p>
         <button @click="refreshPlans" class="refresh-btn-text">检查新计划</button>
@@ -38,7 +39,9 @@
       <div v-else class="plans-list">
         <!-- 今日用药提示 -->
         <div v-if="todayTasks > 0" class="today-reminder">
-          <div class="reminder-icon">⏰</div>
+          <div class="reminder-icon">
+            <AlarmClock class="icon-large" />
+          </div>
           <div class="reminder-content">
             <div class="reminder-title">今日待服药</div>
             <div class="reminder-count">{{ todayTasks }} 次</div>
@@ -66,7 +69,9 @@
           <div class="plan-body">
             <!-- 医生信息 -->
             <div class="doctor-info">
-              <div class="doctor-avatar">👨‍⚕️</div>
+              <div class="doctor-avatar">
+                <Stethoscope class="icon-small" />
+              </div>
               <div class="doctor-details">
                 <div class="doctor-label">主治医生</div>
                 <div class="doctor-name">
@@ -78,11 +83,11 @@
             <!-- 计划信息（加密状态） -->
             <div class="plan-info">
               <div class="info-item">
-                <span class="icon">🔐</span>
+                <Lock class="info-icon" />
                 <span class="text">端到端加密保护</span>
               </div>
               <div class="info-item">
-                <span class="icon">📅</span>
+                <Calendar class="info-icon" />
                 <span class="text">
                   {{ formatDate(plan.start_date) }} - {{ formatDate(plan.end_date) }}
                 </span>
@@ -117,6 +122,17 @@ import { medicationPlanStorageService } from '@/service/medicationPlanStorage';
 import { secureExchangeService } from '@/service/secureExchange';
 import { aaService } from '@/service/accountAbstraction';
 import BottomNav from '@/components/BottomNav.vue';
+import { 
+  ArrowLeft, 
+  RefreshCw, 
+  Loader2, 
+  AlertTriangle, 
+  Pill, 
+  AlarmClock, 
+  Stethoscope, 
+  Lock, 
+  Calendar 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 
@@ -468,7 +484,7 @@ function goBack() {
 <style scoped>
 .my-plans-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f5f7fa;
   padding-bottom: 80px;
 }
 
@@ -510,10 +526,6 @@ function goBack() {
   margin: 0;
 }
 
-.placeholder {
-  width: 40px;
-}
-
 .refresh-btn {
   background: transparent;
   border: none;
@@ -525,10 +537,11 @@ function goBack() {
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
+  color: white;
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: rgba(102, 126, 234, 0.1);
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .refresh-btn:disabled {
@@ -536,8 +549,13 @@ function goBack() {
   cursor: not-allowed;
 }
 
-.refresh-btn .icon {
-  font-size: 1.2rem;
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
 }
 
 /* 内容区域 */
@@ -550,16 +568,17 @@ function goBack() {
   text-align: center;
   padding: 60px 20px;
   color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
   animation: spin 1s linear infinite;
-  margin: 0 auto 20px;
+  color: white;
 }
 
 @keyframes spin {
@@ -577,8 +596,10 @@ function goBack() {
 }
 
 .error-icon {
-  font-size: 4rem;
+  width: 64px;
+  height: 64px;
   margin-bottom: 20px;
+  color: #ef4444;
   animation: shake 0.5s;
 }
 
@@ -589,14 +610,14 @@ function goBack() {
 }
 
 .error-title {
-  font-size: 1.2rem;
+  font-size: 18px;
   font-weight: 600;
-  color: #e53e3e;
+  color: #ef4444;
   margin-bottom: 12px;
 }
 
 .error-message {
-  color: #fff;
+  color: white;
   opacity: 0.9;
   margin-bottom: 24px;
   max-width: 280px;
@@ -609,20 +630,16 @@ function goBack() {
   border: none;
   padding: 12px 32px;
   border-radius: 25px;
-  font-size: 1rem;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
   transition: all 0.3s;
 }
 
 .retry-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-}
-
-.retry-btn:active {
-  transform: translateY(0);
+  box-shadow: var(--shadow-lg);
 }
 
 /* 空状态 */
@@ -633,8 +650,10 @@ function goBack() {
 }
 
 .empty-icon {
-  font-size: 64px;
+  width: 64px;
+  height: 64px;
   margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .empty-state p {
@@ -649,12 +668,12 @@ function goBack() {
 
 .refresh-btn-text {
   margin-top: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: white;
+  color: #667eea;
   border: none;
   padding: 10px 24px;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
@@ -662,7 +681,7 @@ function goBack() {
 
 .refresh-btn-text:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  box-shadow: var(--shadow-md);
 }
 
 /* 计划列表 */
@@ -674,7 +693,7 @@ function goBack() {
 
 /* 今日提醒 */
 .today-reminder {
-  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  background: #f59e0b;
   border-radius: 20px;
   padding: 20px;
   display: flex;
@@ -684,234 +703,8 @@ function goBack() {
   animation: pulse-reminder 2s ease-in-out infinite;
 }
 
-@keyframes pulse-reminder {
-  0%, 100% {
-    box-shadow: 0 4px 16px rgba(251, 191, 36, 0.3);
-  }
-  50% {
-    box-shadow: 0 8px 24px rgba(251, 191, 36, 0.5);
-  }
-}
-
-.reminder-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  flex-shrink: 0;
-}
-
-.reminder-content {
-  flex: 1;
-  color: white;
-}
-
-.reminder-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.reminder-count {
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.check-in-btn {
-  padding: 12px 24px;
-  border-radius: 12px;
-  background: white;
-  color: #f59e0b;
-  border: none;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  white-space: nowrap;
-}
-
-.check-in-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* 计划卡片 */
-.plan-card {
-  background: white;
-  border-radius: 20px;
-  padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.plan-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-}
-
-/* 计划头部 */
-.plan-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.plan-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.plan-status.active {
-  background: #d4f4dd;
-  color: #22c55e;
-}
-
-.plan-status.active .status-dot {
-  background: #22c55e;
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-@keyframes pulse-dot {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.plan-status.completed {
-  background: #e0e6ed;
-  color: #718096;
-}
-
-.plan-status.completed .status-dot {
-  background: #718096;
-}
-
-.plan-status.cancelled {
-  background: #ffe4e1;
-  color: #ff6b6b;
-}
-
-.plan-status.cancelled .status-dot {
-  background: #ff6b6b;
-}
-
-.plan-date {
-  font-size: 13px;
-  color: #718096;
-}
-
-/* 计划主体 */
-.plan-body {
-  margin-bottom: 16px;
-}
-
-.doctor-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.doctor-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.doctor-details {
-  flex: 1;
-}
-
-.doctor-label {
-  font-size: 12px;
-  color: #718096;
-  margin-bottom: 4px;
-}
-
-.doctor-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.plan-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #718096;
-}
-
-.info-item .icon {
-  font-size: 16px;
-}
-
-.info-item .text {
-  flex: 1;
-}
-
-/* 计划底部 */
-.plan-footer {
-  display: flex;
-  gap: 12px;
-}
-
-.action-btn {
-  flex: 1;
-  padding: 12px;
-  border-radius: 12px;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.action-btn.primary {
-  background: #f5f7fa;
-  color: #667eea;
-}
-
-.action-btn.primary:hover {
-  background: #e0e6ed;
-}
-
 .action-btn.success {
-  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  background: #22c55e;
   color: white;
 }
 
@@ -920,4 +713,3 @@ function goBack() {
   transform: translateY(-1px);
 }
 </style>
-

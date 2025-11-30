@@ -2,15 +2,18 @@
   <div class="guardian-setup-page">
     <!-- 顶部导航 -->
     <div class="header">
-      <button class="back-btn" @click="goBack">←</button>
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="icon" />
+      </button>
       <h1 class="page-title">守护者设置</h1>
+      <div class="placeholder"></div>
     </div>
     
     <!-- 主要内容 -->
     <div class="content">
       <!-- 说明卡片 -->
       <div class="info-card">
-        <div class="info-icon">🛡️</div>
+        <Shield class="info-icon" />
         <h2 class="info-title">什么是守护者？</h2>
         <p class="info-desc">
           守护者是您信任的人，当您遗失密码时，他们可以帮助您恢复账户访问权限。建议至少添加2位守护者。
@@ -20,7 +23,10 @@
       <!-- 当前守护者列表 -->
       <div class="guardian-section">
         <h2 class="section-title">
-          我的守护者
+          <div class="title-left">
+            <Users class="title-icon" />
+            我的守护者
+          </div>
           <span class="count-badge">{{ guardians.length }}/{{ maxGuardians }}</span>
         </h2>
         
@@ -38,13 +44,13 @@
               <p class="guardian-address">{{ formatAddress(guardian) }}</p>
             </div>
             <button class="remove-btn" @click="confirmRemove(guardian)">
-              ×
+              <X class="icon-small" />
             </button>
           </div>
         </div>
         
         <div v-else class="empty-state">
-          <div class="empty-icon">🔒</div>
+          <ShieldAlert class="empty-icon" />
           <p class="empty-text">还没有设置守护者</p>
         </div>
         
@@ -54,14 +60,19 @@
           class="add-guardian-btn"
           @click="showAddGuardian = true"
         >
-          <span class="add-icon">+</span>
+          <Plus class="add-icon" />
           添加守护者
         </button>
       </div>
       
       <!-- 恢复阈值设置 -->
       <div class="threshold-section">
-        <h2 class="section-title">恢复阈值</h2>
+        <h2 class="section-title">
+          <div class="title-left">
+            <Settings class="title-icon" />
+            恢复阈值
+          </div>
+        </h2>
         <p class="section-desc">需要多少位守护者同意才能恢复账户</p>
         
         <div class="threshold-selector">
@@ -75,6 +86,9 @@
           >
             {{ n }}
           </button>
+          <div v-if="guardians.length === 0" class="threshold-placeholder">
+            请先添加守护者
+          </div>
         </div>
         
         <button
@@ -85,7 +99,7 @@
         >
           <span v-if="!isSaving">保存阈值设置</span>
           <span v-else class="spinner-text">
-            <span class="spinner"></span>
+            <Loader2 class="spinner" />
             保存中...
           </span>
         </button>
@@ -97,14 +111,20 @@
       <div class="modal" @click.stop>
         <div class="modal-header">
           <h3>添加守护者</h3>
-          <button class="close-btn" @click="closeAddGuardian">×</button>
+          <button class="close-btn" @click="closeAddGuardian">
+            <X class="icon" />
+          </button>
         </div>
         <div class="modal-content">
           <p class="modal-desc">从您的家人和医生中选择守护者</p>
           
           <div v-if="relations.length === 0" class="empty-relations">
+            <Users class="empty-icon-small" />
             <p>您还没有添加家人或医生</p>
-            <button class="go-family-btn" @click="goToFamilyCircle">前往家庭圈</button>
+            <button class="go-family-btn" @click="goToFamilyCircle">
+              前往家庭圈
+              <ChevronRight class="icon-mini" />
+            </button>
           </div>
           
           <div v-else class="relation-list">
@@ -115,8 +135,8 @@
               :class="{ selected: selectedRelationId === relation.id }"
               @click="selectedRelationId = relation.id"
             >
-              <div class="relation-avatar">
-                {{ getGroupIcon(relation.groupType) }}
+              <div class="relation-avatar-wrapper" :class="getGroupColorClass(relation.groupType)">
+                <component :is="getGroupIcon(relation.groupType)" class="relation-avatar-icon" />
               </div>
               <div class="relation-info">
                 <div class="relation-name">{{ formatAddress(relation.viewer_address) }}</div>
@@ -127,11 +147,16 @@
                   </span>
                 </div>
               </div>
-              <div v-if="selectedRelationId === relation.id" class="check-icon">✓</div>
+              <div v-if="selectedRelationId === relation.id" class="check-icon">
+                <Check class="icon-mini" />
+              </div>
             </div>
           </div>
           
-          <p v-if="addError" class="error-text">{{ addError }}</p>
+          <p v-if="addError" class="error-text">
+            <AlertCircle class="icon-mini" />
+            {{ addError }}
+          </p>
           <button
             class="confirm-btn"
             @click="addGuardian"
@@ -139,7 +164,7 @@
           >
             <span v-if="!isAdding">确认添加</span>
             <span v-else class="spinner-text">
-              <span class="spinner"></span>
+              <Loader2 class="spinner" />
               添加中...
             </span>
           </button>
@@ -157,6 +182,24 @@ import { aaService } from '../../service/accountAbstraction';
 import { relationService } from '../../service/relation';
 import { authService } from '../../service/auth';
 import type { Relationship } from '../../service/relation';
+import { 
+  ArrowLeft, 
+  Shield, 
+  Users, 
+  X, 
+  ShieldAlert, 
+  Plus, 
+  Settings, 
+  Loader2, 
+  ChevronRight, 
+  Check, 
+  AlertCircle,
+  Stethoscope,
+  Hospital,
+  Microscope,
+  Building2,
+  ClipboardList
+} from 'lucide-vue-next';
 
 const router = useRouter();
 
@@ -192,22 +235,42 @@ const formatAddress = (address: string) => {
 
 // 获取群组图标
 const getGroupIcon = (groupType?: string) => {
-  if (!groupType) return '👤';
+  if (!groupType) return Users;
   
-  const icons: Record<string, string> = {
-    'FAMILY': '👨‍👩‍👧‍👦',
-    'FAMILY_PRIMARY': '👨‍👩‍👧‍👦',
-    'PRIMARY_DOCTOR': '👨‍⚕️',
-    'FAMILY_DOCTOR': '🏥',
-    'SPECIALIST': '🔬',
-    'HOSPITAL': '🏨',
-    'HEALTHCARE_TEAM': '🏥',
-    'EMERGENCY_CONTACT': '🚨',
-    'THERAPIST': '🧘',
-    'CUSTOM': '📋'
+  const icons: Record<string, any> = {
+    'FAMILY': Users,
+    'FAMILY_PRIMARY': Users,
+    'PRIMARY_DOCTOR': Stethoscope,
+    'FAMILY_DOCTOR': Hospital,
+    'SPECIALIST': Microscope,
+    'HOSPITAL': Building2,
+    'HEALTHCARE_TEAM': Hospital,
+    'EMERGENCY_CONTACT': ShieldAlert,
+    'THERAPIST': Stethoscope,
+    'CUSTOM': ClipboardList
   };
   
-  return icons[groupType] || '👤';
+  return icons[groupType] || Users;
+};
+
+// 获取群组颜色类
+const getGroupColorClass = (groupType?: string) => {
+  if (!groupType) return 'blue';
+  
+  const colors: Record<string, string> = {
+    'FAMILY': 'blue',
+    'FAMILY_PRIMARY': 'blue',
+    'PRIMARY_DOCTOR': 'green',
+    'FAMILY_DOCTOR': 'teal',
+    'SPECIALIST': 'purple',
+    'HOSPITAL': 'orange',
+    'HEALTHCARE_TEAM': 'teal',
+    'EMERGENCY_CONTACT': 'red',
+    'THERAPIST': 'indigo',
+    'CUSTOM': 'gray'
+  };
+  
+  return colors[groupType] || 'blue';
 };
 
 // 获取状态文本
@@ -395,26 +458,47 @@ onMounted(async () => {
 .header {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 20px;
+  justify-content: space-between;
+  padding: 16px 20px;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .back-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: #4299e1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2d3748;
   cursor: pointer;
-  padding: 8px;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: var(--bg-body);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .page-title {
-  font-size: 1.3rem;
+  font-size: 18px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
+}
+
+.placeholder {
+  width: 40px;
 }
 
 .content {
@@ -424,27 +508,30 @@ onMounted(async () => {
 }
 
 .info-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
-  border-radius: 16px;
-  padding: 25px;
-  margin-bottom: 25px;
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 24px;
   text-align: center;
+  box-shadow: var(--shadow-md);
 }
 
 .info-icon {
-  font-size: 3rem;
-  margin-bottom: 15px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  opacity: 0.9;
 }
 
 .info-title {
-  font-size: 1.3rem;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   margin: 0 0 12px 0;
 }
 
 .info-desc {
-  font-size: 0.95rem;
+  font-size: 14px;
   line-height: 1.6;
   opacity: 0.9;
   margin: 0;
@@ -453,32 +540,46 @@ onMounted(async () => {
 .guardian-section,
 .threshold-section {
   background: white;
-  border-radius: 16px;
-  padding: 25px;
+  border-radius: 20px;
+  padding: 24px;
   margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
 }
 
 .section-title {
-  font-size: 1.2rem;
+  font-size: 16px;
   font-weight: 600;
   color: #2d3748;
-  margin: 0 0 15px 0;
+  margin: 0 0 16px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+.title-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--color-primary);
+}
+
 .count-badge {
-  background: #edf2f7;
-  color: #4a5568;
-  font-size: 0.9rem;
-  padding: 4px 12px;
-  border-radius: 12px;
+  background: #f7fafc;
+  color: #718096;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-weight: 500;
 }
 
 .section-desc {
   color: #718096;
-  font-size: 0.9rem;
+  font-size: 13px;
   margin: 0 0 20px 0;
 }
 
@@ -492,32 +593,33 @@ onMounted(async () => {
 .guardian-item {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 15px;
+  gap: 16px;
+  padding: 16px;
   background: #f7fafc;
-  border-radius: 12px;
-  transition: background 0.2s;
+  border-radius: 16px;
+  transition: all 0.3s;
 }
 
 .guardian-item:hover {
-  background: #edf2f7;
+  background: #f1f5f9;
 }
 
 .guardian-avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .avatar-text {
   color: white;
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
 }
 
 .guardian-info {
@@ -525,27 +627,26 @@ onMounted(async () => {
 }
 
 .guardian-name {
-  font-size: 1rem;
+  font-size: 15px;
   font-weight: 600;
   color: #2d3748;
   margin: 0 0 4px 0;
 }
 
 .guardian-address {
-  font-size: 0.85rem;
-  color: #718096;
-  font-family: monospace;
+  font-size: 12px;
+  color: #a0aec0;
+  font-family: 'Courier New', monospace;
   margin: 0;
 }
 
 .remove-btn {
-  background: #fed7d7;
-  color: #c53030;
+  background: #fee2e2;
+  color: #ef4444;
   border: none;
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  font-size: 1.5rem;
+  border-radius: 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -554,103 +655,128 @@ onMounted(async () => {
 }
 
 .remove-btn:hover {
-  background: #fc8181;
-  color: white;
+  background: #fecaca;
+  transform: scale(1.05);
 }
 
 .empty-state {
   text-align: center;
   padding: 40px 20px;
+  background: #f7fafc;
+  border-radius: 16px;
+  margin-bottom: 20px;
 }
 
 .empty-icon {
-  font-size: 3rem;
-  margin-bottom: 15px;
+  width: 48px;
+  height: 48px;
+  color: #a0aec0;
+  margin-bottom: 12px;
   opacity: 0.5;
 }
 
 .empty-text {
-  color: #a0aec0;
+  color: #718096;
   margin: 0;
+  font-size: 14px;
 }
 
 .add-guardian-btn {
   width: 100%;
   background: white;
-  color: #4299e1;
-  border: 2px dashed #4299e1;
-  border-radius: 12px;
+  color: var(--color-primary);
+  border: 2px dashed var(--primary-200);
+  border-radius: 16px;
   padding: 16px;
-  font-size: 1rem;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: all 0.2s;
+  transition: all 0.3s;
 }
 
 .add-guardian-btn:hover {
-  background: #f7fafc;
-  border-color: #3182ce;
+  background: var(--primary-50);
+  border-color: var(--color-primary);
 }
 
 .add-icon {
-  font-size: 1.5rem;
+  width: 20px;
+  height: 20px;
 }
 
 .threshold-selector {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .threshold-btn {
   flex: 1;
   min-width: 60px;
-  background: #f7fafc;
-  color: #4a5568;
-  border: 2px solid #e2e8f0;
+  background: white;
+  color: #718096;
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 16px;
-  font-size: 1.3rem;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
 }
 
 .threshold-btn:hover:not(:disabled) {
-  border-color: #4299e1;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: translateY(-2px);
 }
 
 .threshold-btn.active {
-  background: #4299e1;
+  background: var(--color-primary);
   color: white;
-  border-color: #4299e1;
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .threshold-btn:disabled {
-  opacity: 0.4;
+  opacity: 0.5;
   cursor: not-allowed;
+  background: #f7fafc;
+}
+
+.threshold-placeholder {
+  width: 100%;
+  text-align: center;
+  padding: 20px;
+  background: #f7fafc;
+  border-radius: 12px;
+  color: #a0aec0;
+  font-size: 14px;
 }
 
 .save-threshold-btn {
   width: 100%;
-  background: #48bb78;
+  background: #10b981;
   color: white;
   border: none;
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 16px;
-  font-size: 1rem;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
 .save-threshold-btn:hover:not(:disabled) {
-  background: #38a169;
+  background: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
 }
 
 .save-threshold-btn:disabled {
@@ -670,14 +796,22 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
   padding: 20px;
 }
 
 .modal {
   background: white;
-  border-radius: 16px;
+  border-radius: 24px;
   width: 100%;
   max-width: 450px;
+  box-shadow: var(--shadow-xl);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .modal-header {
@@ -685,79 +819,202 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .modal-header h3 {
-  font-size: 1.2rem;
+  font-size: 18px;
   font-weight: 600;
-  color: #2d3748;
+  color: var(--text-primary);
   margin: 0;
 }
 
 .close-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: #a0aec0;
+  color: var(--text-tertiary);
   cursor: pointer;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
 .close-btn:hover {
-  background: #f7fafc;
+  background: var(--bg-body);
+  color: var(--text-primary);
 }
 
 .modal-content {
-  padding: 20px;
+  padding: 24px;
 }
 
 .modal-desc {
-  color: #718096;
-  font-size: 0.95rem;
-  margin: 0 0 15px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0 0 20px 0;
 }
 
-.address-input {
-  width: 100%;
-  padding: 14px 16px;
-  border: 2px solid #e2e8f0;
+.relation-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.relation-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
-  font-size: 0.95rem;
-  font-family: monospace;
-  margin-bottom: 15px;
-  transition: border-color 0.2s;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.address-input:focus {
-  outline: none;
-  border-color: #4299e1;
+.relation-item:hover {
+  background: var(--bg-body);
+}
+
+.relation-item.selected {
+  border-color: var(--color-primary);
+  background: var(--primary-50);
+}
+
+.relation-avatar-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.relation-avatar-wrapper.blue { background: #e0f2fe; color: #0ea5e9; }
+.relation-avatar-wrapper.green { background: #dcfce7; color: #22c55e; }
+.relation-avatar-wrapper.teal { background: #ccfbf1; color: #14b8a6; }
+.relation-avatar-wrapper.purple { background: #f3e8ff; color: #a855f7; }
+.relation-avatar-wrapper.orange { background: #ffedd5; color: #f97316; }
+.relation-avatar-wrapper.red { background: #fee2e2; color: #ef4444; }
+.relation-avatar-wrapper.indigo { background: #e0e7ff; color: #6366f1; }
+.relation-avatar-wrapper.gray { background: #f3f4f6; color: #6b7280; }
+
+.relation-avatar-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.relation-info {
+  flex: 1;
+}
+
+.relation-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.relation-meta {
+  display: flex;
+  gap: 6px;
+}
+
+.group-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-body);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+.status-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.status-badge.active { background: #dcfce7; color: #166534; }
+.status-badge.pending { background: #fef3c7; color: #92400e; }
+
+.check-icon {
+  width: 24px;
+  height: 24px;
+  background: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-mini {
+  width: 14px;
+  height: 14px;
+}
+
+.empty-relations {
+  text-align: center;
+  padding: 30px 20px;
+  background: var(--bg-body);
+  border-radius: 16px;
+  margin-bottom: 20px;
+}
+
+.empty-icon-small {
+  width: 32px;
+  height: 32px;
+  color: var(--text-tertiary);
+  margin-bottom: 10px;
+}
+
+.go-family-btn {
+  background: white;
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
 }
 
 .error-text {
-  color: #e53e3e;
-  font-size: 0.9rem;
-  margin: -10px 0 15px 0;
+  color: #ef4444;
+  font-size: 13px;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .confirm-btn {
   width: 100%;
   padding: 14px;
-  background: #4299e1;
+  background: var(--color-primary);
   color: white;
   border: none;
-  border-radius: 12px;
-  font-size: 1rem;
+  border-radius: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s;
 }
 
 .confirm-btn:hover:not(:disabled) {
-  background: #3182ce;
+  background: var(--primary-700);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .confirm-btn:disabled {
@@ -768,240 +1025,17 @@ onMounted(async () => {
 .spinner-text {
   display: flex;
   align-items: center;
-  gap: 10px;
-}
-
-.spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* 关系人列表样式 */
-.empty-relations {
-  text-align: center;
-  padding: 30px 20px;
-}
-
-.empty-relations p {
-  color: #718096;
-  margin-bottom: 16px;
-}
-
-.go-family-btn {
-  background: #4299e1;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 0.95rem;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.go-family-btn:hover {
-  background: #3182ce;
-}
-
-.relation-list {
-  max-height: 300px;
-  overflow-y: auto;
-  margin-bottom: 20px;
-}
-
-.relation-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.relation-item:hover {
-  border-color: #4299e1;
-  background: #f7fafc;
-}
-
-.relation-item.selected {
-  border-color: #4299e1;
-  background: #ebf8ff;
-}
-
-.relation-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #e2e8f0;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.relation-info {
-  flex: 1;
-}
-
-.relation-name {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 4px;
-}
-
-.relation-address {
-  font-size: 0.85rem;
-  color: #718096;
-  font-family: monospace;
-}
-
-.check-icon {
-  color: #4299e1;
-  font-size: 1.5rem;
-  font-weight: bold;
+  gap: 8px;
 }
 
 .spinner {
-  width: 16px;
-  height: 16px;
-  border: 2px solid white;
-  border-top-color: transparent;
-  border-radius: 50%;
-  display: inline-block;
-  animation: spin 0.6s linear infinite;
+  width: 18px;
+  height: 18px;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
-
-.spinner-text {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* 关系人列表样式 */
-.relation-list {
-  max-height: 400px;
-  overflow-y: auto;
-  margin-bottom: 20px;
-}
-
-.relation-item {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 15px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  background: #f7fafc;
-  margin-bottom: 10px;
-}
-
-.relation-item:hover {
-  background: #edf2f7;
-  transform: translateY(-2px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-}
-
-.relation-item.selected {
-  background: #ebf8ff;
-  border: 2px solid #4299e1;
-}
-
-.relation-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  flex-shrink: 0;
-}
-
-.relation-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.relation-name {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 6px;
-  font-family: monospace;
-}
-
-.relation-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.group-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  background: #e6fffa;
-  color: #047857;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  border: 1px solid #a7f3d0;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.status-badge.active,
-.status-badge.accepted {
-  background: #d1fae5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
-}
-
-.status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
-}
-
-.status-badge.suspended,
-.status-badge.revoked {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
-
-.check-icon {
-  font-size: 1.5rem;
-  color: #4299e1;
-  font-weight: bold;
-  flex-shrink: 0;
 }
 </style>

@@ -2,28 +2,30 @@
   <div class="my-patients-page">
     <!-- 顶部导航 -->
     <div class="header">
-      <button class="back-btn" @click="goBack">←</button>
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="icon" />
+      </button>
       <h1 class="page-title">{{ pageTitle }}</h1>
       <button class="refresh-btn" @click="loadRelationships" :disabled="isLoading">
-        🔄
+        <RefreshCw class="icon" :class="{ 'spin': isLoading }" />
       </button>
     </div>
     
     <!-- 加载状态 -->
     <div v-if="isLoading && relationships.length === 0" class="loading-container">
-      <div class="spinner"></div>
+      <Loader2 class="spinner" />
       <p>加载中...</p>
     </div>
     
     <!-- 错误提示 -->
     <div v-if="errorMessage && !isLoading" class="error-banner">
-      <span class="error-icon">⚠️</span>
+      <AlertTriangle class="error-icon" />
       <span>{{ errorMessage }}</span>
     </div>
     
     <!-- 空状态 -->
     <div v-if="!isLoading && relationships.length === 0 && !errorMessage" class="empty-state">
-      <div class="empty-icon">📭</div>
+      <Inbox class="empty-icon" />
       <h3 class="empty-title">暂无关系</h3>
       <p class="empty-desc">{{ emptyMessage }}</p>
     </div>
@@ -48,22 +50,28 @@
       
       <!-- 筛选器 -->
       <div class="filter-section">
-        <select v-model="filterStatus" class="filter-select">
-          <option value="all">全部状态</option>
-          <option value="active">活跃</option>
-          <option value="suspended">已暂停</option>
-          <option value="revoked">已撤销</option>
-        </select>
+        <div class="select-wrapper">
+          <select v-model="filterStatus" class="filter-select">
+            <option value="all">全部状态</option>
+            <option value="active">活跃</option>
+            <option value="suspended">已暂停</option>
+            <option value="revoked">已撤销</option>
+          </select>
+          <ChevronDown class="select-arrow" />
+        </div>
         
-        <select v-model="filterGroupType" class="filter-select">
-          <option value="all">全部类型</option>
-          <option value="FAMILY_PRIMARY">家人</option>
-          <option value="PRIMARY_DOCTOR">主治医生</option>
-          <option value="HEALTHCARE_TEAM">医护团队</option>
-          <option value="EMERGENCY_CONTACT">紧急联系人</option>
-          <option value="THERAPIST">康复师</option>
-          <option value="CUSTOM">自定义</option>
-        </select>
+        <div class="select-wrapper">
+          <select v-model="filterGroupType" class="filter-select">
+            <option value="all">全部类型</option>
+            <option value="FAMILY_PRIMARY">家人</option>
+            <option value="PRIMARY_DOCTOR">主治医生</option>
+            <option value="HEALTHCARE_TEAM">医护团队</option>
+            <option value="EMERGENCY_CONTACT">紧急联系人</option>
+            <option value="THERAPIST">康复师</option>
+            <option value="CUSTOM">自定义</option>
+          </select>
+          <ChevronDown class="select-arrow" />
+        </div>
       </div>
       
       <!-- 关系卡片列表 -->
@@ -76,8 +84,8 @@
           @click="viewRelationshipDetail(relationship)"
         >
           <!-- 左侧图标 -->
-          <div class="card-icon">
-            {{ getGroupIcon(relationship.group_type) }}
+          <div class="card-icon-wrapper" :class="getGroupColorClass(relationship.group_type)">
+            <component :is="getGroupIcon(relationship.group_type)" class="card-icon" />
           </div>
           
           <!-- 中间信息 -->
@@ -87,7 +95,7 @@
                 {{ getMemberDisplayName(getOwnerAddress(relationship)) }}
               </h3>
               <span v-if="remarks[getOwnerAddress(relationship)]" class="remark-badge">
-                📝 {{ remarks[getOwnerAddress(relationship)] }}
+                <FileText class="icon-mini" /> {{ remarks[getOwnerAddress(relationship)] }}
               </span>
             </div>
             <div class="owner-address-sub">
@@ -105,10 +113,10 @@
             
             <div class="card-footer">
               <span class="date-info">
-                加入时间: {{ formatDate(relationship.joined_at) }}
+                加入: {{ formatDate(relationship.joined_at) }}
               </span>
               <span v-if="relationship.last_accessed_at" class="date-info">
-                最后访问: {{ formatDate(relationship.last_accessed_at) }}
+                访问: {{ formatDate(relationship.last_accessed_at) }}
               </span>
             </div>
             
@@ -126,9 +134,7 @@
           </div>
           
           <!-- 右侧箭头 -->
-          <div class="card-arrow">
-            →
-          </div>
+          <ChevronRight class="card-arrow" />
         </div>
       </div>
     </div>
@@ -146,6 +152,23 @@ import {
 import { authService } from '@/service/auth'
 import { memberRemarkService } from '@/service/memberRemark'
 import { memberInfoService, type MemberInfo } from '@/service/memberInfo'
+import { 
+  ArrowLeft, 
+  RefreshCw, 
+  Loader2, 
+  AlertTriangle, 
+  Inbox, 
+  ChevronDown, 
+  FileText, 
+  ChevronRight,
+  Users,
+  Stethoscope,
+  Hospital,
+  Siren,
+  Activity,
+  ClipboardList,
+  User
+} from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -279,19 +302,36 @@ const viewRelationshipDetail = (relationship: RelationshipAsViewer) => {
 
 // 获取群组图标
 const getGroupIcon = (groupType: string) => {
-  const icons: Record<string, string> = {
-    'FAMILY': '👨‍👩‍👧‍👦',
-    'FAMILY_PRIMARY': '👨‍👩‍👧‍👦',
-    'PRIMARY_DOCTOR': '👨‍⚕️',
-    'FAMILY_DOCTOR': '🏥',
-    'SPECIALIST': '🔬',
-    'HOSPITAL': '🏨',
-    'HEALTHCARE_TEAM': '🏥',
-    'EMERGENCY_CONTACT': '🚨',
-    'THERAPIST': '🧘',
-    'CUSTOM': '📋'
+  const icons: Record<string, any> = {
+    'FAMILY': Users,
+    'FAMILY_PRIMARY': Users,
+    'PRIMARY_DOCTOR': Stethoscope,
+    'FAMILY_DOCTOR': Hospital,
+    'SPECIALIST': Stethoscope,
+    'HOSPITAL': Hospital,
+    'HEALTHCARE_TEAM': Hospital,
+    'EMERGENCY_CONTACT': Siren,
+    'THERAPIST': Activity,
+    'CUSTOM': ClipboardList
   }
-  return icons[groupType] || '👤'
+  return icons[groupType] || User
+}
+
+// 获取群组颜色类
+const getGroupColorClass = (groupType: string) => {
+  const colors: Record<string, string> = {
+    'FAMILY': 'blue',
+    'FAMILY_PRIMARY': 'blue',
+    'PRIMARY_DOCTOR': 'green',
+    'FAMILY_DOCTOR': 'teal',
+    'SPECIALIST': 'purple',
+    'HOSPITAL': 'orange',
+    'HEALTHCARE_TEAM': 'teal',
+    'EMERGENCY_CONTACT': 'red',
+    'THERAPIST': 'indigo',
+    'CUSTOM': 'gray'
+  }
+  return colors[groupType] || 'gray'
 }
 
 // 获取状态文本
@@ -404,31 +444,33 @@ onActivated(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 15px;
-  padding: 15px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px 20px;
+
+  background: #667eea;
+
   color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.back-btn,
-.refresh-btn {
+.back-btn, .refresh-btn {
   background: rgba(255, 255, 255, 0.2);
   border: none;
-  color: white;
-  font-size: 1.5rem;
   width: 40px;
   height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: white;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  backdrop-filter: blur(5px);
 }
 
-.back-btn:hover,
-.refresh-btn:hover:not(:disabled) {
+.back-btn:hover, .refresh-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
 }
@@ -438,12 +480,25 @@ onActivated(async () => {
   cursor: not-allowed;
 }
 
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .page-title {
-  flex: 1;
-  font-size: 1.3rem;
+  font-size: 18px;
   font-weight: 600;
   margin: 0;
   text-align: center;
+  flex: 1;
 }
 
 .loading-container {
@@ -453,61 +508,60 @@ onActivated(async () => {
   justify-content: center;
   padding: 60px 20px;
   gap: 15px;
+  color: #718096;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #e2e8f0;
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+  color: #667eea;
 }
 
 .error-banner {
   margin: 20px;
   padding: 15px;
-  background: #fff5f5;
-  border-left: 4px solid #e53e3e;
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
   border-radius: 8px;
-  color: #c53030;
+  color: #b91c1c;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .error-icon {
-  font-size: 1.2rem;
+  width: 20px;
+  height: 20px;
 }
 
 .empty-state {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   padding: 60px 20px;
+  color: #718096;
 }
 
 .empty-icon {
-  font-size: 4rem;
-  margin-bottom: 20px;
+  width: 64px;
+  height: 64px;
+  color: #cbd5e0;
+  margin-bottom: 16px;
 }
 
 .empty-title {
-  font-size: 1.2rem;
+  font-size: 18px;
   font-weight: 600;
   color: #2d3748;
-  margin: 0 0 10px 0;
+  margin: 0 0 8px 0;
 }
 
 .empty-desc {
-  font-size: 1rem;
-  color: #718096;
-  margin: 0;
-  line-height: 1.5;
+  font-size: 14px;
+  text-align: center;
+  max-width: 300px;
 }
 
 .relationships-container {
@@ -517,158 +571,123 @@ onActivated(async () => {
 .stats-section {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
 .stat-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
+  background: white;
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.08);
-  border: 1px solid rgba(102, 126, 234, 0.1);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.15);
-  border-color: rgba(102, 126, 234, 0.3);
-}
-
-.stat-card:hover::before {
-  opacity: 1;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
 }
 
 .stat-value {
-  font-size: 2.2rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 5px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #667eea;
+  margin-bottom: 4px;
   line-height: 1.2;
 }
 
 .stat-label {
-  font-size: 0.9rem;
+  font-size: 12px;
   color: #718096;
-  font-weight: 500;
 }
 
 .filter-section {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
-.filter-select {
+.select-wrapper {
+  position: relative;
   flex: 1;
-  padding: 12px 15px;
-  border: 2px solid #e2e8f0;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 10px 12px;
+  padding-right: 32px;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
-  font-size: 0.95rem;
+  font-size: 13px;
+  color: #2d3748;
   background: white;
-  cursor: pointer;
-  transition: border-color 0.2s;
+  appearance: none;
 }
 
 .filter-select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: var(--color-primary);
+}
+
+.select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #a0aec0;
+  pointer-events: none;
 }
 
 .relationships-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 16px;
 }
 
 .relationship-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  background: white;
   border-radius: 20px;
   padding: 20px;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 16px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-  border: 1px solid rgba(102, 126, 234, 0.08);
-  position: relative;
-  overflow: hidden;
-}
-
-.relationship-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s;
+  transition: all 0.3s;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid transparent;
 }
 
 .relationship-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.15);
-  border-color: rgba(102, 126, 234, 0.2);
-}
-
-.relationship-card:hover::before {
-  opacity: 1;
-}
-
-.relationship-card:active {
-  transform: translateY(-2px) scale(0.99);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-100);
 }
 
 .relationship-card.inactive {
-  opacity: 0.6;
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-  filter: grayscale(0.3);
+  opacity: 0.7;
+  background: #f9fafb;
 }
 
-.card-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.card-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
-  position: relative;
-  animation: pulse 2s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
-  }
-  50% {
-    box-shadow: 0 4px 24px rgba(102, 126, 234, 0.5);
-  }
+.card-icon-wrapper.blue { background: #e0f2fe; color: #0ea5e9; }
+.card-icon-wrapper.green { background: #dcfce7; color: #22c55e; }
+.card-icon-wrapper.teal { background: #ccfbf1; color: #14b8a6; }
+.card-icon-wrapper.purple { background: #f3e8ff; color: #a855f7; }
+.card-icon-wrapper.orange { background: #ffedd5; color: #f97316; }
+.card-icon-wrapper.red { background: #fee2e2; color: #ef4444; }
+.card-icon-wrapper.indigo { background: #e0e7ff; color: #6366f1; }
+.card-icon-wrapper.gray { background: #f3f4f6; color: #6b7280; }
+
+.card-icon {
+  width: 28px;
+  height: 28px;
 }
 
 .card-content {
@@ -679,141 +698,100 @@ onActivated(async () => {
 .card-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 4px;
   flex-wrap: wrap;
 }
 
 .owner-name {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
 }
 
-.owner-address-sub {
-  font-size: 0.85rem;
-  color: #a0aec0;
-  font-family: monospace;
-  margin-bottom: 8px;
-}
-
 .remark-badge {
   display: inline-flex;
   align-items: center;
-  padding: 4px 10px;
-  background: #ebf8ff;
-  color: #2c5282;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #f7fafc;
+  color: #718096;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.icon-mini {
+  width: 10px;
+  height: 10px;
+}
+
+.owner-address-sub {
+  font-size: 12px;
+  color: #a0aec0;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 8px;
 }
 
 .card-meta {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
 .group-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.85rem;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
   font-weight: 500;
-}
-
-.type-FAMILY_PRIMARY,
-.type-FAMILY {
-  background: #e6fffa;
-  color: #047857;
-  border: 1px solid #a7f3d0;
-}
-
-.type-PRIMARY_DOCTOR,
-.type-HEALTHCARE_TEAM {
-  background: #ebf8ff;
-  color: #2c5282;
-  border: 1px solid #bee3f8;
-}
-
-.type-EMERGENCY_CONTACT {
-  background: #fff5f5;
-  color: #c53030;
-  border: 1px solid #feb2b2;
-}
-
-.type-THERAPIST,
-.type-CUSTOM {
-  background: #faf5ff;
-  color: #6b46c1;
-  border: 1px solid #e9d8fd;
+  background: #f7fafc;
+  color: #718096;
 }
 
 .status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.85rem;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
   font-weight: 500;
 }
 
-.status-active,
-.status-accepted {
-  background: #d1fae5;
-  color: #065f46;
-  border: 1px solid #a7f3d0;
-}
-
-.status-pending {
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
-}
-
-.status-suspended,
-.status-revoked {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
-}
+.status-active { background: #dcfce7; color: #166534; }
+.status-suspended { background: #fee2e2; color: #991b1b; }
+.status-pending { background: #fef3c7; color: #92400e; }
+.status-revoked { background: #f3f4f6; color: #374151; }
 
 .card-footer {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: 2px;
+  margin-bottom: 8px;
 }
 
 .date-info {
-  font-size: 0.85rem;
+  font-size: 11px;
   color: #a0aec0;
 }
 
 .permissions-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 4px;
 }
 
 .permission-tag {
-  padding: 3px 8px;
-  background: #edf2f7;
-  color: #4a5568;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  font-size: 10px;
+  padding: 2px 6px;
+  background: #f7fafc;
+  border-radius: 4px;
+  color: #718096;
+  border: 1px solid #e2e8f0;
 }
 
 .card-arrow {
-  font-size: 1.5rem;
+  width: 20px;
+  height: 20px;
   color: #cbd5e0;
-  flex-shrink: 0;
 }
 </style>
-

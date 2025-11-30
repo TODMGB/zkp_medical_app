@@ -3,11 +3,12 @@
     <!-- 顶部导航栏 -->
     <div class="top-bar">
       <button @click="goBack" class="back-btn">
-        <span class="icon">←</span>
+        <ArrowLeft class="icon" />
       </button>
       <h1 class="title">创建用药计划</h1>
       <button @click="savePlan" class="save-btn" :disabled="!canSave || isSaving">
-        {{ isSaving ? '保存中...' : '保存' }}
+        <Loader2 v-if="isSaving" class="spinner-small" />
+        <span v-else>保存</span>
       </button>
     </div>
 
@@ -20,9 +21,9 @@
         </div>
         <div v-if="!selectedPatient" class="patient-selector">
           <button @click="showPatientList = true" class="select-patient-btn">
-            <span class="icon">👤</span>
+            <User class="icon" />
             <span>选择患者</span>
-            <span class="arrow">→</span>
+            <ChevronRight class="arrow" />
           </button>
         </div>
         <div v-else class="selected-patient-card">
@@ -97,7 +98,7 @@
             placeholder="搜索药物名称..."
             class="search-input"
           />
-          <span class="search-icon">🔍</span>
+          <Search class="search-icon" />
         </div>
 
         <!-- 搜索结果 -->
@@ -123,7 +124,9 @@
           >
             <div class="med-header">
               <div class="med-name">{{ med.medication_name }}</div>
-              <button @click="removeMedication(index)" class="remove-btn">×</button>
+              <button @click="removeMedication(index)" class="remove-btn">
+                <X class="icon-small" />
+              </button>
             </div>
             <div class="med-form">
               <div class="form-group">
@@ -166,7 +169,7 @@
           </div>
         </div>
         <div v-else class="empty-state">
-          <div class="empty-icon">💊</div>
+          <Pill class="empty-icon" />
           <p>暂无药物，请搜索并添加</p>
         </div>
       </div>
@@ -185,7 +188,9 @@
           >
             <div class="reminder-header">
               <div class="reminder-title">提醒 {{ index + 1 }}</div>
-              <button @click="removeReminder(index)" class="remove-btn">×</button>
+              <button @click="removeReminder(index)" class="remove-btn">
+                <X class="icon-small" />
+              </button>
             </div>
             <div class="reminder-form">
               <div class="form-group">
@@ -222,7 +227,7 @@
           </div>
         </div>
         <button @click="addReminder" class="add-reminder-btn">
-          <span class="icon">+</span>
+          <Plus class="icon" />
           <span>添加提醒</span>
         </button>
       </div>
@@ -245,7 +250,7 @@
 
       <!-- 加密提示 -->
       <div class="encryption-notice" v-if="selectedPatient">
-        <div class="notice-icon">🔐</div>
+        <Lock class="notice-icon" />
         <div class="notice-text">
           <div class="notice-title">端到端加密保护</div>
           <div class="notice-desc">所有敏感信息将使用ECDH加密，只有患者可以解密查看</div>
@@ -259,21 +264,23 @@
         <div class="modal-header">
           <h2>选择患者</h2>
           <button @click="refreshPatients" class="refresh-btn" :disabled="loadingPatients" title="刷新患者列表">
-            <span :class="{ 'spinning': loadingPatients }">🔄</span>
+            <RefreshCw class="icon-small" :class="{ 'spinning': loadingPatients }" />
           </button>
-          <button @click="showPatientList = false" class="close-btn">×</button>
+          <button @click="showPatientList = false" class="close-btn">
+            <X class="icon-small" />
+          </button>
         </div>
         <div class="modal-body">
           <div v-if="loadingPatients" class="loading-state">
-            <div class="spinner"></div>
+            <Loader2 class="spinner" />
             <p>加载患者列表...</p>
           </div>
           <div v-else-if="patients.length === 0" class="empty-state">
-            <div class="empty-icon">👥</div>
+            <Users class="empty-icon" />
             <p>暂无患者</p>
             <p class="hint">请先添加患者关系</p>
             <button @click="checkMessagesAndRefresh" class="refresh-manual-btn">
-              <span>📬</span>
+              <Mail class="icon-small" />
               <span>检查待接收的信息</span>
             </button>
           </div>
@@ -289,7 +296,7 @@
                 <div class="patient-name">{{ patient.username || '未知患者' }}</div>
                 <div class="patient-address">{{ formatAddress(patient.smart_account) }}</div>
               </div>
-              <div class="select-icon">→</div>
+              <ChevronRight class="select-icon" />
             </div>
           </div>
         </div>
@@ -299,7 +306,7 @@
     <!-- 加载遮罩 -->
     <div v-if="isSaving" class="loading-overlay">
       <div class="loading-card">
-        <div class="spinner large"></div>
+        <Loader2 class="spinner large" />
         <p>正在保存用药计划...</p>
         <p class="hint">加密中，请稍候</p>
       </div>
@@ -316,6 +323,20 @@ import { aaService } from '@/service/accountAbstraction';
 import { memberInfoService, type MemberInfo } from '@/service/memberInfo';
 import { relationService } from '@/service/relation';
 import { secureExchangeService } from '@/service/secureExchange';
+import { 
+  ArrowLeft, 
+  User, 
+  ChevronRight, 
+  Search, 
+  Plus, 
+  X, 
+  Lock, 
+  RefreshCw, 
+  Users, 
+  Mail, 
+  Loader2,
+  Pill
+} from 'lucide-vue-next';
 
 const router = useRouter();
 
@@ -744,7 +765,9 @@ function goBack() {
 <style scoped>
 .create-plan-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  background: #f5f7fa;
+
   padding-bottom: 20px;
 }
 
@@ -769,6 +792,11 @@ function goBack() {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
 }
 
 .back-btn:hover, .save-btn:hover:not(:disabled) {
@@ -780,628 +808,23 @@ function goBack() {
   cursor: not-allowed;
 }
 
-.back-btn .icon {
-  font-size: 18px;
-}
 
-.title {
-  color: white;
-  font-size: 18px;
-  font-weight: 600;
-  margin: 0;
-}
-
-/* 内容区域 */
-.content {
-  padding: 20px;
-}
-
-/* 区块 */
-.section {
-  background: white;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-
-.step-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  font-weight: bold;
-}
-
-.section-header h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #2c3e50;
-}
-
-/* 患者选择 */
-.select-patient-btn {
-  width: 100%;
-  padding: 16px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  border: 2px dashed #667eea;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.select-patient-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.select-patient-btn .icon {
-  font-size: 24px;
-}
-
-.select-patient-btn .arrow {
-  font-size: 20px;
-  color: #667eea;
-}
-
-.selected-patient-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.patient-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.patient-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.patient-details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.patient-name {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.patient-address {
-  font-size: 12px;
-  opacity: 0.8;
-}
-
-.change-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.change-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* 表单 */
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group.full-width {
-  grid-column: 1 / -1;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #2c3e50;
-}
-
-.input-field, .textarea-field, .select-field {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #e0e6ed;
-  font-size: 14px;
-  transition: all 0.3s;
-}
-
-.input-field:focus, .textarea-field:focus, .select-field:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.input-field.small, .textarea-field.small {
-  padding: 8px;
-  font-size: 13px;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-/* 搜索框 */
-.search-box {
-  position: relative;
-  margin-bottom: 16px;
-}
-
-.search-input {
-  width: 100%;
-  padding: 12px 40px 12px 12px;
-  border-radius: 8px;
-  border: 1px solid #e0e6ed;
-  font-size: 14px;
-}
-
-.search-icon {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 16px;
-}
-
-/* 搜索结果 */
-.search-results {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #e0e6ed;
-  border-radius: 8px;
-  margin-bottom: 16px;
-}
-
-.search-result-item {
-  padding: 12px;
-  border-bottom: 1px solid #e0e6ed;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.search-result-item:last-child {
-  border-bottom: none;
-}
-
-.search-result-item:hover {
-  background: #f5f7fa;
-}
-
-.med-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #2c3e50;
-}
-
-.med-info {
-  font-size: 12px;
-  color: #718096;
-  margin-top: 4px;
-}
-
-.search-result-item .add-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  background: #667eea;
-  color: white;
-  border: none;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.search-result-item .add-btn:hover {
-  background: #5568d3;
-}
-
-/* 药物卡片 */
-.medications-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.medication-card {
-  padding: 16px;
-  border-radius: 12px;
-  background: #f5f7fa;
-  border: 1px solid #e0e6ed;
-}
-
-.med-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.med-header .med-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: #667eea;
-}
-
-.remove-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #ff6b6b;
-  color: white;
-  border: none;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.remove-btn:hover {
-  background: #ff5252;
-  transform: scale(1.1);
-}
-
-.med-form {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-/* 提醒列表 */
-.reminders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.reminder-card {
-  padding: 16px;
-  border-radius: 12px;
-  background: #fff5f5;
-  border: 1px solid #ffc9c9;
-}
-
-.reminder-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.reminder-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #ff6b6b;
-}
-
-.reminder-form {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.add-reminder-btn {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  border: 2px dashed #667eea;
-  color: #667eea;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: all 0.3s;
-}
-
-.add-reminder-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-/* 加密提示 */
-.encryption-notice {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 20px;
-  color: white;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.notice-icon {
-  font-size: 32px;
-}
-
-.notice-text {
-  flex: 1;
-}
-
-.notice-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.notice-desc {
-  font-size: 13px;
-  opacity: 0.9;
-}
-
-/* 空状态 */
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #718096;
-}
-
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-}
-
-.empty-state p {
-  margin: 8px 0;
-}
-
-.empty-state .hint {
-  font-size: 13px;
-  color: #a0aec0;
-}
-
-/* 模态框 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 500px;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px;
-  border-bottom: 1px solid #e0e6ed;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 18px;
-  color: #2c3e50;
-}
-
-.refresh-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #f5f7fa;
-  border: none;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.3s;
-  margin-right: auto;
-}
-
-.refresh-btn:hover:not(:disabled) {
-  background: #e0e6ed;
-}
-
-.refresh-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.refresh-btn .spinning {
-  display: inline-block;
+.spinning {
   animation: spin 1s linear infinite;
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: #f5f7fa;
-  border: none;
-  font-size: 24px;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.close-btn:hover {
-  background: #e0e6ed;
-}
-
-.refresh-manual-btn {
-  margin-top: 16px;
-  padding: 12px 24px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.3s;
-}
-
-.refresh-manual-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-}
-
-/* 患者列表 */
-.patients-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.patient-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 12px;
-  background: #f5f7fa;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.patient-item:hover {
-  background: #e0e6ed;
-  transform: translateX(4px);
-}
-
-.patient-item .patient-avatar {
-  width: 48px;
-  height: 48px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-}
-
-.patient-item .patient-info {
-  flex: 1;
-}
-
-.select-icon {
-  font-size: 20px;
-  color: #667eea;
-}
-
-/* 加载状态 */
-.loading-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #718096;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e0e6ed;
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 16px;
-}
-
-.spinner.large {
-  width: 60px;
-  height: 60px;
-  border-width: 4px;
 }
 
 @keyframes spin {
+  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
 
-/* 加载遮罩 */
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+.loading-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
-}
-
-.loading-card {
-  background: white;
-  border-radius: 16px;
-  padding: 40px;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.loading-card p {
-  margin: 16px 0 0 0;
-  color: #2c3e50;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.loading-card .hint {
-  font-size: 13px;
-  color: #718096;
-  margin-top: 8px;
+  padding: 40px 0;
+  color: var(--text-secondary);
+  gap: 12px;
 }
 </style>
-

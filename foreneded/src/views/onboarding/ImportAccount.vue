@@ -3,14 +3,16 @@
     <!-- 标题栏 -->
     <div class="header">
       <button @click="$router.back()" class="back-btn">
-        <span class="back-icon">←</span>
+        <ArrowLeft class="back-icon" />
       </button>
       <h1>导入账户</h1>
     </div>
 
     <!-- 导入说明 -->
     <div class="info-card">
-      <div class="info-icon">📱</div>
+      <div class="info-icon-wrapper">
+        <Smartphone class="info-icon" />
+      </div>
       <h2>从旧设备导入账户</h2>
       <p>扫描旧设备生成的二维码，或手动输入确认码来导入您的账户。</p>
     </div>
@@ -18,13 +20,17 @@
     <!-- 导入方式选择 -->
     <div class="import-methods">
       <div class="method-card" :class="{ active: importMethod === 'qr' }" @click="selectMethod('qr')">
-        <div class="method-icon">📷</div>
+        <div class="method-icon-wrapper">
+          <QrCode class="method-icon" />
+        </div>
         <h3>扫描二维码</h3>
         <p>推荐方式，快速安全</p>
       </div>
 
       <div class="method-card" :class="{ active: importMethod === 'manual' }" @click="selectMethod('manual')">
-        <div class="method-icon">⌨️</div>
+        <div class="method-icon-wrapper">
+          <Keyboard class="method-icon" />
+        </div>
         <h3>手动输入</h3>
         <p>输入6位确认码</p>
       </div>
@@ -35,12 +41,14 @@
       <!-- 二维码扫描 -->
       <div v-if="importMethod === 'qr'" class="qr-scanner-section">
         <div v-if="!isScanning" class="scanner-placeholder">
-          <div class="scanner-icon">📷</div>
+          <div class="scanner-icon-wrapper">
+            <Camera class="scanner-icon" />
+          </div>
           <h3>准备扫描</h3>
           <p>点击下方按钮开始扫描旧设备上的迁移二维码</p>
           
           <button @click="startScanning" class="primary-btn" :disabled="isLoading">
-            <span v-if="isLoading">准备中...</span>
+            <Loader2 v-if="isLoading" class="spinner" />
             <span v-else>开始扫描</span>
           </button>
         </div>
@@ -81,6 +89,7 @@
           </div>
           
           <div v-if="hasCodeError" class="error-message">
+            <AlertTriangle class="error-icon-small" />
             {{ codeErrorMessage }}
           </div>
 
@@ -89,7 +98,7 @@
             class="primary-btn" 
             :disabled="!isCodeComplete || isLoading"
           >
-            <span v-if="isLoading">导入中...</span>
+            <Loader2 v-if="isLoading" class="spinner" />
             <span v-else>确认导入</span>
           </button>
         </div>
@@ -105,7 +114,9 @@
     <!-- 密码输入界面 -->
     <div v-if="importState === 'password'" class="password-input">
       <div class="password-card">
-        <div class="password-icon">🔑</div>
+        <div class="password-icon-wrapper">
+          <Key class="password-icon" />
+        </div>
         <h3>输入账户密码</h3>
         <p>请输入您在旧设备上设置的账户密码</p>
         
@@ -126,10 +137,12 @@
               class="toggle-password"
               type="button"
             >
-              {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+              <Eye v-if="showPassword" class="eye-icon" />
+              <EyeOff v-else class="eye-icon" />
             </button>
           </div>
           <div v-if="passwordError" class="password-error-message">
+            <AlertTriangle class="error-icon-small" />
             {{ passwordError }}
           </div>
         </div>
@@ -162,7 +175,9 @@
     <!-- 导入进度 -->
     <div v-if="importState === 'importing'" class="import-progress">
       <div class="progress-card">
-        <div class="progress-icon">⏳</div>
+        <div class="progress-icon-wrapper">
+          <Loader2 class="progress-icon spin" />
+        </div>
         <h3>正在导入账户...</h3>
         <div class="progress-steps">
           <div class="progress-step" :class="{ completed: progressStep >= 1 }">
@@ -184,7 +199,9 @@
     <!-- 导入成功 -->
     <div v-if="importState === 'success'" class="import-success">
       <div class="success-card">
-        <div class="success-icon">✅</div>
+        <div class="success-icon-wrapper">
+          <CheckCircle2 class="success-icon" />
+        </div>
         <h3>导入成功！</h3>
         <p>您的账户已成功导入到本设备</p>
         <div class="account-info">
@@ -199,7 +216,9 @@
         </div>
         
         <div v-if="biometricError" class="biometric-error">
-          <div class="error-icon">❌</div>
+          <div class="error-icon-wrapper">
+            <XCircle class="error-icon" />
+          </div>
           <p>{{ biometricError }}</p>
         </div>
         
@@ -208,7 +227,7 @@
           class="primary-btn"
           :disabled="isVerifying"
         >
-          <span v-if="isVerifying">验证中...</span>
+          <Loader2 v-if="isVerifying" class="spinner" />
           <span v-else>{{ biometricError ? '重试验证' : '开始使用' }}</span>
         </button>
       </div>
@@ -217,7 +236,9 @@
     <!-- 导入失败 -->
     <div v-if="importState === 'error'" class="import-error">
       <div class="error-card">
-        <div class="error-icon">❌</div>
+        <div class="error-icon-wrapper">
+          <XCircle class="error-icon" />
+        </div>
         <h3>导入失败</h3>
         <p>{{ errorMessage }}</p>
         
@@ -235,6 +256,20 @@ import { ref, computed, nextTick, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { migrationService } from '@/service/migration';
 import { scannerService } from '@/service/scanner';
+import { 
+  ArrowLeft, 
+  Smartphone, 
+  QrCode, 
+  Keyboard, 
+  Camera, 
+  Loader2, 
+  Key, 
+  Eye, 
+  EyeOff, 
+  CheckCircle2, 
+  XCircle, 
+  AlertTriangle 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 
@@ -638,7 +673,7 @@ onMounted(() => {
 <style scoped>
 .import-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   padding: 20px;
   color: white;
 }
@@ -661,10 +696,16 @@ onMounted(() => {
   margin-right: 16px;
   cursor: pointer;
   backdrop-filter: blur(10px);
+  transition: all 0.2s;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .back-icon {
-  font-size: 20px;
+  width: 24px;
+  height: 24px;
   color: white;
 }
 
@@ -681,11 +722,24 @@ onMounted(() => {
   padding: 24px;
   margin-bottom: 30px;
   text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.info-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
 }
 
 .info-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
+  width: 40px;
+  height: 40px;
+  color: white;
 }
 
 .info-card h2 {
@@ -721,16 +775,30 @@ onMounted(() => {
 
 .method-card:hover {
   background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
 }
 
 .method-card.active {
   background: rgba(255, 255, 255, 0.2);
   border-color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.method-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px;
 }
 
 .method-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
+  width: 24px;
+  height: 24px;
+  color: white;
 }
 
 .method-card h3 {
@@ -740,7 +808,7 @@ onMounted(() => {
 }
 
 .method-card p {
-  font-size: 14px;
+  font-size: 13px;
   opacity: 0.8;
   margin: 0;
 }
@@ -755,11 +823,24 @@ onMounted(() => {
   border-radius: 20px;
   padding: 40px 24px;
   text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.scanner-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
 }
 
 .scanner-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
+  width: 40px;
+  height: 40px;
+  color: white;
 }
 
 .scanner-placeholder h3 {
@@ -787,6 +868,8 @@ onMounted(() => {
   border-radius: 20px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .scanner-overlay {
@@ -801,419 +884,167 @@ onMounted(() => {
 }
 
 .scan-area {
-  width: 180px;
-  height: 180px;
-  border: 2px solid #00ff88;
+  width: 200px;
+  height: 200px;
+  border: 2px solid var(--color-primary);
   border-radius: 12px;
+  box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
   position: relative;
-  animation: scan-pulse 2s infinite;
 }
 
-@keyframes scan-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+.scan-area::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--color-primary);
+  animation: scan 2s linear infinite;
+  box-shadow: 0 0 8px var(--color-primary);
+}
+
+@keyframes scan {
+  0% { top: 0; }
+  100% { top: 100%; }
 }
 
 .scanner-controls {
   display: flex;
+  flex-direction: column;
   gap: 12px;
-  justify-content: center;
+  align-items: center;
 }
 
 .manual-input-section {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  animation: fadeIn 0.3s ease;
 }
 
 .input-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
+  background: white;
   border-radius: 20px;
   padding: 24px;
+  color: var(--text-primary);
   text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .input-card h3 {
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 600;
   margin: 0 0 8px 0;
+  color: var(--text-primary);
 }
 
 .input-card p {
-  font-size: 16px;
-  opacity: 0.9;
+  font-size: 14px;
+  color: var(--text-secondary);
   margin: 0 0 24px 0;
 }
 
 .code-input-container {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   justify-content: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .code-input {
-  width: 48px;
-  height: 56px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  width: 40px;
+  height: 50px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  text-align: center;
   font-size: 24px;
   font-weight: 600;
-  text-align: center;
-  outline: none;
-  transition: all 0.3s ease;
+  color: var(--text-primary);
+  transition: all 0.2s;
 }
 
 .code-input:focus {
-  border-color: white;
-  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--color-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--primary-100);
 }
 
 .code-input.error {
-  border-color: #ff4757;
-  background: rgba(255, 71, 87, 0.1);
+  border-color: var(--error);
+  background: #fff5f5;
 }
 
 .error-message {
-  color: #ff4757;
+  color: var(--error);
   font-size: 14px;
   margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.error-icon-small {
+  width: 16px;
+  height: 16px;
 }
 
 .manual-help {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 20px;
+  margin-top: 24px;
   text-align: center;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 16px;
+  border-radius: 12px;
 }
 
 .manual-help h4 {
   font-size: 16px;
   font-weight: 600;
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
 }
 
 .manual-help p {
   font-size: 14px;
   opacity: 0.8;
   margin: 0 0 12px 0;
-  line-height: 1.5;
 }
 
-/* 密码输入界面 */
-.password-input {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(102, 126, 234, 0.95);
-  backdrop-filter: blur(20px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 1000;
-}
-
-.password-card {
-  background: white;
-  border-radius: 24px;
-  padding: 32px;
-  max-width: 400px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.password-icon {
-  font-size: 48px;
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-.password-card h3 {
-  color: #2c3e50;
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0 0 8px 0;
-  text-align: center;
-}
-
-.password-card > p {
-  color: #7f8c8d;
-  font-size: 14px;
-  margin: 0 0 24px 0;
-  text-align: center;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  color: #2c3e50;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
-.password-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.password-field {
-  flex: 1;
-  padding: 12px 40px 12px 16px;
-  border: 2px solid #e0e0e0;
-  border-radius: 12px;
-  font-size: 16px;
-  outline: none;
-  transition: all 0.3s ease;
-}
-
-.password-field:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-.password-field.error {
-  border-color: #ff4757;
-  background: rgba(255, 71, 87, 0.05);
-}
-
-.password-field.error:focus {
-  border-color: #ff4757;
-  box-shadow: 0 0 0 3px rgba(255, 71, 87, 0.1);
-}
-
-.password-error-message {
-  color: #ff4757;
-  font-size: 13px;
-  margin-top: 8px;
-  text-align: left;
-  padding: 8px 12px;
-  background: rgba(255, 71, 87, 0.1);
-  border-radius: 8px;
-  border-left: 3px solid #ff4757;
-}
-
-.toggle-password {
-  position: absolute;
-  right: 12px;
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 8px;
-  transition: opacity 0.2s;
-}
-
-.toggle-password:hover {
-  opacity: 0.7;
-}
-
-.biometric-option {
-  background: #f8f9fa;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-  margin-bottom: 8px;
-}
-
-.checkbox-input {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-}
-
-.checkbox-text {
-  color: #2c3e50;
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.hint-text {
-  color: #7f8c8d;
-  font-size: 13px;
-  margin: 0;
-  padding-left: 32px;
-}
-
-.button-group {
-  display: flex;
-  gap: 12px;
-}
-
-.button-group .secondary-btn,
-.button-group .primary-btn {
-  flex: 1;
-}
-
-.import-progress, .import-success, .import-error {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(102, 126, 234, 0.95);
-  backdrop-filter: blur(20px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 1000;
-}
-
-.progress-card, .success-card, .error-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  padding: 40px 24px;
-  text-align: center;
-  max-width: 320px;
-  width: 100%;
-}
-
-.progress-icon, .success-icon, .error-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-}
-
-.progress-card h3, .success-card h3, .error-card h3 {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 20px 0;
-}
-
-.progress-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-top: 24px;
-}
-
-.progress-step {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  opacity: 0.5;
-  transition: opacity 0.3s ease;
-}
-
-.progress-step.completed {
-  opacity: 1;
-}
-
-.step-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  transition: background 0.3s ease;
-}
-
-.progress-step.completed .step-dot {
-  background: #00ff88;
-}
-
-.account-info {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px;
-  margin: 20px 0;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.info-item:last-child {
-  margin-bottom: 0;
-}
-
-.label {
-  opacity: 0.8;
-}
-
-.value {
-  font-weight: 600;
-}
-
-.biometric-error {
-  background: rgba(255, 71, 87, 0.2);
-  border: 2px solid rgba(255, 71, 87, 0.5);
-  border-radius: 12px;
-  padding: 16px;
-  margin: 16px 0;
-  text-align: center;
-}
-
-.biometric-error .error-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.biometric-error p {
-  color: #ff4757;
-  font-size: 14px;
-  font-weight: 500;
-  margin: 0;
-}
-
-.error-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 20px;
-}
-
-.primary-btn, .secondary-btn, .link-btn {
-  padding: 16px 24px;
-  border-radius: 16px;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
+/* 按钮样式 */
 .primary-btn {
-  background: white;
-  color: #667eea;
-  flex: 1;
-}
-
-.primary-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .primary-btn:disabled {
-  opacity: 0.6;
+  background: var(--gray-300);
   cursor: not-allowed;
-  transform: none;
+}
+
+.primary-btn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
 }
 
 .secondary-btn {
   background: rgba(255, 255, 255, 0.2);
   color: white;
-  backdrop-filter: blur(10px);
-  flex: 1;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .secondary-btn:hover {
@@ -1222,12 +1053,300 @@ onMounted(() => {
 
 .link-btn {
   background: none;
+  border: none;
   color: white;
+  font-size: 14px;
   text-decoration: underline;
-  padding: 8px 0;
+  cursor: pointer;
+  padding: 8px;
+  opacity: 0.9;
 }
 
 .link-btn:hover {
-  opacity: 0.8;
+  opacity: 1;
+}
+
+/* 密码输入样式 */
+.password-input {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.password-card {
+  background: white;
+  border-radius: 24px;
+  padding: 30px;
+  width: 100%;
+  max-width: 400px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.password-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  background: var(--primary-50);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.password-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--color-primary);
+}
+
+.password-card h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.password-card p {
+  color: var(--text-secondary);
+  margin: 0 0 24px 0;
+}
+
+.form-group {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.password-input-wrapper {
+  position: relative;
+}
+
+.password-field {
+  width: 100%;
+  padding: 12px 40px 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.password-field:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.password-field.error {
+  border-color: var(--error);
+  background: #fff5f5;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eye-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.password-error-message {
+  color: var(--error);
+  font-size: 13px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.biometric-option {
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 4px;
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-primary);
+}
+
+.checkbox-text {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.hint-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-left: 26px;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+}
+
+.button-group .secondary-btn {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+.button-group .secondary-btn:hover {
+  background: var(--gray-200);
+}
+
+/* 进度和成功/失败状态样式 */
+.import-progress, .import-success, .import-error {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.progress-card, .success-card, .error-card {
+  background: white;
+  border-radius: 24px;
+  padding: 30px;
+  width: 100%;
+  max-width: 400px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.progress-icon-wrapper, .success-icon-wrapper, .error-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.progress-icon-wrapper { background: var(--primary-50); }
+.success-icon-wrapper { background: #ecfdf5; }
+.error-icon-wrapper { background: #fef2f2; }
+
+.progress-icon { width: 40px; height: 40px; color: var(--color-primary); }
+.success-icon { width: 40px; height: 40px; color: #059669; }
+.error-icon { width: 40px; height: 40px; color: #dc2626; }
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+  text-align: left;
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gray-300);
+  transition: all 0.3s;
+}
+
+.progress-step.completed {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.progress-step.completed .step-dot {
+  background: #059669;
+  box-shadow: 0 0 0 4px #ecfdf5;
+}
+
+.account-info {
+  background: var(--gray-50);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.info-item:last-child { margin-bottom: 0; }
+
+.info-item .label { color: var(--text-secondary); }
+.info-item .value { font-weight: 600; color: var(--text-primary); }
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.error-actions .secondary-btn {
+  background: var(--gray-100);
+  color: var(--text-primary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

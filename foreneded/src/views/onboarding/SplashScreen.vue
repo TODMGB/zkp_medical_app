@@ -8,7 +8,7 @@
       <!-- Logo 图标 -->
       <div class="logo-container">
         <div class="logo-circle">
-          <div class="icon">💊</div>
+          <Pill class="icon" />
         </div>
         <div class="logo-glow"></div>
       </div>
@@ -30,7 +30,7 @@
         :class="{ 'pulse': buttonPulse }"
       >
         <span class="button-text">开始我的服药记录</span>
-        <span class="button-arrow">→</span>
+        <ArrowRight class="button-arrow" />
       </button>
       
       <!-- 底部提示 -->
@@ -45,6 +45,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { aaService } from '../../service/accountAbstraction';
+import { Pill, ArrowRight } from 'lucide-vue-next';
 
 const router = useRouter();
 const isVisible = ref(false);
@@ -103,12 +104,7 @@ const handleStart = async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(
-    135deg,
-    #667eea 0%,
-    #764ba2 50%,
-    #f093fb 100%
-  );
+  background: #667eea;
   animation: gradientShift 10s ease infinite;
 }
 
@@ -161,7 +157,9 @@ const handleStart = async () => {
 }
 
 .icon {
-  font-size: 4rem;
+  width: 64px;
+  height: 64px;
+  color: white;
   animation: iconPulse 2s ease-in-out infinite;
 }
 
@@ -236,12 +234,7 @@ const handleStart = async () => {
 }
 
 .title-line.highlight {
-  background: linear-gradient(
-    90deg,
-    #fff 0%,
-    #f0f0f0 50%,
-    #fff 100%
-  );
+  color: white;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -291,7 +284,7 @@ const handleStart = async () => {
 /* 开始按钮 */
 .start-button {
   background: rgba(255, 255, 255, 0.95);
-  color: #667eea;
+  color: var(--primary-600);
   border: none;
   padding: 18px 40px;
   border-radius: 50px;
@@ -318,12 +311,7 @@ const handleStart = async () => {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
+  background: transparent;
   transition: left 0.5s;
 }
 
@@ -366,7 +354,8 @@ const handleStart = async () => {
 }
 
 .button-arrow {
-  font-size: 1.3rem;
+  width: 20px;
+  height: 20px;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -404,7 +393,8 @@ const handleStart = async () => {
   }
   
   .icon {
-    font-size: 3rem;
+    width: 48px;
+    height: 48px;
   }
   
   .start-button {

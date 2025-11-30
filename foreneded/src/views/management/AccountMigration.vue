@@ -278,51 +278,62 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+
 .migration-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f5f7fa;
   padding: 20px;
-  color: white;
+  color: #2d3748;
 }
 
 .header {
   display: flex;
   align-items: center;
   margin-bottom: 30px;
+  background: white;
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .back-btn {
-  background: rgba(255, 255, 255, 0.2);
+  background: none;
   border: none;
-  border-radius: 12px;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 16px;
+  margin-right: 12px;
   cursor: pointer;
-  backdrop-filter: blur(10px);
+  border-radius: 50%;
+  color: #4a5568;
+  transition: background-color 0.2s;
+}
+
+.back-btn:hover {
+  background-color: #f7fafc;
 }
 
 .back-icon {
   font-size: 20px;
-  color: white;
+  color: #4a5568;
 }
 
 .header h1 {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
   margin: 0;
+  color: #2d3748;
 }
 
 .info-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
+  background: white;
   border-radius: 20px;
   padding: 24px;
   margin-bottom: 30px;
   text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .info-icon {
@@ -334,11 +345,12 @@ onUnmounted(() => {
   font-size: 20px;
   font-weight: 600;
   margin: 0 0 12px 0;
+  color: #2d3748;
 }
 
 .info-card p {
   font-size: 16px;
-  opacity: 0.9;
+  color: #718096;
   margin: 0;
   line-height: 1.5;
 }
@@ -363,28 +375,30 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   margin-right: 16px;
+  color: #718096;
 }
 
 .step.active .step-number {
-  background: white;
-  color: #667eea;
+  background: #4299e1;
+  color: white;
 }
 
 .step-content h3 {
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 4px 0;
+  color: #2d3748;
 }
 
 .step-content p {
   font-size: 14px;
-  opacity: 0.8;
+  color: #718096;
   margin: 0;
 }
 
@@ -399,10 +413,10 @@ onUnmounted(() => {
 }
 
 .warning-card, .qr-card, .success-card, .error-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
+  background: white;
   border-radius: 20px;
   padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .warning-icon, .success-icon, .error-icon {
@@ -414,6 +428,7 @@ onUnmounted(() => {
   font-size: 18px;
   font-weight: 600;
   margin: 0 0 16px 0;
+  color: #2d3748;
 }
 
 .warning-card ul {
@@ -426,13 +441,14 @@ onUnmounted(() => {
   padding: 8px 0;
   padding-left: 20px;
   position: relative;
+  color: #4a5568;
 }
 
 .warning-card li::before {
   content: "•";
   position: absolute;
   left: 0;
-  color: #ffd700;
+  color: #ecc94b;
 }
 
 .qr-code-container {
@@ -447,6 +463,7 @@ onUnmounted(() => {
   border-radius: 16px;
   background: white;
   padding: 16px;
+  border: 1px solid #e2e8f0;
 }
 
 .confirm-code-section {
@@ -457,21 +474,24 @@ onUnmounted(() => {
 .confirm-code-section h4 {
   font-size: 16px;
   margin: 0 0 12px 0;
+  color: #718096;
 }
 
 .confirm-code {
   font-size: 32px;
   font-weight: 700;
   letter-spacing: 4px;
-  background: rgba(255, 255, 255, 0.2);
+  background: #f7fafc;
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 8px;
+  color: #2d3748;
+  border: 1px solid #e2e8f0;
 }
 
 .code-hint {
   font-size: 14px;
-  opacity: 0.8;
+  color: #718096;
   margin: 0;
 }
 
@@ -485,7 +505,7 @@ onUnmounted(() => {
 .countdown-circle {
   width: 60px;
   height: 60px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+  border: 3px solid #e2e8f0;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -496,6 +516,7 @@ onUnmounted(() => {
 .countdown-text {
   font-size: 16px;
   font-weight: 600;
+  color: #2d3748;
 }
 
 .migration-status {
@@ -504,18 +525,19 @@ onUnmounted(() => {
   justify-content: center;
   gap: 12px;
   margin-top: 20px;
+  color: #718096;
 }
 
 .status-indicator {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
+  background: #cbd5e0;
   transition: all 0.3s ease;
 }
 
 .status-indicator.active {
-  background: #00ff88;
+  background: #48bb78;
   animation: pulse 2s infinite;
 }
 
@@ -542,29 +564,30 @@ onUnmounted(() => {
 }
 
 .primary-btn {
-  background: white;
-  color: #667eea;
+  background: #4299e1;
+  color: white;
 }
 
 .primary-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
 }
 
 .primary-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+  background: #cbd5e0;
 }
 
 .secondary-btn {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  backdrop-filter: blur(10px);
+  background: white;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
 }
 
 .secondary-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: #f7fafc;
 }
 
 .success-card, .error-card {
@@ -573,7 +596,7 @@ onUnmounted(() => {
 
 .cleanup-info {
   font-size: 14px;
-  opacity: 0.8;
+  color: #718096;
   margin-top: 12px;
 }
 </style>

@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <div class="top-bar">
       <button @click="goBack" class="back-btn">
-        <span class="icon">←</span>
+        <ArrowLeft class="icon" />
       </button>
       <h1 class="title">用药计划详情</h1>
       <div class="placeholder"></div>
@@ -12,13 +12,13 @@
     <div class="content">
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+        <Loader2 class="spinner" />
         <p>加载计划中...</p>
       </div>
 
       <!-- 解密状态 -->
       <div v-else-if="decrypting" class="loading-state">
-        <div class="spinner"></div>
+        <Loader2 class="spinner" />
         <p>解密中...</p>
         <p class="hint">正在使用您的私钥解密数据</p>
       </div>
@@ -55,7 +55,10 @@
         <!-- 药物列表 -->
         <div class="section-card">
           <div class="section-header">
-            <h3>💊 用药清单</h3>
+            <h3>
+              <Pill class="section-icon" />
+              用药清单
+            </h3>
             <div class="count-badge">{{ planData.medications.length }} 种</div>
           </div>
           
@@ -72,31 +75,43 @@
                 
                 <div class="med-details-grid">
                   <div class="detail-item">
-                    <span class="label">💊 剂量</span>
+                    <span class="label">
+                      <Scale class="icon-mini" /> 剂量
+                    </span>
                     <span class="value">{{ med.dosage }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="label">📅 频率</span>
+                    <span class="label">
+                      <Calendar class="icon-mini" /> 频率
+                    </span>
                     <span class="value">{{ med.frequency }}</span>
                   </div>
                   <div class="detail-item">
-                    <span class="label">⏱️ 疗程</span>
+                    <span class="label">
+                      <Clock class="icon-mini" /> 疗程
+                    </span>
                     <span class="value">{{ med.duration }}</span>
                   </div>
                 </div>
                 
                 <div v-if="med.instructions" class="med-instructions">
-                  <span class="label">📝 用法：</span>
+                  <span class="label">
+                    <FileText class="icon-mini" /> 用法：
+                  </span>
                   <span>{{ med.instructions }}</span>
                 </div>
                 
                 <div v-if="med.side_effects" class="med-warning">
-                  <span class="label">⚠️ 副作用：</span>
+                  <span class="label">
+                    <AlertTriangle class="icon-mini" /> 副作用：
+                  </span>
                   <span>{{ med.side_effects }}</span>
                 </div>
                 
                 <div v-if="med.precautions" class="med-warning">
-                  <span class="label">⚠️ 注意事项：</span>
+                  <span class="label">
+                    <AlertCircle class="icon-mini" /> 注意事项：
+                  </span>
                   <span>{{ med.precautions }}</span>
                 </div>
               </div>
@@ -107,7 +122,10 @@
         <!-- 提醒列表 -->
         <div v-if="planData.reminders && planData.reminders.length > 0" class="section-card">
           <div class="section-header">
-            <h3>⏰ 服药提醒</h3>
+            <h3>
+              <Bell class="section-icon" />
+              服药提醒
+            </h3>
             <div class="count-badge">{{ planData.reminders.length }} 条</div>
           </div>
           
@@ -128,7 +146,7 @@
 
         <!-- 加密信息 -->
         <div class="encryption-info">
-          <div class="encryption-icon">🔐</div>
+          <Lock class="encryption-icon" />
           <div class="encryption-text">
             <div class="encryption-title">端到端加密保护</div>
             <div class="encryption-desc">
@@ -140,11 +158,11 @@
         <!-- 操作按钮 -->
         <div v-if="isDoctor" class="action-buttons">
           <button @click="editPlan" class="action-btn secondary">
-            <span class="icon">✏️</span>
+            <Edit class="icon" />
             <span>编辑计划</span>
           </button>
           <button @click="deletePlan" class="action-btn danger">
-            <span class="icon">🗑️</span>
+            <Trash2 class="icon" />
             <span>删除计划</span>
           </button>
         </div>
@@ -152,7 +170,7 @@
 
       <!-- 解密失败 -->
       <div v-else-if="decryptError" class="error-state">
-        <div class="error-icon">❌</div>
+        <XCircle class="error-icon" />
         <p class="error-message">{{ decryptError }}</p>
         <button @click="retryDecrypt" class="retry-btn">重试</button>
       </div>
@@ -169,6 +187,22 @@ import { aaService } from '@/service/accountAbstraction';
 import { secureExchangeService } from '@/service/secureExchange';
 import { medicationPlanStorageService } from '@/service/medicationPlanStorage';
 import { UserRole, UserRoleUtils } from '@/utils/userRoles';
+import { 
+  ArrowLeft, 
+  Loader2, 
+  Pill, 
+  Scale, 
+  Calendar, 
+  Clock, 
+  FileText, 
+  AlertTriangle, 
+  AlertCircle, 
+  Bell, 
+  Lock, 
+  Edit, 
+  Trash2, 
+  XCircle 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 const route = useRoute();
@@ -377,7 +411,7 @@ function goBack() {
 <style scoped>
 .plan-detail-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background-color: #f5f7fa;
   padding-bottom: 20px;
 }
 
@@ -387,9 +421,12 @@ function goBack() {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  background: #667eea;
+  color: white;
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .back-btn {
@@ -399,17 +436,22 @@ function goBack() {
   background: rgba(255, 255, 255, 0.2);
   color: white;
   border: none;
-  font-size: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s;
+  backdrop-filter: blur(5px);
 }
 
 .back-btn:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .title {
@@ -426,21 +468,21 @@ function goBack() {
 /* 内容区域 */
 .content {
   padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 /* 加载状态 */
 .loading-state {
   text-align: center;
   padding: 60px 20px;
-  color: white;
+  color: #718096;
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  color: #667eea;
   animation: spin 1s linear infinite;
   margin: 0 auto 20px;
 }
@@ -463,24 +505,27 @@ function goBack() {
 .error-state {
   text-align: center;
   padding: 60px 20px;
-  color: white;
+  color: #718096;
 }
 
 .error-icon {
-  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  color: #ef4444;
   margin-bottom: 20px;
 }
 
 .error-message {
   margin: 20px 0;
   font-size: 16px;
+  color: #ef4444;
 }
 
 .retry-btn {
   padding: 12px 28px;
   border-radius: 12px;
-  background: white;
-  color: #667eea;
+  background: #667eea;
+  color: white;
   border: none;
   font-size: 15px;
   font-weight: 500;
@@ -489,8 +534,9 @@ function goBack() {
 }
 
 .retry-btn:hover {
+  background: #5a67d8;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
 }
 
 /* 计划详情 */
@@ -503,9 +549,9 @@ function goBack() {
 /* 信息卡片 */
 .info-card {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-header {
@@ -514,14 +560,14 @@ function goBack() {
   justify-content: space-between;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid #f5f7fa;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .card-header h2 {
   margin: 0;
   font-size: 20px;
-  color: #2c3e50;
-  font-weight: 600;
+  color: #2d3748;
+  font-weight: 700;
 }
 
 .status-badge {
@@ -532,18 +578,18 @@ function goBack() {
 }
 
 .status-badge.active {
-  background: #d4f4dd;
-  color: #22c55e;
+  background: #dcfce7;
+  color: #166534;
 }
 
 .status-badge.completed {
-  background: #e0e6ed;
-  color: #718096;
+  background: #f3f4f6;
+  color: #4b5563;
 }
 
 .status-badge.cancelled {
-  background: #ffe4e1;
-  color: #ff6b6b;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .info-section {
@@ -563,12 +609,12 @@ function goBack() {
 
 .info-value {
   font-size: 15px;
-  color: #2c3e50;
+  color: #2d3748;
   line-height: 1.6;
 }
 
 .info-value.notes {
-  background: #f5f7fa;
+  background: #f7fafc;
   padding: 12px;
   border-radius: 8px;
   border-left: 3px solid #667eea;
@@ -577,9 +623,9 @@ function goBack() {
 /* 区块卡片 */
 .section-card {
   background: white;
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-sm);
 }
 
 .section-header {
@@ -592,15 +638,24 @@ function goBack() {
 .section-header h3 {
   margin: 0;
   font-size: 18px;
-  color: #2c3e50;
+  color: #2d3748;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-icon {
+  width: 20px;
+  height: 20px;
+  color: #667eea;
 }
 
 .count-badge {
   padding: 4px 10px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: #ebf4ff;
+  color: #667eea;
   font-size: 12px;
   font-weight: 600;
 }
@@ -616,16 +671,22 @@ function goBack() {
   display: flex;
   gap: 16px;
   padding: 16px;
-  border-radius: 12px;
-  background: #f5f7fa;
-  border: 1px solid #e0e6ed;
+  border-radius: 16px;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s;
+}
+
+.medication-item:hover {
+  border-color: #bfdbfe;
+  box-shadow: var(--shadow-sm);
 }
 
 .med-number {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   display: flex;
   align-items: center;
@@ -642,7 +703,7 @@ function goBack() {
 .med-name {
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #2d3748;
   margin-bottom: 4px;
 }
 
@@ -668,12 +729,20 @@ function goBack() {
 .detail-item .label {
   font-size: 12px;
   color: #718096;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .detail-item .value {
   font-size: 14px;
-  color: #2c3e50;
+  color: #2d3748;
   font-weight: 500;
+}
+
+.icon-mini {
+  width: 14px;
+  height: 14px;
 }
 
 .med-instructions, .med-warning {
@@ -682,17 +751,23 @@ function goBack() {
   line-height: 1.6;
   margin-top: 8px;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   background: white;
+  border: 1px solid #e2e8f0;
 }
 
 .med-warning {
-  background: #fff5f5;
-  color: #e53e3e;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fee2e2;
 }
 
 .med-instructions .label, .med-warning .label {
-  font-weight: 500;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
 }
 
 /* 提醒列表 */
@@ -707,15 +782,15 @@ function goBack() {
   align-items: center;
   gap: 16px;
   padding: 16px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #fff5f5 0%, #ffe4e1 100%);
+  border-radius: 16px;
+  background: #fff5f5;
   border: 1px solid #ffc9c9;
 }
 
 .reminder-time {
   font-size: 20px;
   font-weight: bold;
-  color: #ff6b6b;
+  color: #ef4444;
   min-width: 60px;
 }
 
@@ -726,29 +801,32 @@ function goBack() {
 .reminder-med {
   font-size: 15px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .reminder-message {
   font-size: 13px;
-  color: #718096;
+  color: var(--text-secondary);
 }
 
 /* 加密信息 */
 .encryption-info {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 20px;
+  background: #667eea;
+  border-radius: 20px;
+  padding: 24px;
   color: white;
   display: flex;
   align-items: center;
   gap: 16px;
+  box-shadow: var(--shadow-md);
 }
 
 .encryption-icon {
-  font-size: 32px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .encryption-text {
@@ -776,10 +854,10 @@ function goBack() {
 
 .action-btn {
   padding: 14px;
-  border-radius: 12px;
+  border-radius: 16px;
   border: none;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -790,27 +868,24 @@ function goBack() {
 
 .action-btn.secondary {
   background: white;
-  color: #667eea;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
 }
 
 .action-btn.secondary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary);
 }
 
 .action-btn.danger {
-  background: #ff6b6b;
-  color: white;
+  background: #fee2e2;
+  color: #ef4444;
 }
 
 .action-btn.danger:hover {
-  background: #ff5252;
+  background: #fecaca;
   transform: translateY(-2px);
 }
-
-.action-btn .icon {
-  font-size: 18px;
-}
 </style>
-

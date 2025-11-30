@@ -2,7 +2,9 @@
   <div class="notifications-page">
     <!-- 顶部导航 -->
     <div class="header">
-      <button class="back-btn" @click="goBack">←</button>
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="icon" />
+      </button>
       <h1 class="page-title">消息通知</h1>
       <button class="mark-all-btn" @click="markAllRead" v-if="unreadCount > 0">
         全部已读
@@ -34,14 +36,15 @@
         :class="{ active: selectedFilter === filter.value }"
         @click="selectedFilter = filter.value"
       >
-        {{ filter.icon }} {{ filter.label }}
+        <component :is="filter.icon" class="filter-icon" />
+        {{ filter.label }}
         <span v-if="filter.count > 0" class="filter-count">{{ filter.count }}</span>
       </button>
     </div>
     
     <!-- 加载状态 -->
     <div v-if="isLoading" class="loading-container">
-      <div class="spinner"></div>
+      <Loader2 class="spinner" />
       <p>加载中...</p>
     </div>
     
@@ -63,7 +66,7 @@
         @click="showNotificationDetail(notification)"
       >
         <div class="notification-icon" :class="getNotificationCategoryClass(notification.type)">
-          {{ getNotificationIcon(notification.type) }}
+          <component :is="getNotificationIcon(notification.type)" class="icon-medium" />
         </div>
         <div class="notification-content">
           <div class="notification-header">
@@ -83,7 +86,7 @@
       
       <!-- 空状态 -->
       <div v-if="filteredNotifications.length === 0 && !isLoading" class="empty-state">
-        <div class="empty-icon">📭</div>
+        <Inbox class="empty-icon" />
         <h3 class="empty-title">暂无{{ getFilterName() }}</h3>
         <p class="empty-desc">当有新消息时会在这里显示</p>
       </div>
@@ -94,7 +97,9 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h2 class="modal-title">{{ selectedNotification?.title }}</h2>
-          <button class="modal-close-btn" @click="closeDetailModal">×</button>
+          <button class="modal-close-btn" @click="closeDetailModal">
+            <X class="icon-small" />
+          </button>
         </div>
         
         <div class="modal-body">
@@ -107,7 +112,8 @@
             <div class="detail-label">消息类型</div>
             <div class="detail-value">
               <span class="category-badge" :class="getNotificationCategoryClass(selectedNotification?.type || '')">
-                {{ getNotificationIcon(selectedNotification?.type || '') }} {{ getNotificationCategory(selectedNotification?.type || '') }}
+                <component :is="getNotificationIcon(selectedNotification?.type || '')" class="icon-mini" />
+                {{ getNotificationCategory(selectedNotification?.type || '') }}
               </span>
             </div>
           </div>
@@ -157,6 +163,35 @@ import { useRouter } from 'vue-router'
 import { notificationService, type Notification } from '@/service/notification'
 import { authService } from '@/service/auth'
 import { notificationBadgeService } from '@/service/notificationBadge'
+import { 
+  ArrowLeft, 
+  ClipboardList, 
+  Pill, 
+  Users, 
+  Lock, 
+  Bell, 
+  FileText, 
+  Share2, 
+  CheckCircle, 
+  Hand, 
+  PauseCircle, 
+  PlayCircle, 
+  XCircle, 
+  Mail, 
+  Key, 
+  Sparkles, 
+  AlertTriangle, 
+  Shield, 
+  Settings, 
+  AlertCircle, 
+  ThumbsUp, 
+  Ban, 
+  MessageSquare, 
+  Megaphone, 
+  Inbox, 
+  Loader2, 
+  X 
+} from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -226,11 +261,11 @@ const getNotificationCategoryClass = (type: string) => {
 }
 
 const filters = computed(() => [
-  { label: '全部', icon: '📋', value: 'all', count: notifications.value.length },
-  { label: '用药', icon: '💊', value: 'medication', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'medication').length },
-  { label: '关系', icon: '👥', value: 'relationship', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'relationship').length },
-  { label: '安全', icon: '🔒', value: 'security', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'security').length },
-  { label: '系统', icon: '🔔', value: 'system', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'system').length }
+  { label: '全部', icon: ClipboardList, value: 'all', count: notifications.value.length },
+  { label: '用药', icon: Pill, value: 'medication', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'medication').length },
+  { label: '关系', icon: Users, value: 'relationship', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'relationship').length },
+  { label: '安全', icon: Lock, value: 'security', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'security').length },
+  { label: '系统', icon: Bell, value: 'system', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'system').length }
 ])
 
 const totalNotifications = computed(() => notifications.value.length)
@@ -246,40 +281,40 @@ const filteredNotifications = computed(() => {
 
 // 获取通知图标
 const getNotificationIcon = (type: string) => {
-  const iconMap: Record<string, string> = {
+  const iconMap: Record<string, any> = {
     // 用药
-    'medication_reminder': '💊',
-    'new_medication_plan': '📋',
-    'medication_plan_updated': '📝',
-    'medication_plan_created': '📋',
-    'medication_plan_shared': '📤',
+    'medication_reminder': Pill,
+    'new_medication_plan': FileText,
+    'medication_plan_updated': FileText,
+    'medication_plan_created': ClipboardList,
+    'medication_plan_shared': Share2,
     
     // 关系
-    'relationship_invitation_accepted': '✅',
-    'relationship_joined_group': '👋',
-    'relationship_suspended': '⏸️',
-    'relationship_resumed': '▶️',
-    'relationship_revoked': '❌',
-    'invitation_created': '📬',
+    'relationship_invitation_accepted': CheckCircle,
+    'relationship_joined_group': Hand,
+    'relationship_suspended': PauseCircle,
+    'relationship_resumed': PlayCircle,
+    'relationship_revoked': XCircle,
+    'invitation_created': Mail,
     
     // 系统
-    'migration_session_created': '🔐',
-    'migration_completed': '✨',
-    'system_notification': '🔔',
+    'migration_session_created': Key,
+    'migration_completed': Sparkles,
+    'system_notification': Bell,
     
     // 安全
-    'recovery_request_received': '🆘',
-    'guardian_added': '🛡️',
-    'threshold_changed': '⚙️',
-    'recovery_initiated': '⚠️',
-    'recovery_supported': '👍',
-    'recovery_cancelled': '🚫',
-    'recovery_completed': '✅',
+    'recovery_request_received': AlertTriangle,
+    'guardian_added': Shield,
+    'threshold_changed': Settings,
+    'recovery_initiated': AlertCircle,
+    'recovery_supported': ThumbsUp,
+    'recovery_cancelled': Ban,
+    'recovery_completed': CheckCircle,
     
     // 消息
-    'encrypted_message': '💬'
+    'encrypted_message': MessageSquare
   }
-  return iconMap[type] || '📢'
+  return iconMap[type] || Megaphone
 }
 
 const getFilterName = () => {
@@ -564,6 +599,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+
 .notifications-page {
   min-height: 100vh;
   background-color: #f5f7fa;
@@ -574,216 +610,198 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
+  padding: 16px 20px;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .back-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: #4299e1;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4a5568;
   cursor: pointer;
-  padding: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.back-btn:hover {
+  background-color: #f7fafc;
 }
 
 .page-title {
-  font-size: 1.3rem;
+  font-size: 1.25rem;
   font-weight: 600;
-  color: #2d3748;
+  color: #1a202c;
   margin: 0;
 }
 
 .mark-all-btn {
-  background-color: #4299e1;
-  color: white;
+  font-size: 0.875rem;
+  color: #4299e1;
+  background: none;
   border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 0.9rem;
   cursor: pointer;
+  font-weight: 500;
 }
 
 .notification-stats {
-  display: flex;
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
   padding: 20px;
-  gap: 15px;
 }
 
 .stat-item {
-  background-color: white;
+  background: white;
+  padding: 16px;
   border-radius: 12px;
-  padding: 20px;
   text-align: center;
-  flex: 1;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .stat-number {
-  font-size: 2rem;
-  font-weight: bold;
-  color: #4299e1;
-  margin-bottom: 5px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2d3748;
+  margin-bottom: 4px;
 }
 
 .stat-label {
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   color: #718096;
 }
 
 .filter-tabs {
   display: flex;
-  padding: 0 20px 20px;
-  gap: 10px;
   overflow-x: auto;
+  padding: 0 20px 20px;
+  gap: 12px;
+  scrollbar-width: none;
+}
+
+.filter-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .filter-tab {
-  background-color: white;
-  border: 1px solid #e2e8f0;
-  padding: 10px 16px;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  color: #718096;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .filter-tab.active {
-  background-color: #4299e1;
+  background: #4299e1;
   color: white;
   border-color: #4299e1;
 }
 
 .filter-count {
-  background-color: rgba(255,255,255,0.2);
-  color: white;
-  font-size: 0.8rem;
+  background: rgba(0,0,0,0.1);
   padding: 2px 6px;
   border-radius: 10px;
-  min-width: 18px;
-  text-align: center;
-}
-
-.filter-tab:not(.active) .filter-count {
-  background-color: #e53e3e;
+  font-size: 0.75rem;
 }
 
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  gap: 15px;
+  padding: 40px;
+  color: #718096;
 }
 
 .spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #e2e8f0;
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  animation: spin 1s linear infinite;
+  margin-bottom: 12px;
 }
 
 .error-banner {
-  margin: 20px;
-  padding: 15px;
+  margin: 0 20px 20px;
+  padding: 12px;
   background: #fff5f5;
-  border-left: 4px solid #e53e3e;
-  border-radius: 8px;
   color: #c53030;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  text-align: center;
 }
 
 .notifications-list {
   padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .notification-item {
-  background-color: white;
+  background: white;
   border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 10px;
+  padding: 16px;
   display: flex;
-  align-items: flex-start;
-  gap: 15px;
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  gap: 16px;
   position: relative;
+  cursor: pointer;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
-.notification-item:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+.notification-item:active {
+  transform: scale(0.98);
 }
 
 .notification-item.unread {
-  border-left: 4px solid #4299e1;
+  background: #ebf8ff;
 }
 
 .notification-item.urgent {
-  border-left: 4px solid #e53e3e;
-  background: linear-gradient(to right, #fff5f5, white);
+  border-left: 4px solid #f56565;
 }
 
 .notification-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.3rem;
   flex-shrink: 0;
+  color: white;
 }
 
-/* 分类样式 */
-.notification-icon.category-medication {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-}
-
-.notification-icon.category-relationship {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-}
-
-.notification-icon.category-security {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-}
-
-.notification-icon.category-system {
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-}
-
-.notification-icon.category-message {
-  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
-}
-
-.notification-icon.category-other {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-}
+.category-medication { background: #4299e1; }
+.category-relationship { background: #48bb78; }
+.category-security { background: #ed8936; }
+.category-system { background: #a0aec0; }
+.category-message { background: #9f7aea; }
+.category-other { background: #cbd5e0; }
 
 .notification-content {
   flex: 1;
+  min-width: 0;
 }
 
 .notification-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .notification-title {
@@ -791,185 +809,107 @@ onBeforeUnmount(() => {
   font-weight: 600;
   color: #2d3748;
   margin: 0;
+  line-height: 1.4;
 }
 
 .notification-time {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #a0aec0;
-  flex-shrink: 0;
+  white-space: nowrap;
+  margin-left: 8px;
 }
 
 .notification-message {
-  color: #718096;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
+  color: #4a5568;
+  margin: 0 0 8px 0;
   line-height: 1.5;
-  margin: 0 0 10px 0;
-  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .notification-meta {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 8px;
+  gap: 8px;
+  font-size: 0.75rem;
 }
 
 .notification-category {
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 12px;
+  color: #718096;
   background: #f7fafc;
-  color: #4a5568;
-  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
-.notification-priority {
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-weight: 600;
-}
-
-.notification-priority.urgent {
-  background: #fed7d7;
-  color: #c53030;
-}
-
-.notification-priority.high {
-  background: #feebc8;
-  color: #c05621;
-}
-
-.notification-priority.normal {
-  background: #c6f6d5;
-  color: #2f855a;
-}
+.notification-priority.urgent { color: #e53e3e; font-weight: 600; }
+.notification-priority.high { color: #dd6b20; }
+.notification-priority.normal { color: #38a169; }
 
 .unread-indicator {
+  position: absolute;
+  top: 16px;
+  right: 16px;
   width: 8px;
   height: 8px;
-  background-color: #e53e3e;
+  background: #f56565;
   border-radius: 50%;
-  position: absolute;
-  top: 20px;
-  right: 20px;
 }
 
 .empty-state {
   text-align: center;
   padding: 60px 20px;
+  color: #a0aec0;
 }
 
 .empty-icon {
-  font-size: 3rem;
-  margin-bottom: 20px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
 }
 
 .empty-title {
-  font-size: 1.2rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #4a5568;
-  margin: 0 0 10px 0;
+  margin: 0 0 8px 0;
 }
 
 .empty-desc {
-  color: #718096;
-  margin: 0;
+  font-size: 0.875rem;
 }
 
-.batch-actions {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: white;
-  border-top: 1px solid #e2e8f0;
-  padding: 15px 20px;
-  display: flex;
-  gap: 15px;
-  box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
-}
-
-.batch-btn {
-  flex: 1;
-  border: none;
-  padding: 12px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.batch-btn:first-child {
-  background-color: #4299e1;
-  color: white;
-}
-
-.batch-btn:first-child:hover {
-  background-color: #3182ce;
-}
-
-.batch-btn.delete {
-  background-color: #e53e3e;
-  color: white;
-}
-
-.batch-btn.delete:hover {
-  background-color: #c53030;
-}
-
-/* 详情弹窗 */
+/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 1000;
   padding: 20px;
-  animation: fadeIn 0.3s;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 .modal-content {
   background: white;
   border-radius: 20px;
-  max-width: 500px;
   width: 100%;
+  max-width: 500px;
   max-height: 80vh;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
 }
 
 .modal-header {
-  padding: 24px;
+  padding: 20px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
@@ -977,166 +917,71 @@ onBeforeUnmount(() => {
 }
 
 .modal-title {
-  font-size: 1.3rem;
-  font-weight: 700;
+  font-size: 1.125rem;
+  font-weight: 600;
   color: #2d3748;
   margin: 0;
-  flex: 1;
-  padding-right: 20px;
 }
 
 .modal-close-btn {
-  background: #f7fafc;
+  background: none;
   border: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  font-size: 1.5rem;
-  color: #718096;
+  color: #a0aec0;
   cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.modal-close-btn:hover {
-  background: #e2e8f0;
-  color: #2d3748;
-  transform: scale(1.1);
+  padding: 4px;
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 20px;
   overflow-y: auto;
-  flex: 1;
 }
 
 .detail-section {
   margin-bottom: 20px;
 }
 
-.detail-section:last-child {
-  margin-bottom: 0;
-}
-
 .detail-label {
-  font-size: 0.85rem;
-  font-weight: 600;
+  font-size: 0.875rem;
   color: #718096;
   margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .detail-value {
   font-size: 1rem;
   color: #2d3748;
   line-height: 1.6;
-  word-break: break-word;
 }
 
-.category-badge {
+.category-badge, .priority-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.category-badge.category-medication {
-  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
-  color: #0c4a6e;
-}
-
-.category-badge.category-relationship {
-  background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-  color: #14532d;
-}
-
-.category-badge.category-security {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-  color: #78350f;
-}
-
-.category-badge.category-system {
-  background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-  color: #3730a3;
-}
-
-.category-badge.category-message {
-  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
-  color: #831843;
-}
-
-.priority-badge {
-  display: inline-block;
-  padding: 8px 14px;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.priority-badge.urgent {
-  background: linear-gradient(135deg, #fed7d7 0%, #fc8181 100%);
-  color: #742a2a;
-}
-
-.priority-badge.high {
-  background: linear-gradient(135deg, #feebc8 0%, #fbd38d 100%);
-  color: #7c2d12;
-}
-
-.priority-badge.normal {
-  background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
-  color: #22543d;
-}
-
-.detail-data {
-  background: #f7fafc;
-  border-radius: 12px;
-  padding: 16px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
 }
 
 .data-item {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
   padding: 8px 0;
-  border-bottom: 1px solid #e2e8f0;
-  gap: 16px;
-}
-
-.data-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.data-item:first-child {
-  padding-top: 0;
+  border-bottom: 1px solid #edf2f7;
+  font-size: 0.875rem;
 }
 
 .data-key {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #4a5568;
-  min-width: 100px;
-  flex-shrink: 0;
+  color: #718096;
 }
 
 .data-value {
-  font-size: 0.9rem;
   color: #2d3748;
-  font-family: 'Courier New', monospace;
-  word-break: break-all;
-  text-align: right;
+  font-family: monospace;
 }
 
 .modal-footer {
-  padding: 20px 24px;
+  padding: 20px;
   border-top: 1px solid #e2e8f0;
   display: flex;
   gap: 12px;
@@ -1144,9 +989,9 @@ onBeforeUnmount(() => {
 
 .modal-action-btn {
   flex: 1;
-  padding: 12px 20px;
-  border: none;
+  padding: 12px;
   border-radius: 12px;
+  border: none;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
@@ -1154,21 +999,26 @@ onBeforeUnmount(() => {
 }
 
 .modal-action-btn.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #4299e1;
   color: white;
 }
 
-.modal-action-btn.primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-}
-
 .modal-action-btn:not(.primary) {
-  background: #f7fafc;
+  background: #edf2f7;
   color: #4a5568;
 }
 
-.modal-action-btn:not(.primary):hover {
-  background: #e2e8f0;
+.modal-action-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.95);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 </style>

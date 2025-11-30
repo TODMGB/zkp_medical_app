@@ -2,7 +2,9 @@
   <div class="checkin-proof-detail-page">
     <!-- 顶部导航 -->
     <div class="header">
-      <button class="back-btn" @click="goBack">←</button>
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="icon" />
+      </button>
       <h1 class="page-title">打卡证明详情</h1>
       <div class="header-actions"></div>
     </div>
@@ -10,7 +12,7 @@
     <!-- 主要内容 -->
     <div class="content">
       <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+        <Loader2 class="spinner" />
         <p>加载中...</p>
       </div>
 
@@ -43,7 +45,9 @@
           <h2 class="section-title">链上验证</h2>
           <div class="verification-status" :class="verificationStatus">
             <div class="status-icon">
-              {{ verificationStatus === 'verified' ? '✅' : verificationStatus === 'failed' ? '❌' : '⏳' }}
+              <CheckCircle v-if="verificationStatus === 'verified'" class="icon-status" />
+              <XCircle v-else-if="verificationStatus === 'failed'" class="icon-status" />
+              <Loader2 v-else class="icon-status spinning" />
             </div>
             <div class="status-content">
               <p class="status-label">{{ getVerificationLabel() }}</p>
@@ -56,7 +60,8 @@
             :disabled="verifying"
             @click="verifyProof"
           >
-            {{ verifying ? '验证中...' : '开始验证' }}
+            <Loader2 v-if="verifying" class="spinner-small" />
+            <span v-else>开始验证</span>
           </button>
         </div>
 
@@ -69,7 +74,8 @@
             <div class="data-header">
               <h3>Proof</h3>
               <button class="copy-btn" @click="copyToClipboard(proofData.proof)">
-                📋 复制
+                <Clipboard class="icon-small" />
+                <span>复制</span>
               </button>
             </div>
             <div class="data-content">
@@ -82,7 +88,8 @@
             <div class="data-header">
               <h3>Public Signals</h3>
               <button class="copy-btn" @click="copyToClipboard(proofData.publicSignals)">
-                📋 复制
+                <Clipboard class="icon-small" />
+                <span>复制</span>
               </button>
             </div>
             <div class="data-content">
@@ -95,7 +102,8 @@
             <div class="data-header">
               <h3>Calldata</h3>
               <button class="copy-btn" @click="copyToClipboard(proofData.calldata)">
-                📋 复制
+                <Clipboard class="icon-small" />
+                <span>复制</span>
               </button>
             </div>
             <div class="data-content calldata">
@@ -108,7 +116,8 @@
         <div class="action-buttons">
           <button class="btn btn-primary" @click="goBack">返回</button>
           <button v-if="proofData.proof" class="btn btn-secondary" @click="downloadProof">
-            📥 下载证明
+            <Download class="icon-small" />
+            <span>下载证明</span>
           </button>
         </div>
       </div>
@@ -122,53 +131,61 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { authService } from '@/service/auth'
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { authService } from '@/service/auth';
+import { 
+  ArrowLeft, 
+  Loader2, 
+  CheckCircle, 
+  XCircle, 
+  Clipboard, 
+  Download 
+} from 'lucide-vue-next';
 
-const router = useRouter()
-const route = useRoute()
+const router = useRouter();
+const route = useRoute();
 
-const loading = ref(true)
-const proofData = ref<any>(null)
-const verifying = ref(false)
-const verificationStatus = ref<'pending' | 'verified' | 'failed'>('pending')
-const verificationMessage = ref('')
+const loading = ref(true);
+const proofData = ref<any>(null);
+const verifying = ref(false);
+const verificationStatus = ref<'pending' | 'verified' | 'failed'>('pending');
+const verificationMessage = ref('');
 
 const goBack = () => {
-  router.back()
-}
+  router.back();
+};
 
 const getVerificationLabel = () => {
   const labels: Record<string, string> = {
     pending: '未验证',
     verified: '验证成功',
     failed: '验证失败',
-  }
-  return labels[verificationStatus.value] || '未知状态'
-}
+  };
+  return labels[verificationStatus.value] || '未知状态';
+};
 
 const formatDate = (timestamp: number) => {
-  return new Date(timestamp).toLocaleString('zh-CN')
-}
+  return new Date(timestamp).toLocaleString('zh-CN');
+};
 
 const formatJson = (data: any) => {
-  return JSON.stringify(data, null, 2)
-}
+  return JSON.stringify(data, null, 2);
+};
 
 const copyToClipboard = async (data: any) => {
   try {
-    const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
-    await navigator.clipboard.writeText(text)
-    alert('✅ 已复制到剪贴板')
+    const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    await navigator.clipboard.writeText(text);
+    alert('✅ 已复制到剪贴板');
   } catch (error) {
-    console.error('复制失败:', error)
-    alert('❌ 复制失败')
+    console.error('复制失败:', error);
+    alert('❌ 复制失败');
   }
-}
+};
 
 const downloadProof = () => {
-  if (!proofData.value) return
+  if (!proofData.value) return;
 
   const data = {
     timestamp: proofData.value.timestamp,
@@ -178,63 +195,63 @@ const downloadProof = () => {
     publicSignals: proofData.value.publicSignals,
     calldata: proofData.value.calldata,
     downloadTime: new Date().toISOString(),
-  }
+  };
 
-  const json = JSON.stringify(data, null, 2)
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `checkin_proof_${new Date(proofData.value.timestamp).getTime()}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-}
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `checkin_proof_${new Date(proofData.value.timestamp).getTime()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
 
 const verifyProof = async () => {
-  if (!proofData.value || verifying.value) return
+  if (!proofData.value || verifying.value) return;
 
-  verifying.value = true
-  verificationMessage.value = ''
+  verifying.value = true;
+  verificationMessage.value = '';
 
   try {
-    const calldata = proofData.value.calldata
+    const calldata = proofData.value.calldata;
 
-    console.log('=== 开始验证 ===')
-    console.log('Calldata 类型:', typeof calldata)
-    console.log('Calldata 值:', calldata)
-    console.log('Calldata 长度:', calldata ? calldata.length : 0)
+    console.log('=== 开始验证 ===');
+    console.log('Calldata 类型:', typeof calldata);
+    console.log('Calldata 值:', calldata);
+    console.log('Calldata 长度:', calldata ? calldata.length : 0);
 
     if (!calldata) {
-      verificationMessage.value = '缺少 Calldata 数据'
-      verificationStatus.value = 'failed'
-      return
+      verificationMessage.value = '缺少 Calldata 数据';
+      verificationStatus.value = 'failed';
+      return;
     }
 
     // 从 calldata 中解析 pA, pB, pC, pubSignals
-    let pA: any = []
-    let pB: any = []
-    let pC: any = []
-    let pubSignals: any = []
+    let pA: any = [];
+    let pB: any = [];
+    let pC: any = [];
+    let pubSignals: any = [];
 
     try {
       // calldata 格式: [pA],[pB],[pC],[pubSignals] 或 [[pA],[pB],[pC],[pubSignals]]
       if (typeof calldata === 'string') {
-        console.log('解析 calldata 字符串...')
+        console.log('解析 calldata 字符串...');
         
         // 尝试直接解析为 JSON
-        let parsed: any
+        let parsed: any;
         try {
-          parsed = JSON.parse(calldata)
-          console.log('✓ 直接 JSON 解析成功')
+          parsed = JSON.parse(calldata);
+          console.log('✓ 直接 JSON 解析成功');
         } catch (e) {
           // 如果直接解析失败，尝试用方括号包装
-          console.log('直接解析失败，尝试包装为数组...')
+          console.log('直接解析失败，尝试包装为数组...');
           try {
-            parsed = JSON.parse(`[${calldata}]`)
-            console.log('✓ 包装后解析成功')
+            parsed = JSON.parse(`[${calldata}]`);
+            console.log('✓ 包装后解析成功');
           } catch (e2) {
-            console.error('❌ 包装解析也失败:', e2)
-            throw e
+            console.error('❌ 包装解析也失败:', e2);
+            throw e;
           }
         }
         
@@ -244,41 +261,41 @@ const verifyProof = async () => {
         if (Array.isArray(parsed)) {
           if (parsed.length === 4 && Array.isArray(parsed[0])) {
             // 情况1: [pA, pB, pC, pubSignals]
-            console.log('✓ 格式1: [pA, pB, pC, pubSignals]')
-            pA = parsed[0]
-            pB = parsed[1]
-            pC = parsed[2]
-            pubSignals = parsed[3]
+            console.log('✓ 格式1: [pA, pB, pC, pubSignals]');
+            pA = parsed[0];
+            pB = parsed[1];
+            pC = parsed[2];
+            pubSignals = parsed[3];
           } else if (parsed.length === 1 && Array.isArray(parsed[0]) && Array.isArray(parsed[0][0])) {
             // 情况2: [[pA, pB, pC, pubSignals]]
-            console.log('✓ 格式2: [[pA, pB, pC, pubSignals]]')
-            pA = parsed[0][0]
-            pB = parsed[0][1]
-            pC = parsed[0][2]
-            pubSignals = parsed[0][3]
+            console.log('✓ 格式2: [[pA, pB, pC, pubSignals]]');
+            pA = parsed[0][0];
+            pB = parsed[0][1];
+            pC = parsed[0][2];
+            pubSignals = parsed[0][3];
           } else {
-            console.error('❌ 数组格式不符合预期')
-            verificationMessage.value = 'Calldata 格式错误'
-            verificationStatus.value = 'failed'
-            return
+            console.error('❌ 数组格式不符合预期');
+            verificationMessage.value = 'Calldata 格式错误';
+            verificationStatus.value = 'failed';
+            return;
           }
         } else {
-          console.error('❌ 解析结果不是数组')
-          verificationMessage.value = 'Calldata 格式错误'
-          verificationStatus.value = 'failed'
-          return
+          console.error('❌ 解析结果不是数组');
+          verificationMessage.value = 'Calldata 格式错误';
+          verificationStatus.value = 'failed';
+          return;
         }
       } else if (Array.isArray(calldata) && calldata.length >= 4) {
-        console.log('✓ Calldata 已是数组格式')
-        pA = calldata[0]
-        pB = calldata[1]
-        pC = calldata[2]
-        pubSignals = calldata[3]
+        console.log('✓ Calldata 已是数组格式');
+        pA = calldata[0];
+        pB = calldata[1];
+        pC = calldata[2];
+        pubSignals = calldata[3];
       } else {
-        console.error('❌ 未知的 calldata 格式:', typeof calldata)
-        verificationMessage.value = '证明数据格式不支持'
-        verificationStatus.value = 'failed'
-        return
+        console.error('❌ 未知的 calldata 格式:', typeof calldata);
+        verificationMessage.value = '证明数据格式不支持';
+        verificationStatus.value = 'failed';
+        return;
       }
       
       console.log('✓ 参数提取成功:', {
@@ -286,26 +303,26 @@ const verifyProof = async () => {
         pB: Array.isArray(pB) ? `长度 ${pB.length}` : '非数组',
         pC: Array.isArray(pC) ? `长度 ${pC.length}` : '非数组',
         pubSignals: Array.isArray(pubSignals) ? `长度 ${pubSignals.length}` : '非数组',
-      })
+      });
     } catch (parseError) {
-      console.error('❌ 解析 calldata 失败:', parseError)
-      console.error('原始 calldata:', calldata)
-      verificationMessage.value = '证明数据解析失败'
-      verificationStatus.value = 'failed'
-      return
+      console.error('❌ 解析 calldata 失败:', parseError);
+      console.error('原始 calldata:', calldata);
+      verificationMessage.value = '证明数据解析失败';
+      verificationStatus.value = 'failed';
+      return;
     }
 
-    console.log('数据完整性检查:')
-    console.log('- pA 完整:', pA.length > 0)
-    console.log('- pB 完整:', pB.length > 0)
-    console.log('- pC 完整:', pC.length > 0)
-    console.log('- pubSignals 完整:', pubSignals.length > 0)
+    console.log('数据完整性检查:');
+    console.log('- pA 完整:', pA.length > 0);
+    console.log('- pB 完整:', pB.length > 0);
+    console.log('- pC 完整:', pC.length > 0);
+    console.log('- pubSignals 完整:', pubSignals.length > 0);
 
     if (!pA.length || !pB.length || !pC.length || !pubSignals.length) {
-      verificationMessage.value = `证明数据不完整 (pA: ${pA.length}, pB: ${pB.length}, pC: ${pC.length}, pubSignals: ${pubSignals.length})`
-      verificationStatus.value = 'failed'
-      console.error('证明数据不完整:', { pA: pA.length, pB: pB.length, pC: pC.length, pubSignals: pubSignals.length })
-      return
+      verificationMessage.value = `证明数据不完整 (pA: ${pA.length}, pB: ${pB.length}, pC: ${pC.length}, pubSignals: ${pubSignals.length})`;
+      verificationStatus.value = 'failed';
+      console.error('证明数据不完整:', { pA: pA.length, pB: pB.length, pC: pC.length, pubSignals: pubSignals.length });
+      return;
     }
 
     // 构建请求体 - 发送 pA, pB, pC, pubSignals
@@ -314,18 +331,18 @@ const verifyProof = async () => {
       pB: pB,
       pC: pC,
       pubSignals: pubSignals,
-    }
+    };
 
     console.log('发送验证请求:', {
       pA: JSON.stringify(pA),
       pB: JSON.stringify(pB),
       pC: JSON.stringify(pC),
       pubSignals: JSON.stringify(pubSignals),
-    })
+    });
 
     // 调用验证 API
-    const token = await authService.getToken()
-    const API_GATEWAY_URL = (await import('@/config/api.config')).API_GATEWAY_URL
+    const token = await authService.getToken();
+    const API_GATEWAY_URL = (await import('@/config/api.config')).API_GATEWAY_URL;
 
     const response = await fetch(`${API_GATEWAY_URL}/erc4337/zkp/verify/medical-checkin`, {
       method: 'POST',
@@ -334,70 +351,72 @@ const verifyProof = async () => {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify(requestBody),
-    })
+    });
 
-    console.log('验证响应状态:', response.status)
-    const result = await response.json()
-    console.log('验证响应数据:', JSON.stringify(result, null, 2))
-    console.log('响应字段检查:')
-    console.log('- result.success:', result.success)
-    console.log('- result.verified:', result.verified)
-    console.log('- result.valid:', result.valid)
-    console.log('- result.message:', result.message)
-    console.log('- result.error:', result.error)
+    console.log('验证响应状态:', response.status);
+    const result = await response.json();
+    console.log('验证响应数据:', JSON.stringify(result, null, 2));
+    console.log('响应字段检查:');
+    console.log('- result.success:', result.success);
+    console.log('- result.verified:', result.verified);
+    console.log('- result.valid:', result.valid);
+    console.log('- result.message:', result.message);
+    console.log('- result.error:', result.error);
 
     // 检查验证是否成功
     // 后端返回 success: true 和 valid: true 表示验证成功
     if ((result.success && result.valid) || (result.success && result.verified)) {
-      verificationStatus.value = 'verified'
-      verificationMessage.value = result.message || '✅ 证明验证成功'
-      console.log('✅ 验证成功')
+      verificationStatus.value = 'verified';
+      verificationMessage.value = result.message || '✅ 证明验证成功';
+      console.log('✅ 验证成功');
     } else if (result.valid === true || result.verified === true) {
-      verificationStatus.value = 'verified'
-      verificationMessage.value = result.message || '✅ 证明验证成功'
-      console.log('✅ 验证成功')
+      verificationStatus.value = 'verified';
+      verificationMessage.value = result.message || '✅ 证明验证成功';
+      console.log('✅ 验证成功');
     } else {
-      verificationStatus.value = 'failed'
-      verificationMessage.value = result.message || result.error || '❌ 证明验证失败'
-      console.error('❌ 验证失败，完整响应:', result)
+      verificationStatus.value = 'failed';
+      verificationMessage.value = result.message || result.error || '❌ 证明验证失败';
+      console.error('❌ 验证失败，完整响应:', result);
     }
   } catch (error) {
-    console.error('验证证明失败:', error)
-    verificationStatus.value = 'failed'
-    verificationMessage.value = error instanceof Error ? error.message : '验证过程中出错'
+    console.error('验证证明失败:', error);
+    verificationStatus.value = 'failed';
+    verificationMessage.value = error instanceof Error ? error.message : '验证过程中出错';
   } finally {
-    verifying.value = false
+    verifying.value = false;
   }
-}
+};
 
 onMounted(async () => {
   try {
     // 从路由参数获取证明数据
-    const proofJson = route.query.proof as string
+    const proofJson = route.query.proof as string;
     if (!proofJson) {
-      alert('❌ 缺少证明数据')
-      goBack()
-      return
+      alert('❌ 缺少证明数据');
+      goBack();
+      return;
     }
 
-    proofData.value = JSON.parse(decodeURIComponent(proofJson))
+    proofData.value = JSON.parse(decodeURIComponent(proofJson));
 
     if (!proofData.value) {
-      alert('❌ 证明数据格式错误')
+      alert('❌ 证明数据格式错误');
     }
   } catch (error) {
-    console.error('加载证明详情失败:', error)
-    alert('❌ 加载失败')
+    console.error('加载证明详情失败:', error);
+    alert('❌ 加载失败');
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-})
+});
 </script>
 
 <style scoped>
 .checkin-proof-detail-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  background: #f5f7fa;
+
   display: flex;
   flex-direction: column;
 }
@@ -423,13 +442,17 @@ onMounted(async () => {
   justify-content: center;
   cursor: pointer;
   color: white;
-  font-size: 20px;
   transition: all 0.3s ease;
 }
 
 .back-btn:active {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(0.95);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .page-title {
@@ -462,9 +485,6 @@ onMounted(async () => {
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
@@ -487,16 +507,16 @@ onMounted(async () => {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .section-title {
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: #2d3748;
   margin: 0 0 16px 0;
   padding-bottom: 12px;
-  border-bottom: 2px solid #667eea;
+  border-bottom: 2px solid #ebf4ff;
 }
 
 /* 信息网格 */
@@ -514,14 +534,14 @@ onMounted(async () => {
 
 .info-item .label {
   font-size: 12px;
-  color: #999;
+  color: #718096;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .info-item .value {
   font-size: 14px;
-  color: #333;
+  color: #2d3748;
   font-weight: 500;
   word-break: break-all;
 }
@@ -552,8 +572,15 @@ onMounted(async () => {
 }
 
 .status-icon {
-  font-size: 24px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-status {
+  width: 24px;
+  height: 24px;
 }
 
 .status-content {
@@ -564,13 +591,13 @@ onMounted(async () => {
   margin: 0 0 4px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: #2d3748;
 }
 
 .status-message {
   margin: 0;
   font-size: 12px;
-  color: #666;
+  color: #718096;
   line-height: 1.5;
 }
 
@@ -585,23 +612,32 @@ onMounted(async () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .verify-btn:active:not(:disabled) {
-  background: #764ba2;
+  background: #5a67d8;
   transform: scale(0.98);
 }
 
 .verify-btn:disabled {
-  background: #ccc;
+  background: var(--gray-300);
   cursor: not-allowed;
+}
+
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
 }
 
 /* 数据项 */
 .data-item {
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .data-item:last-child {
@@ -620,28 +656,36 @@ onMounted(async () => {
 .data-header h3 {
   margin: 0;
   font-size: 14px;
-  color: #333;
+  color: #2d3748;
   font-weight: 600;
 }
 
 .copy-btn {
-  background: #667eea;
-  color: white;
+  background: #ebf4ff;
+  color: #667eea;
   border: none;
   padding: 6px 12px;
   border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .copy-btn:active {
-  background: #764ba2;
+  background: #dbeafe;
   transform: scale(0.95);
 }
 
+.icon-small {
+  width: 14px;
+  height: 14px;
+}
+
 .data-content {
-  background: #f5f5f5;
+  background: #f7fafc;
   border-radius: 8px;
   padding: 12px;
   overflow-x: auto;
@@ -651,7 +695,7 @@ onMounted(async () => {
   margin: 0;
   font-size: 11px;
   font-family: 'Courier New', monospace;
-  color: #333;
+  color: #2d3748;
   line-height: 1.4;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -677,6 +721,10 @@ onMounted(async () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .btn-primary {
@@ -685,18 +733,18 @@ onMounted(async () => {
 }
 
 .btn-primary:active {
-  background: #764ba2;
+  background: #5a67d8;
   transform: scale(0.98);
 }
 
 .btn-secondary {
-  background: #f5f5f5;
-  color: #333;
-  border: 1px solid #ddd;
+  background: white;
+  color: #2d3748;
+  border: 1px solid #e2e8f0;
 }
 
 .btn-secondary:active {
-  background: #eee;
+  background: #f7fafc;
   transform: scale(0.98);
 }
 

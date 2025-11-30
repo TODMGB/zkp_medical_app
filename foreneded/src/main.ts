@@ -2,6 +2,7 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router' // 引入路由配置
+import './assets/main.css' // 引入全局样式
 import './assets/scanner.css' // 引入扫描器样式
 import { localNotificationService } from './service/localNotification'
 

@@ -3,7 +3,7 @@
     <!-- 顶部导航 -->
     <div class="header">
       <button class="back-btn" @click="goBack">
-        <span class="arrow">←</span>
+        <ArrowLeft class="icon" />
       </button>
       <h1 class="page-title">测试中心</h1>
     </div>
@@ -12,7 +12,9 @@
     <div class="content">
       <!-- 开发环境提示 -->
       <div class="dev-notice">
-        <div class="notice-icon">🧪</div>
+        <div class="notice-icon-wrapper">
+          <FlaskConical class="notice-icon" />
+        </div>
         <div class="notice-content">
           <h3>开发测试环境</h3>
           <p>此页面包含所有开发和测试功能，仅在开发环境中使用</p>
@@ -22,45 +24,53 @@
       <!-- 核心功能测试 -->
       <div class="test-section">
         <h2 class="section-title">
-          <span class="section-icon">🔧</span>
+          <Wrench class="section-icon" />
           核心功能测试
         </h2>
         
         <div class="test-grid">
           <div class="test-card" @click="goToZkpTest">
-            <div class="card-icon">🔐</div>
+            <div class="card-icon-wrapper">
+              <ShieldCheck class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">零知识证明</h3>
               <p class="card-desc">测试ZKP生成和验证功能</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
 
           <div class="test-card" @click="goToWallet">
-            <div class="card-icon">💰</div>
+            <div class="card-icon-wrapper">
+              <Wallet class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">钱包管理</h3>
               <p class="card-desc">以太坊钱包创建和管理</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
 
           <div class="test-card" @click="goToAccountAbstraction">
-            <div class="card-icon">🏗️</div>
+            <div class="card-icon-wrapper">
+              <Blocks class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">账户抽象</h3>
               <p class="card-desc">ERC-4337智能合约账户</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
 
           <div class="test-card" @click="goToWeeklySummary">
-            <div class="card-icon">📋</div>
+            <div class="card-icon-wrapper">
+              <ClipboardList class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">周打卡汇总</h3>
               <p class="card-desc">测试周度打卡和证明生成</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
         </div>
       </div>
@@ -68,36 +78,42 @@
       <!-- 迁移功能测试 -->
       <div class="test-section">
         <h2 class="section-title">
-          <span class="section-icon">📱</span>
+          <Smartphone class="section-icon" />
           迁移功能测试
         </h2>
         
         <div class="test-grid">
           <div class="test-card" @click="goToMigrationTest">
-            <div class="card-icon">🧪</div>
+            <div class="card-icon-wrapper">
+              <TestTube2 class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">迁移功能测试</h3>
               <p class="card-desc">测试账户迁移的各项功能</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
 
           <div class="test-card" @click="goToOldDeviceMigration">
-            <div class="card-icon">📤</div>
+            <div class="card-icon-wrapper">
+              <Upload class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">旧设备迁移</h3>
               <p class="card-desc">模拟旧设备发起迁移</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
 
           <div class="test-card" @click="goToNewDeviceImport">
-            <div class="card-icon">📥</div>
+            <div class="card-icon-wrapper">
+              <Download class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">新设备导入</h3>
               <p class="card-desc">模拟新设备导入账户</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
         </div>
       </div>
@@ -105,45 +121,53 @@
       <!-- 用户流程测试 -->
       <div class="test-section">
         <h2 class="section-title">
-          <span class="section-icon">👤</span>
+          <User class="section-icon" />
           用户流程测试
         </h2>
         
         <div class="test-grid">
           <div class="test-card" @click="goToSplash">
-            <div class="card-icon">🏠</div>
+            <div class="card-icon-wrapper">
+              <Home class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">欢迎页面</h3>
               <p class="card-desc">应用启动和用户引导</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
 
           <div class="test-card" @click="goToAccountChoice">
-            <div class="card-icon">⚡</div>
+            <div class="card-icon-wrapper">
+              <Zap class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">账户选择</h3>
               <p class="card-desc">新用户账户类型选择</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
 
           <div class="test-card" @click="goToSignup">
-            <div class="card-icon">✨</div>
+            <div class="card-icon-wrapper">
+              <Sparkles class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">用户注册</h3>
               <p class="card-desc">身份验证和账户创建</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
 
           <div class="test-card" @click="goToRegistrationFlowTest">
-            <div class="card-icon">🔄</div>
+            <div class="card-icon-wrapper">
+              <RefreshCw class="card-icon" />
+            </div>
             <div class="card-content">
               <h3 class="card-title">注册流程测试</h3>
               <p class="card-desc">完整注册流程的自动化测试</p>
             </div>
-            <div class="card-arrow">→</div>
+            <ChevronRight class="card-arrow" />
           </div>
         </div>
       </div>
@@ -151,13 +175,15 @@
       <!-- 工具和状态 -->
       <div class="test-section">
         <h2 class="section-title">
-          <span class="section-icon">🛠️</span>
+          <PenTool class="section-icon" />
           开发工具
         </h2>
         
         <div class="tools-grid">
           <div class="tool-card" @click="clearAllData">
-            <div class="tool-icon">🗑️</div>
+            <div class="tool-icon-wrapper">
+              <Trash2 class="tool-icon" />
+            </div>
             <div class="tool-content">
               <h4 class="tool-title">清除所有数据</h4>
               <p class="tool-desc">重置应用到初始状态</p>
@@ -165,7 +191,9 @@
           </div>
 
           <div class="tool-card" @click="showCacheManager">
-            <div class="tool-icon">📦</div>
+            <div class="tool-icon-wrapper">
+              <Package class="tool-icon" />
+            </div>
             <div class="tool-content">
               <h4 class="tool-title">缓存管理</h4>
               <p class="tool-desc">细粒度清除各类缓存</p>
@@ -173,7 +201,9 @@
           </div>
 
           <div class="tool-card" @click="toggleRegistrationStatus">
-            <div class="tool-icon">🔄</div>
+            <div class="tool-icon-wrapper">
+              <RefreshCw class="tool-icon" />
+            </div>
             <div class="tool-content">
               <h4 class="tool-title">切换注册状态</h4>
               <p class="tool-desc">模拟已注册/未注册状态</p>
@@ -181,7 +211,9 @@
           </div>
 
           <div class="tool-card" @click="showSystemInfo">
-            <div class="tool-icon">ℹ️</div>
+            <div class="tool-icon-wrapper">
+              <Info class="tool-icon" />
+            </div>
             <div class="tool-content">
               <h4 class="tool-title">系统信息</h4>
               <p class="tool-desc">查看设备和应用信息</p>
@@ -221,6 +253,29 @@ import { aaService } from '@/service/accountAbstraction';
 import { Preferences } from '@capacitor/preferences';
 import { Device } from '@capacitor/device';
 import { CLEAR_GROUPS, KEY_CATEGORIES } from '@/config/storage.config';
+import { 
+  ArrowLeft, 
+  FlaskConical, 
+  Wrench, 
+  ShieldCheck, 
+  Wallet, 
+  Blocks, 
+  ClipboardList, 
+  Smartphone, 
+  TestTube2, 
+  Upload, 
+  Download, 
+  User, 
+  Home, 
+  Zap, 
+  Sparkles, 
+  RefreshCw, 
+  PenTool, 
+  Trash2, 
+  Package, 
+  Info,
+  ChevronRight
+} from 'lucide-vue-next';
 
 const router = useRouter();
 const route = useRoute();
@@ -435,7 +490,7 @@ onMounted(() => {
 <style scoped>
 .test-center {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bg-body);
   display: flex;
   flex-direction: column;
 }
@@ -446,6 +501,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
+  background: #667eea;
+  color: white;
+  box-shadow: var(--shadow-md);
 }
 
 .back-btn {
@@ -460,6 +518,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   backdrop-filter: blur(10px);
+  color: white;
 }
 
 .back-btn:hover {
@@ -467,15 +526,9 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-.arrow {
-  color: white;
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
 .page-title {
   color: white;
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   margin: 0;
 }
@@ -483,51 +536,55 @@ onMounted(() => {
 /* 主要内容 */
 .content {
   flex: 1;
-  background: white;
+  background: var(--bg-body);
   border-radius: 24px 24px 0 0;
   padding: 24px;
-  margin-top: auto;
-  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  margin-top: -20px;
+  background: var(--bg-body);
+  position: relative;
+  z-index: 10;
 }
 
 /* 开发环境提示 */
 .dev-notice {
-  background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
-  border-radius: 16px;
-  padding: 20px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: var(--border-radius-lg);
+  padding: 16px;
   display: flex;
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.notice-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  background: #fff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-warning);
 }
 
 .notice-icon {
-  font-size: 2rem;
-  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
 }
 
 .notice-content h3 {
   margin: 0 0 4px 0;
-  color: #2d3436;
-  font-size: 1.1rem;
+  color: #9a3412;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .notice-content p {
   margin: 0;
-  color: #636e72;
-  font-size: 0.9rem;
+  color: #c2410c;
+  font-size: 0.875rem;
   line-height: 1.4;
 }
 
@@ -541,13 +598,15 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   margin: 0 0 16px 0;
-  color: #2d3436;
-  font-size: 1.2rem;
+  color: var(--text-primary);
+  font-size: 1.125rem;
   font-weight: 600;
 }
 
 .section-icon {
-  font-size: 1.3rem;
+  width: 20px;
+  height: 20px;
+  color: var(--color-primary);
 }
 
 /* 测试卡片网格 */
@@ -558,35 +617,45 @@ onMounted(() => {
 }
 
 .test-card {
-  background: white;
-  border: 2px solid #f1f3f4;
-  border-radius: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
   padding: 20px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-sm);
 }
 
 .test-card:hover {
-  border-color: #667eea;
+  border-color: var(--color-primary);
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+  box-shadow: var(--shadow-md);
 }
 
-.card-icon {
-  font-size: 1.8rem;
-  width: 50px;
-  height: 50px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.card-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  background: var(--primary-50);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--color-primary);
   flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.test-card:hover .card-icon-wrapper {
+  background: var(--color-primary);
+  color: white;
+}
+
+.card-icon {
+  width: 24px;
+  height: 24px;
 }
 
 .card-content {
@@ -595,27 +664,28 @@ onMounted(() => {
 
 .card-title {
   margin: 0 0 4px 0;
-  color: #2d3436;
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 600;
 }
 
 .card-desc {
   margin: 0;
-  color: #636e72;
-  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
   line-height: 1.4;
 }
 
 .card-arrow {
-  color: #667eea;
-  font-size: 1.2rem;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  flex-shrink: 0;
+  color: var(--gray-400);
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
 }
 
 .test-card:hover .card-arrow {
   transform: translateX(4px);
+  color: var(--color-primary);
 }
 
 /* 工具网格 */
@@ -626,24 +696,24 @@ onMounted(() => {
 }
 
 .tool-card {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 12px;
+  background: var(--gray-50);
+  border: 1px solid transparent;
+  border-radius: var(--border-radius-md);
   padding: 16px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 .tool-card:hover {
-  background: #e9ecef;
-  transform: translateY(-1px);
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-sm);
 }
 
-.tool-icon {
-  font-size: 1.5rem;
+.tool-icon-wrapper {
   width: 40px;
   height: 40px;
   background: white;
@@ -651,7 +721,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  color: var(--text-secondary);
+  border: 1px solid var(--gray-200);
+}
+
+.tool-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .tool-content {
@@ -660,30 +736,33 @@ onMounted(() => {
 
 .tool-title {
   margin: 0 0 2px 0;
-  color: #495057;
+  color: var(--text-primary);
   font-size: 0.9rem;
   font-weight: 600;
 }
 
 .tool-desc {
   margin: 0;
-  color: #6c757d;
+  color: var(--text-tertiary);
   font-size: 0.8rem;
 }
 
 /* 状态区域 */
 .status-section {
-  background: #f8f9fa;
-  border-radius: 12px;
+  background: var(--gray-50);
+  border-radius: var(--border-radius-lg);
   padding: 20px;
   margin-top: 24px;
+  border: 1px solid var(--border-color);
 }
 
 .status-title {
   margin: 0 0 16px 0;
-  color: #495057;
-  font-size: 1rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .status-grid {
@@ -697,22 +776,27 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.status-item:last-child {
+  border-bottom: none;
 }
 
 .status-label {
-  color: #6c757d;
-  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 
 .status-value {
-  color: #495057;
-  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
   font-weight: 500;
   font-family: monospace;
 }
 
 .status-value.registered {
-  color: #28a745;
+  color: var(--color-success);
 }
 
 /* 响应式 */
@@ -731,16 +815,6 @@ onMounted(() => {
   
   .status-grid {
     grid-template-columns: 1fr;
-  }
-  
-  .test-card {
-    padding: 16px;
-  }
-  
-  .card-icon {
-    width: 45px;
-    height: 45px;
-    font-size: 1.5rem;
   }
 }
 </style>

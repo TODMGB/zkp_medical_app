@@ -2,25 +2,28 @@
   <div class="invitation-page">
     <!-- 顶部导航 -->
     <div class="header">
-      <button class="back-btn" @click="goBack">←</button>
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="icon" />
+      </button>
       <h1 class="page-title">{{ pageTitle }}</h1>
+      <div class="placeholder"></div>
     </div>
     
     <!-- 邀请信息 -->
     <div class="invitation-content">
       <div v-if="errorMessage" class="error-banner">
-        <span class="error-icon">⚠️</span>
+        <AlertTriangle class="error-icon" />
         <span>{{ errorMessage }}</span>
       </div>
       
       <div class="invite-header">
-        <div class="invite-icon">
-          {{ groupIcon }}
+        <div class="invite-icon-wrapper" :class="getGroupColorClass(groupType)">
+          <component :is="getGroupIcon(groupType)" class="invite-icon" />
         </div>
         <h2 class="invite-title">{{ inviteTitle }}</h2>
         <p class="invite-desc">{{ inviteDescription }}</p>
         <p v-if="groupName" class="group-name-badge">
-          <span class="badge-icon">📋</span>
+          <ClipboardList class="badge-icon" />
           <span>{{ groupName }}</span>
         </p>
       </div>
@@ -29,9 +32,9 @@
       <div class="qr-section">
         <div class="qr-container">
           <div class="qr-code">
-            <QRCode v-if="inviteToken" :value="inviteToken" :size="120" />
+            <QRCode v-if="inviteToken" :value="inviteToken" :size="140" />
             <div v-else class="qr-placeholder">
-              <div class="qr-icon">📱</div>
+              <Smartphone class="qr-icon" />
               <p class="qr-text">生成中...</p>
             </div>
           </div>
@@ -46,7 +49,11 @@
           <h3 class="code-title">或者使用邀请码</h3>
           <div class="code-container">
             <div class="invite-code">{{ inviteCode }}</div>
-            <button class="copy-btn" @click="copyCode">复制</button>
+            <button class="copy-btn" @click="copyCode">
+              <Copy v-if="!copySuccess" class="icon-small" />
+              <Check v-else class="icon-small" />
+              {{ copySuccess ? '已复制' : '复制' }}
+            </button>
           </div>
           <p class="code-desc">对方输入此邀请码也可以加入</p>
         </div>
@@ -57,15 +64,21 @@
         <h3 class="share-title">分享邀请</h3>
         <div class="share-options">
           <button class="share-btn" @click="shareWechat">
-            <div class="share-icon">💬</div>
+            <div class="share-icon-wrapper green">
+              <MessageCircle class="share-icon" />
+            </div>
             <span>微信分享</span>
           </button>
           <button class="share-btn" @click="shareSms">
-            <div class="share-icon">📱</div>
+            <div class="share-icon-wrapper blue">
+              <MessageSquare class="share-icon" />
+            </div>
             <span>短信分享</span>
           </button>
           <button class="share-btn" @click="shareCopy">
-            <div class="share-icon">📋</div>
+            <div class="share-icon-wrapper purple">
+              <Link class="share-icon" />
+            </div>
             <span>复制链接</span>
           </button>
         </div>
@@ -75,6 +88,9 @@
       <div class="status-section">
         <h3 class="status-title">邀请状态</h3>
         <div class="status-list">
+          <div v-if="pendingInvites.length === 0" class="empty-status">
+             <p>暂无待处理的邀请</p>
+          </div>
           <div
             v-for="invite in pendingInvites"
             :key="invite.id"
@@ -94,6 +110,7 @@
       <!-- 操作按钮 -->
       <div class="actions">
         <button class="refresh-btn" @click="refreshInvite">
+          <RefreshCw class="icon-small" :class="{ 'spin': isLoading }" />
           刷新邀请码
         </button>
         <button class="done-btn" @click="goBack">
@@ -111,6 +128,24 @@ import { relationService } from '../../service/relation'
 import { authService } from '../../service/auth'
 import type { AccessGroup, AccessGroupStats, Invitation } from '../../service/relation'
 import QRCode from '../../components/QRCode.vue'
+import { 
+  ArrowLeft, 
+  AlertTriangle, 
+  ClipboardList, 
+  Smartphone, 
+  Copy, 
+  Check, 
+  MessageCircle, 
+  MessageSquare, 
+  Link, 
+  RefreshCw,
+  Users,
+  Stethoscope,
+  Hospital,
+  Microscope,
+  Building2,
+  UserPlus
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -155,22 +190,35 @@ const pageTitle = computed(() => {
 })
 
 // 动态获取群组图标
-const groupIcon = computed(() => {
-  const icons: Record<string, string> = {
-    'FAMILY': '👨‍👩‍👧‍👦',
-    'PRIMARY_DOCTOR': '👨‍⚕️',
-    'FAMILY_DOCTOR': '🏥',
-    'SPECIALIST': '🔬',
-    'HOSPITAL': '🏨',
-    'CUSTOM': '📋'
+const getGroupIcon = (type: string) => {
+  const icons: Record<string, any> = {
+    'FAMILY': Users,
+    'PRIMARY_DOCTOR': Stethoscope,
+    'FAMILY_DOCTOR': Hospital,
+    'SPECIALIST': Microscope,
+    'HOSPITAL': Building2,
+    'CUSTOM': ClipboardList
   }
   
-  if (groupType.value && icons[groupType.value]) {
-    return icons[groupType.value]
+  if (type && icons[type]) {
+    return icons[type]
   }
   
-  return inviteType.value === 'family' ? '👨‍👩‍👧‍👦' : '👨‍⚕️'
-})
+  return inviteType.value === 'family' ? Users : Stethoscope
+}
+
+// 获取群组颜色类
+const getGroupColorClass = (type: string) => {
+  const colors: Record<string, string> = {
+    'FAMILY': 'blue',
+    'PRIMARY_DOCTOR': 'green',
+    'FAMILY_DOCTOR': 'teal',
+    'SPECIALIST': 'purple',
+    'HOSPITAL': 'orange',
+    'CUSTOM': 'gray'
+  }
+  return colors[type] || 'blue'
+}
 
 // 动态邀请标题
 const inviteTitle = computed(() => {
@@ -250,6 +298,7 @@ const shareCopy = async () => {
   try {
     await navigator.clipboard.writeText(shareText)
     console.log('分享链接已复制')
+    alert('分享链接已复制')
   } catch (error) {
     console.error('复制失败:', error)
   }
@@ -360,26 +409,47 @@ onMounted(() => {
 .header {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 20px;
+  justify-content: space-between;
+  padding: 16px 20px;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .back-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: #4299e1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2d3748;
   cursor: pointer;
-  padding: 8px;
+  transition: all 0.3s;
+}
+
+.back-btn:hover {
+  background: var(--bg-body);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .page-title {
-  font-size: 1.3rem;
+  font-size: 18px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
+}
+
+.placeholder {
+  width: 40px;
 }
 
 .invitation-content {
@@ -389,19 +459,21 @@ onMounted(() => {
 }
 
 .error-banner {
-  background: #fff5f5;
-  color: #c53030;
+  background: #fef2f2;
+  color: #b91c1c;
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 20px;
-  border: 1px solid #feb2b2;
+  border: 1px solid #fee2e2;
+  font-size: 14px;
 }
 
 .error-icon {
-  font-size: 1.2rem;
+  width: 20px;
+  height: 20px;
 }
 
 .invite-header {
@@ -409,79 +481,109 @@ onMounted(() => {
   margin-bottom: 30px;
 }
 
+.invite-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  box-shadow: var(--shadow-md);
+}
+
+.invite-icon-wrapper.blue { background: #e0f2fe; color: #0ea5e9; }
+.invite-icon-wrapper.green { background: #dcfce7; color: #22c55e; }
+.invite-icon-wrapper.teal { background: #ccfbf1; color: #14b8a6; }
+.invite-icon-wrapper.purple { background: #f3e8ff; color: #a855f7; }
+.invite-icon-wrapper.orange { background: #ffedd5; color: #f97316; }
+.invite-icon-wrapper.gray { background: #f3f4f6; color: #6b7280; }
+
 .invite-icon {
-  font-size: 3rem;
-  margin-bottom: 15px;
+  width: 40px;
+  height: 40px;
 }
 
 .invite-title {
-  font-size: 1.4rem;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
   color: #2d3748;
-  margin: 0 0 10px 0;
+  margin: 0 0 8px 0;
 }
 
 .invite-desc {
   color: #718096;
   line-height: 1.5;
-  margin: 0 0 10px 0;
+  margin: 0 0 12px 0;
+  font-size: 14px;
 }
 
 .group-name-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background-color: #ebf8ff;
-  color: #2c5282;
-  padding: 8px 16px;
+  background-color: #f7fafc;
+  color: #718096;
+  padding: 6px 12px;
   border-radius: 20px;
-  font-size: 0.9rem;
+  font-size: 13px;
   font-weight: 500;
-  margin: 10px 0 0 0;
+  margin: 0;
 }
 
 .badge-icon {
-  font-size: 1rem;
+  width: 14px;
+  height: 14px;
 }
 
 .qr-section {
   background-color: white;
-  border-radius: 12px;
-  padding: 25px;
+  border-radius: 20px;
+  padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .qr-container {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin-bottom: 25px;
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
 .qr-code {
-  width: 120px;
-  height: 120px;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
+  width: 140px;
+  height: 140px;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  background: white;
+  padding: 10px;
 }
 
 .qr-placeholder {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
 }
 
 .qr-icon {
-  font-size: 2rem;
+  width: 32px;
+  height: 32px;
+  color: #a0aec0;
   margin-bottom: 8px;
 }
 
 .qr-text {
-  font-size: 0.8rem;
-  color: #718096;
+  font-size: 12px;
+  color: #a0aec0;
   margin: 0;
 }
 
@@ -490,7 +592,7 @@ onMounted(() => {
 }
 
 .qr-title {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
   color: #2d3748;
   margin: 0 0 8px 0;
@@ -498,141 +600,173 @@ onMounted(() => {
 
 .qr-desc {
   color: #718096;
-  font-size: 0.9rem;
+  font-size: 13px;
   margin: 0;
+  line-height: 1.5;
 }
 
 .invite-code-section {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--border-color);
   padding-top: 20px;
 }
 
 .code-title {
-  font-size: 1rem;
+  font-size: 14px;
   font-weight: 600;
   color: #2d3748;
-  margin: 0 0 15px 0;
+  margin: 0 0 12px 0;
 }
 
 .code-container {
   display: flex;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .invite-code {
   flex: 1;
   background-color: #f7fafc;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
   padding: 12px 16px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #2d3748;
+  font-size: 18px;
+  font-weight: 700;
+  color: #667eea;
   text-align: center;
-  letter-spacing: 1px;
+  letter-spacing: 2px;
+  font-family: 'Courier New', monospace;
 }
 
 .copy-btn {
-  background-color: #4299e1;
-  color: white;
+  background-color: var(--primary-50);
+  color: var(--color-primary);
   border: none;
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-size: 0.9rem;
-  font-weight: 500;
+  border-radius: 12px;
+  padding: 0 20px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .copy-btn:hover {
-  background-color: #3182ce;
+  background-color: var(--primary-100);
+}
+
+.icon-small {
+  width: 16px;
+  height: 16px;
 }
 
 .code-desc {
-  font-size: 0.9rem;
-  color: #718096;
+  font-size: 12px;
+  color: #a0aec0;
   margin: 0;
   text-align: center;
 }
 
 .share-section {
   background-color: white;
-  border-radius: 12px;
-  padding: 25px;
+  border-radius: 20px;
+  padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .share-title {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
   color: #2d3748;
-  margin: 0 0 20px 0;
+  margin: 0 0 16px 0;
 }
 
 .share-options {
   display: flex;
-  gap: 15px;
+  gap: 12px;
 }
 
 .share-btn {
   flex: 1;
-  background-color: #f7fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px 15px;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
 }
 
 .share-btn:hover {
-  background-color: #edf2f7;
-  border-color: #4299e1;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  border-color: var(--primary-100);
 }
 
+.share-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.share-icon-wrapper.green { background: #dcfce7; color: #22c55e; }
+.share-icon-wrapper.blue { background: #e0f2fe; color: #0ea5e9; }
+.share-icon-wrapper.purple { background: #f3e8ff; color: #a855f7; }
+
 .share-icon {
-  font-size: 1.5rem;
+  width: 20px;
+  height: 20px;
 }
 
 .share-btn span {
-  font-size: 0.9rem;
+  font-size: 12px;
   font-weight: 500;
-  color: #4a5568;
+  color: #718096;
 }
 
 .status-section {
   background-color: white;
-  border-radius: 12px;
-  padding: 25px;
+  border-radius: 20px;
+  padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: var(--shadow-sm);
 }
 
 .status-title {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
   color: #2d3748;
-  margin: 0 0 20px 0;
+  margin: 0 0 16px 0;
 }
 
 .status-list {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
+}
+
+.empty-status {
+  text-align: center;
+  color: #a0aec0;
+  font-size: 13px;
+  padding: 10px 0;
 }
 
 .status-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
+  padding: 12px;
   background-color: #f7fafc;
-  border-radius: 8px;
+  border-radius: 12px;
 }
 
 .status-info {
@@ -640,76 +774,89 @@ onMounted(() => {
 }
 
 .status-name {
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   color: #2d3748;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .status-type {
-  font-size: 0.9rem;
+  font-size: 12px;
   color: #718096;
 }
 
 .status-badge {
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
   font-weight: 500;
 }
 
 .status-badge.pending {
-  background-color: #fed7d7;
-  color: #e53e3e;
+  background-color: #fef3c7;
+  color: #92400e;
 }
 
 .status-badge.accepted {
-  background-color: #c6f6d5;
-  color: #2f855a;
+  background-color: #dcfce7;
+  color: #166534;
 }
 
 .status-badge.expired {
-  background-color: #e2e8f0;
-  color: #718096;
+  background-color: #f3f4f6;
+  color: #6b7280;
 }
 
 .actions {
   display: flex;
-  gap: 15px;
+  gap: 12px;
 }
 
 .refresh-btn {
   flex: 1;
-  background-color: transparent;
-  color: #4299e1;
-  border: 1px solid #4299e1;
+  background-color: white;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
   border-radius: 12px;
-  padding: 16px;
-  font-size: 1rem;
-  font-weight: 500;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .refresh-btn:hover {
-  background-color: #4299e1;
-  color: white;
+  background-color: var(--primary-50);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .done-btn {
   flex: 1;
-  background-color: #4299e1;
+  background-color: var(--color-primary);
   color: white;
   border: none;
   border-radius: 12px;
-  padding: 16px;
-  font-size: 1rem;
-  font-weight: 500;
+  padding: 14px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s;
 }
 
 .done-btn:hover {
-  background-color: #3182ce;
+  background-color: var(--primary-700);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 </style>

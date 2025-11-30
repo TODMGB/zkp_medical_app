@@ -193,7 +193,7 @@ const handleLater = () => {
 }
 
 .recommendation-box {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
   padding: 20px;
   border-radius: 12px;

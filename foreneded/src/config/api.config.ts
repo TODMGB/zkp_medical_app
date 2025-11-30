@@ -4,7 +4,7 @@
  */
 
 // 后端服务器配置
-const BACKEND_IP = '192.168.129.192'; // 可以修改为实际后端IP
+const BACKEND_IP = '192.168.20.192'; // 可以修改为实际后端IP
 const API_GATEWAY_PORT = 3000;
 
 // API Gateway 基础地址
@@ -40,14 +40,14 @@ export const ERC4337_CONFIG = {
     // 健康检查
     health: '/chain/health',
 
-    
+
     // 账户管理
     createAccount: '/chain/account',
     calculateAccountAddress: '/chain/account/address',
     buildInitCode: '/chain/account/initcode',
     getAccountInfo: '/chain/account/:accountAddress',
     getNonce: '/chain/account/:accountAddress/nonce',
-    
+
     // 守护者管理
     buildAddGuardian: '/chain/guardian/build',
     addGuardian: '/chain/guardian',
@@ -55,7 +55,7 @@ export const ERC4337_CONFIG = {
     buildSetThreshold: '/chain/guardian/threshold/build',
     setThreshold: '/chain/guardian/threshold',
     submitUserOp: '/chain/guardian/submit',
-    
+
     // 社交恢复
     buildInitiateRecovery: '/chain/recovery/initiate/build',
     initiateRecovery: '/chain/recovery/initiate',
@@ -77,13 +77,13 @@ export const RELATION_CONFIG = {
     listGroups: '/relation/access-groups',
     groupsStats: '/relation/access-groups/stats',
     getGroupMembers: '/relation/access-groups/:accessGroupId/members',
-    
+
     // 邀请管理
     createInvitation: '/relation/invitations',
     createHospitalInvitation: '/relation/invitations/hospital',
     getMyInvitations: '/relation/invitations/my',
     cancelInvitation: '/relation/invitations/cancel',
-    
+
     // 关系管理
     acceptInvitation: '/relation/relationships/accept',
     getMyRelationships: '/relation/relationships/my',  // 获取我作为访问者的关系列表
@@ -156,7 +156,7 @@ export const API_CONFIG = {
   endpoints: {
     // 健康检查
     health: '/health',
-    
+
     // Chain相关（兼容旧代码）
     getAccountAddress: '/chain/account/address',
     buildInitCode: '/chain/account/initcode',
@@ -174,14 +174,14 @@ function buildUrlFromConfig(
   params?: Record<string, string | number>
 ): string {
   let url = `${baseUrl}${endpoint}`;
-  
+
   if (params) {
     const queryString = Object.entries(params)
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join('&');
     url += `?${queryString}`;
   }
-  
+
   return url;
 }
 
@@ -277,14 +277,14 @@ export function buildMedicationUrl(
   params?: Record<string, string | number>
 ): string {
   let url = `${MEDICATION_CONFIG.baseUrl}${MEDICATION_CONFIG.endpoints[endpoint]}`;
-  
+
   // 处理路径参数
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       url = url.replace(`:${key}`, String(value));
     });
   }
-  
+
   return url;
 }
 
@@ -296,14 +296,14 @@ export function buildSecureExchangeUrl(
   params?: Record<string, string | number>
 ): string {
   let url = `${SECURE_EXCHANGE_CONFIG.baseUrl}${SECURE_EXCHANGE_CONFIG.endpoints[endpoint]}`;
-  
+
   // 处理路径参数
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       url = url.replace(`:${key}`, String(value));
     });
   }
-  
+
   return url;
 }
 
@@ -321,14 +321,14 @@ export function getApiUrl(endpoint: keyof typeof API_CONFIG.endpoints): string {
  */
 export function buildUrl(endpoint: keyof typeof API_CONFIG.endpoints, params?: Record<string, string | number>): string {
   let url = getApiUrl(endpoint);
-  
+
   if (params) {
     const queryString = Object.entries(params)
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join('&');
     url += `?${queryString}`;
   }
-  
+
   return url;
 }
 

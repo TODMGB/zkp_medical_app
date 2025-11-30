@@ -3,7 +3,7 @@
     <!-- 顶部导航栏 -->
     <div class="top-bar">
       <button @click="goBack" class="back-btn">
-        <span class="icon">←</span>
+        <ArrowLeft class="icon" />
       </button>
       <h1 class="title">打卡详情</h1>
       <div class="placeholder"></div>
@@ -12,13 +12,13 @@
     <div class="content">
       <!-- 加载状态 -->
       <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
+        <Loader2 class="spinner" />
         <p>加载中...</p>
       </div>
 
       <!-- 记录不存在 -->
       <div v-else-if="!record" class="empty-state">
-        <div class="empty-icon">📋</div>
+        <ClipboardList class="empty-icon" />
         <p>记录不存在</p>
         <button @click="goBack" class="back-btn-alt">返回</button>
       </div>
@@ -28,7 +28,9 @@
         <!-- 基本信息卡片 -->
         <div class="info-card">
           <div class="card-header">
-            <div class="icon-wrapper">💊</div>
+            <div class="icon-wrapper">
+              <Pill class="icon-large" />
+            </div>
             <h2 class="medication-name">{{ record.medication_name }}</h2>
           </div>
           
@@ -59,7 +61,7 @@
         <!-- ZKP证明信息 -->
         <div class="proof-card">
           <div class="card-title">
-            <span class="icon">🔐</span>
+            <Lock class="icon" />
             <span>零知识证明（ZKP）</span>
           </div>
           
@@ -113,7 +115,7 @@
 
           <!-- 隐私保护说明 -->
           <div class="privacy-note">
-            <div class="note-icon">ℹ️</div>
+            <Info class="note-icon" />
             <div class="note-text">
               <strong>隐私保护：</strong>
               使用零知识证明技术，在不泄露您的身份和药物信息的前提下，证明您按时完成了用药打卡。
@@ -124,11 +126,14 @@
         <!-- 操作按钮 -->
         <div class="actions">
           <button v-if="!record.synced" @click="syncRecord" class="action-btn sync" :disabled="syncing">
-            <span v-if="!syncing">☁️ 同步到云端</span>
+            <CloudUpload v-if="!syncing" class="icon-small" />
+            <Loader2 v-else class="icon-small spinning" />
+            <span v-if="!syncing">同步到云端</span>
             <span v-else>同步中...</span>
           </button>
           <button @click="exportRecord" class="action-btn export">
-            📤 导出记录
+            <Download class="icon-small" />
+            <span>导出记录</span>
           </button>
         </div>
       </div>
@@ -140,6 +145,16 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { checkinStorageService, type CheckInRecord } from '@/service/checkinStorage';
+import { 
+  ArrowLeft, 
+  Loader2, 
+  ClipboardList, 
+  Pill, 
+  Lock, 
+  Info, 
+  CloudUpload, 
+  Download 
+} from 'lucide-vue-next';
 
 const router = useRouter();
 const route = useRoute();
@@ -292,7 +307,7 @@ function goBack() {
 <style scoped>
 .record-detail-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #f5f7fa;
   padding-bottom: 20px;
 }
 
@@ -327,6 +342,11 @@ function goBack() {
   transform: scale(1.05);
 }
 
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
 .title {
   color: white;
   font-size: 18px;
@@ -348,16 +368,17 @@ function goBack() {
   text-align: center;
   padding: 60px 20px;
   color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
   animation: spin 1s linear infinite;
-  margin: 0 auto 20px;
+  color: white;
 }
 
 @keyframes spin {
@@ -372,15 +393,17 @@ function goBack() {
 }
 
 .empty-icon {
-  font-size: 64px;
+  width: 64px;
+  height: 64px;
   margin-bottom: 20px;
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .back-btn-alt {
   padding: 12px 28px;
   border-radius: 12px;
   background: white;
-  color: #667eea;
+  color: var(--color-primary);
   border: none;
   font-size: 15px;
   font-weight: 500;
@@ -391,7 +414,7 @@ function goBack() {
 
 .back-btn-alt:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-md);
 }
 
 /* 记录内容 */
@@ -406,7 +429,7 @@ function goBack() {
   background: white;
   border-radius: 20px;
   padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .card-header {
@@ -420,17 +443,22 @@ function goBack() {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  color: white;
+}
+
+.icon-large {
+  width: 28px;
+  height: 28px;
 }
 
 .medication-name {
   font-size: 20px;
   font-weight: 700;
-  color: #2c3e50;
+  color: #2d3748;
   margin: 0;
 }
 
@@ -454,7 +482,7 @@ function goBack() {
 
 .value {
   font-size: 14px;
-  color: #2c3e50;
+  color: #2d3748;
   font-weight: 600;
 }
 
@@ -486,7 +514,7 @@ function goBack() {
   background: white;
   border-radius: 20px;
   padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
 }
 
 .card-title {
@@ -495,12 +523,8 @@ function goBack() {
   gap: 8px;
   font-size: 18px;
   font-weight: 700;
-  color: #2c3e50;
+  color: #2d3748;
   margin-bottom: 20px;
-}
-
-.card-title .icon {
-  font-size: 24px;
 }
 
 .proof-section {
@@ -522,7 +546,7 @@ function goBack() {
 
 /* Commitment 项 */
 .commitment-item {
-  background: #f9fafb;
+  background: #f7fafc;
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 12px;
@@ -542,102 +566,9 @@ function goBack() {
 .commitment-value {
   font-family: 'Courier New', monospace;
   font-size: 13px;
-  color: #2c3e50;
+  color: #2d3748;
   word-break: break-all;
   margin-bottom: 8px;
-}
-
-.copy-btn {
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: #667eea;
-  color: white;
-  border: none;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.copy-btn:hover {
-  background: #5568d3;
-  transform: translateY(-1px);
-}
-
-/* Proof Data */
-.proof-data {
-  background: #f9fafb;
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 12px;
-}
-
-.proof-data:last-child {
-  margin-bottom: 0;
-}
-
-.data-label {
-  font-size: 12px;
-  color: #718096;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
-.data-value {
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  color: #2c3e50;
-  background: white;
-  border-radius: 8px;
-  padding: 12px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.data-value pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.data-value.collapsible {
-  max-height: 150px;
-  overflow: hidden;
-  position: relative;
-}
-
-.data-value.collapsible::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 50px;
-  background: linear-gradient(to bottom, transparent, white);
-}
-
-.data-value.collapsible.expanded {
-  max-height: none;
-}
-
-.data-value.collapsible.expanded::after {
-  display: none;
-}
-
-.toggle-btn {
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: #e5e7eb;
-  color: #4b5563;
-  border: none;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.toggle-btn:hover {
-  background: #d1d5db;
 }
 
 /* 隐私说明 */
@@ -645,19 +576,21 @@ function goBack() {
   display: flex;
   gap: 12px;
   padding: 16px;
-  background: #eff6ff;
+  background: #ebf4ff;
   border-radius: 12px;
   border-left: 4px solid #667eea;
 }
 
 .note-icon {
-  font-size: 20px;
+  width: 20px;
+  height: 20px;
   flex-shrink: 0;
+  color: #667eea;
 }
 
 .note-text {
   font-size: 13px;
-  color: #4b5563;
+  color: #718096;
   line-height: 1.6;
 }
 
@@ -682,10 +615,14 @@ function goBack() {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .action-btn.sync {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   color: white;
 }
 
@@ -696,7 +633,7 @@ function goBack() {
 
 .action-btn.sync:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+  box-shadow: var(--shadow-md);
 }
 
 .action-btn.export {
@@ -710,5 +647,13 @@ function goBack() {
   color: white;
   transform: translateY(-2px);
 }
-</style>
 
+.icon-small {
+  width: 18px;
+  height: 18px;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+</style>

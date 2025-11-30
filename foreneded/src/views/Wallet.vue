@@ -1,48 +1,88 @@
 <!-- src/views/Wallet.vue -->
 <template>
   <div class="page-container">
-    <header>
+    <header class="header">
+      <div class="icon-wrapper">
+        <Wallet class="header-icon" />
+      </div>
       <h1>嵌入式钱包 MVP</h1>
     </header>
     <main>
       <!-- 钱包初始化模块 -->
-      <div class="container" v-if="!walletAddress">
-        <h2>钱包初始化</h2>
+      <div class="card" v-if="!walletAddress">
+        <div class="card-header">
+          <Lock v-if="hasWallet" class="card-icon" />
+          <PlusCircle v-else class="card-icon" />
+          <h2>钱包初始化</h2>
+        </div>
         <p class="description">
           {{ hasWallet ? '检测到设备上已存在加密钱包，请输入密码解锁。' : '未在设备上发现钱包，请输入一个安全密码来创建一个新的。' }}
         </p>
-        <input v-model="password" type="password" placeholder="请输入密码" />
-        <button @click="initializeWallet">
+        <div class="input-group">
+          <input v-model="password" type="password" placeholder="请输入密码" class="input" />
+        </div>
+        <button @click="initializeWallet" class="btn btn-primary">
+          <Unlock v-if="hasWallet" class="btn-icon" />
+          <Plus v-else class="btn-icon" />
           {{ hasWallet ? '解锁钱包' : '创建新钱包' }}
         </button>
       </div>
 
       <!-- 钱包信息模块 -->
-      <div class="container" v-else>
-        <h2>钱包已就绪</h2>
-        <div class="wallet-info">
-          <p><strong>您的地址:</strong></p>
-          <div class="address-display">
-            <span>{{ walletAddress }}</span>
-            <button class="copy-button" @click="copyAddress">复制</button>
-          </div>
-          <p><strong>rpcurl:</strong> <span class="url">{{ rpcurl }}</span></p>
-          <p><strong>余额:</strong> <span class="balance">{{ balance }} ETH</span></p>
+      <div class="card" v-else>
+        <div class="card-header">
+          <CreditCard class="card-icon" />
+          <h2>钱包已就绪</h2>
         </div>
-        <button @click="fetchBalance">刷新余额</button>
+        <div class="wallet-info">
+          <div class="info-item">
+            <span class="label">您的地址</span>
+            <div class="address-display">
+              <span class="address-text">{{ walletAddress }}</span>
+              <button class="copy-button" @click="copyAddress" title="复制地址">
+                <Copy class="icon-sm" />
+              </button>
+            </div>
+          </div>
+          <div class="info-item">
+            <span class="label">RPC URL</span>
+            <span class="value url">{{ rpcurl }}</span>
+          </div>
+          <div class="info-item balance-item">
+            <span class="label">余额</span>
+            <span class="balance">{{ balance }} ETH</span>
+          </div>
+        </div>
+        <button @click="fetchBalance" class="btn btn-secondary">
+          <RefreshCw class="btn-icon" :class="{ 'spin': status.includes('获取余额') }" />
+          刷新余额
+        </button>
       </div>
 
       <!-- 交易模块 -->
-      <div class="container" v-if="walletAddress">
-        <h2>发送交易</h2>
-        <input v-model="recipient" placeholder="接收方地址 (0x...)" />
-        <input v-model="amount" type="number" step="0.01" placeholder="金额 (ETH)" />
-        <button @click="handleSendTransaction">发送</button>
+      <div class="card" v-if="walletAddress">
+        <div class="card-header">
+          <Send class="card-icon" />
+          <h2>发送交易</h2>
+        </div>
+        <div class="form-group">
+          <div class="input-wrapper">
+            <input v-model="recipient" placeholder="接收方地址 (0x...)" class="input" />
+          </div>
+          <div class="input-wrapper">
+            <input v-model="amount" type="number" step="0.01" placeholder="金额 (ETH)" class="input" />
+          </div>
+          <button @click="handleSendTransaction" class="btn btn-primary">
+            <Send class="btn-icon" />
+            发送
+          </button>
+        </div>
       </div>
       
       <!-- 状态显示模块 -->
-      <div class="status-box">
-        <p><strong>状态:</strong> {{ status }}</p>
+      <div class="status-box" :class="{ 'error': status.includes('错误') || status.includes('失败'), 'success': status.includes('成功') || status.includes('✅') }">
+        <Info class="status-icon" />
+        <p>{{ status }}</p>
       </div>
     </main>
   </div>
@@ -52,6 +92,18 @@
 import { ref, onMounted } from 'vue';
 import { walletService } from '../service/wallet'; // 导入我们的钱包服务
 import { ethers } from 'ethers';
+import { 
+  Wallet, 
+  Lock, 
+  Unlock, 
+  PlusCircle, 
+  Plus, 
+  CreditCard, 
+  Copy, 
+  RefreshCw, 
+  Send, 
+  Info 
+} from 'lucide-vue-next';
 
 const password = ref('');
 const walletAddress = ref<string | null>(null);
@@ -127,105 +179,270 @@ const copyAddress = async () => {
 </script>
 
 <style scoped>
-/* 全局样式 */
-:root {
-  --primary-color: #4299e1;
-  --primary-hover-color: #2b6cb0;
-  --background-color: #f0f2f5;
-  --container-bg-color: #ffffff;
-  --text-color: #2d3748;
-  --secondary-text-color: #718096;
-  --border-color: #e2e8f0;
-  --success-color: #38a169;
-  --error-color: #e53e3e;
-}
 .page-container {
   max-width: 600px;
-  margin: 20px auto;
-  padding: 0 20px;
+  margin: 0 auto;
+  padding: 24px 20px;
+  min-height: 100vh;
+  background: var(--bg-body);
 }
-header h1 {
+
+.header {
   text-align: center;
-  color: var(--text-color, #2d3748);
-  font-weight: 600;
-  margin-bottom: 30px;
-}
-.container {
-  background: var(--container-bg-color, #ffffff);
-  padding: 25px;
-  border-radius: 12px;
-  margin-bottom: 25px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--border-color, #e2e8f0);
-}
-h2 {
-  margin-top: 0;
-  color: var(--text-color, #2d3748);
-  font-size: 1.5em;
-  border-bottom: 1px solid var(--border-color, #e2e8f0);
-  padding-bottom: 15px;
-  margin-bottom: 20px;
-}
-p { line-height: 1.6; }
-.description {
-  color: var(--secondary-text-color, #718096);
-  font-size: 0.9em;
-  margin-bottom: 20px;
-}
-input {
-  width: 100%;
-  padding: 12px 15px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color, #e2e8f0);
-  font-size: 1em;
-  margin-bottom: 15px;
-  box-sizing: border-box;
-}
-input:focus {
-  outline: none;
-  border-color: var(--primary-color, #4299e1);
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
-}
-button {
-  display: block;
-  width: 100%;
-  background-color: var(--primary-color, #4299e1);
-  color: white;
-  border: none;
-  padding: 14px 20px;
-  border-radius: 8px;
-  font-size: 1em;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
-}
-button:disabled { background-color: #a0aec0; cursor: not-allowed; }
-button:hover:not(:disabled) { background-color: var(--primary-hover-color, #2b6cb0); }
-.wallet-info .address-display {
+  margin-bottom: 32px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
   align-items: center;
-  background-color: var(--background-color, #f0f2f5);
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-family: 'Courier New', Courier, monospace;
+  gap: 16px;
+}
+
+.icon-wrapper {
+  width: 64px;
+  height: 64px;
+  background: #667eea;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.header-icon {
+  width: 32px;
+  height: 32px;
+  color: white;
+}
+
+.header h1 {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 1.5rem;
+  margin: 0;
+}
+
+.card {
+  background: var(--bg-surface);
+  padding: 24px;
+  border-radius: var(--border-radius-xl);
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary);
+}
+
+.card-header h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.description {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--border-radius-lg);
+  border: 2px solid var(--border-color);
+  font-size: 1rem;
+  background: var(--bg-body);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: var(--border-radius-lg);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--gray-100);
+  color: var(--text-primary);
+  margin-top: 16px;
+}
+
+.btn-secondary:hover {
+  background: var(--gray-200);
+}
+
+.btn-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.wallet-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.address-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--gray-50);
+  padding: 12px;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+.address-text {
+  font-family: 'SF Mono', 'Roboto Mono', monospace;
+  font-size: 0.9rem;
+  color: var(--text-primary);
   word-break: break-all;
 }
-.wallet-info .balance { font-weight: bold; color: var(--success-color, #38a169); }
+
 .copy-button {
-  width: auto;
-  padding: 6px 12px;
-  font-size: 0.8em;
-  margin-left: 10px;
-  background-color: var(--secondary-text-color, #718096);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.copy-button:hover:not(:disabled) { background-color: var(--text-color, #2d3748); }
+
+.copy-button:hover {
+  background: var(--gray-200);
+  color: var(--color-primary);
+}
+
+.icon-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.value {
+  font-size: 1rem;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.url {
+  word-break: break-all;
+  font-family: monospace;
+}
+
+.balance-item .balance {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .status-box {
-  background-color: #e2e8f0;
-  padding: 15px;
-  border-radius: 8px;
-  text-align: center;
-  border: 1px solid #cbd5e0;
+  background: var(--gray-50);
+  padding: 16px;
+  border-radius: var(--border-radius-lg);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border-color);
+  margin-top: 24px;
 }
-.status-box p { margin: 0; font-weight: 500; word-wrap: break-word; }
+
+.status-box.error {
+  background: #fef2f2;
+  border-color: #fee2e2;
+  color: #ef4444;
+}
+
+.status-box.success {
+  background: #ecfdf5;
+  border-color: #d1fae5;
+  color: #10b981;
+}
+
+.status-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.status-box p {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 </style>

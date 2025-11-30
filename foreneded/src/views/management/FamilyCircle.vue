@@ -2,19 +2,24 @@
   <div class="family-circle-page">
     <!-- 顶部导航 -->
     <div class="header">
-      <button class="back-btn" @click="goBack">←</button>
+      <button class="back-btn" @click="goBack">
+        <ArrowLeft class="icon" />
+      </button>
       <h1 class="page-title">我的访问组</h1>
-      <button class="add-btn" @click="showCreateModal">+</button>
+      <button class="add-btn" @click="showCreateModal">
+        <Plus class="icon" />
+      </button>
     </div>
     
     <!-- 加载状态 -->
     <div v-if="isLoading" class="loading-container">
-      <div class="spinner"></div>
+      <Loader2 class="spinner" />
       <p>加载中...</p>
     </div>
     
     <!-- 错误提示 -->
     <div v-if="errorMessage && !isLoading" class="error-banner">
+      <AlertCircle class="error-icon" />
       {{ errorMessage }}
     </div>
     
@@ -28,6 +33,7 @@
       <!-- 访问组卡片列表 -->
       <div class="groups-list">
         <div v-if="accessGroups.length === 0" class="empty-state">
+          <Users class="empty-icon" />
           <p>还没有访问组</p>
           <p class="empty-hint">点击右上角 + 创建访问组</p>
         </div>
@@ -38,8 +44,8 @@
           class="group-card"
           @click="viewGroupDetail(group)"
         >
-          <div class="group-icon">
-            {{ getGroupIcon(group.group_type) }}
+          <div class="group-icon-wrapper" :class="getGroupColorClass(group.group_type)">
+            <component :is="getGroupIcon(group.group_type)" class="group-icon" />
           </div>
           <div class="group-info">
             <h3 class="group-name">{{ group.group_name }}</h3>
@@ -47,11 +53,11 @@
             <p class="group-desc">{{ group.description || '暂无描述' }}</p>
             <div class="group-stats">
               <span class="stat-item">
-                <span class="stat-icon">👥</span>
+                <Users class="stat-icon" />
                 <span class="stat-text">{{ group.member_count || 0 }} 成员</span>
               </span>
               <span class="stat-item">
-                <span class="stat-icon">📋</span>
+                <Shield class="stat-icon" />
                 <span class="stat-text">{{ getGroupPermissions(group.group_type) }}</span>
               </span>
             </div>
@@ -62,9 +68,9 @@
               @click.stop="inviteToGroup(group)"
               title="邀请成员"
             >
-              +
+              <Plus class="icon-small" />
             </button>
-            <div class="action-arrow">›</div>
+            <ChevronRight class="action-arrow" />
           </div>
         </div>
       </div>
@@ -73,12 +79,12 @@
     <!-- 快捷操作按钮 -->
     <div class="quick-actions">
       <button class="action-btn primary" @click="showInviteModal">
-        <div class="btn-icon">➕</div>
+        <UserPlus class="btn-icon" />
         <span>邀请加入群组</span>
       </button>
       
       <button class="action-btn secondary" @click="scanToJoin">
-        <div class="btn-icon">📷</div>
+        <QrCode class="btn-icon" />
         <span>扫码加入其他人的群组</span>
       </button>
     </div>
@@ -88,7 +94,9 @@
       <div class="create-modal" @click.stop>
         <div class="modal-header">
           <h3 class="modal-title">创建自定义群组</h3>
-          <button class="close-btn" @click="closeCreateGroupModal">×</button>
+          <button class="close-btn" @click="closeCreateGroupModal">
+            <X class="icon" />
+          </button>
         </div>
         <div class="modal-content">
           <div class="form-group">
@@ -122,21 +130,26 @@
       <div class="invite-select-modal" @click.stop>
         <div class="modal-header">
           <h3 class="modal-title">邀请加入群组</h3>
-          <button class="close-btn" @click="closeInviteSelectModal">×</button>
+          <button class="close-btn" @click="closeInviteSelectModal">
+            <X class="icon" />
+          </button>
         </div>
         <div class="modal-content">
           <div class="form-group">
             <label>选择群组</label>
-            <select v-model="selectedGroupId" class="form-select">
-              <option value="" disabled>请选择要邀请加入的群组</option>
-              <option 
-                v-for="group in accessGroups" 
-                :key="group.id" 
-                :value="group.id"
-              >
-                {{ getGroupIcon(group.group_type) }} {{ group.group_name }}
-              </option>
-            </select>
+            <div class="select-wrapper">
+              <select v-model="selectedGroupId" class="form-select">
+                <option value="" disabled>请选择要邀请加入的群组</option>
+                <option 
+                  v-for="group in accessGroups" 
+                  :key="group.id" 
+                  :value="group.id"
+                >
+                  {{ group.group_name }} ({{ getGroupTypeText(group.group_type) }})
+                </option>
+              </select>
+              <ChevronDown class="select-arrow" />
+            </div>
           </div>
           <div class="form-group">
             <label>邀请类型</label>
@@ -146,7 +159,9 @@
                 :class="{ active: inviteTypeSelect === 'family' }"
                 @click="inviteTypeSelect = 'family'"
               >
-                <span class="option-icon">👨‍👩‍👧‍👦</span>
+                <div class="option-icon-wrapper blue">
+                  <Users class="option-icon" />
+                </div>
                 <span class="option-label">家属</span>
               </button>
               <button 
@@ -154,7 +169,9 @@
                 :class="{ active: inviteTypeSelect === 'doctor' }"
                 @click="inviteTypeSelect = 'doctor'"
               >
-                <span class="option-icon">👨‍⚕️</span>
+                <div class="option-icon-wrapper green">
+                  <Stethoscope class="option-icon" />
+                </div>
                 <span class="option-label">医生</span>
               </button>
             </div>
@@ -179,6 +196,25 @@
 import { ref, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { relationService } from '@/service/relation'
+import { 
+  ArrowLeft, 
+  Plus, 
+  Users, 
+  ClipboardList, 
+  Stethoscope, 
+  Hospital, 
+  Microscope, 
+  Building2, 
+  Folder, 
+  QrCode, 
+  X, 
+  ChevronRight, 
+  Loader2, 
+  AlertCircle,
+  Shield,
+  UserPlus,
+  ChevronDown
+} from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -231,15 +267,28 @@ const loadAccessGroups = async () => {
 
 // 获取群组图标
 const getGroupIcon = (groupType: string) => {
-  const icons: Record<string, string> = {
-    'FAMILY': '👨‍👩‍👧‍👦',
-    'PRIMARY_DOCTOR': '👨‍⚕️',
-    'FAMILY_DOCTOR': '🏥',
-    'SPECIALIST': '🔬',
-    'HOSPITAL': '🏨',
-    'CUSTOM': '📋'
+  const icons: Record<string, any> = {
+    'FAMILY': Users,
+    'PRIMARY_DOCTOR': Stethoscope,
+    'FAMILY_DOCTOR': Hospital,
+    'SPECIALIST': Microscope,
+    'HOSPITAL': Building2,
+    'CUSTOM': ClipboardList
   }
-  return icons[groupType] || '📁'
+  return icons[groupType] || Folder
+}
+
+// 获取群组颜色类
+const getGroupColorClass = (groupType: string) => {
+  const colors: Record<string, string> = {
+    'FAMILY': 'blue',
+    'PRIMARY_DOCTOR': 'green',
+    'FAMILY_DOCTOR': 'teal',
+    'SPECIALIST': 'purple',
+    'HOSPITAL': 'orange',
+    'CUSTOM': 'gray'
+  }
+  return colors[groupType] || 'gray'
 }
 
 // 获取群组类型文本
@@ -384,46 +433,88 @@ onActivated(async () => {
 .family-circle-page {
   min-height: 100vh;
   background-color: #f5f7fa;
-  padding-bottom: 20px;
+  padding-bottom: 90px;
 }
+
 
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
+  padding: 16px 20px;
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
-.back-btn {
+.back-btn, .add-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: #4299e1;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2d3748;
   cursor: pointer;
-  padding: 8px;
+  transition: all 0.3s;
+}
+
+.back-btn:hover, .add-btn:hover {
+  background: #f7fafc;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
 }
 
 .page-title {
-  font-size: 1.3rem;
+  font-size: 18px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
 }
 
-.add-btn {
-  background-color: #4299e1;
-  color: white;
-  border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  font-size: 1.2rem;
-  cursor: pointer;
+.loading-container {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 60px 20px;
+  gap: 15px;
+  color: #718096;
+}
+
+.spinner {
+  width: 32px;
+  height: 32px;
+  animation: spin 1s linear infinite;
+  color: #667eea;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-banner {
+  margin: 20px;
+  padding: 15px;
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
+  border-radius: 8px;
+  color: #b91c1c;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .groups-container {
@@ -435,14 +526,14 @@ onActivated(async () => {
 }
 
 .section-title {
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: #2d3748;
-  margin: 0 0 5px 0;
+  margin: 0 0 4px 0;
 }
 
 .section-desc {
-  font-size: 0.9rem;
+  font-size: 13px;
   color: #718096;
   margin: 0;
 }
@@ -450,37 +541,48 @@ onActivated(async () => {
 .groups-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 80px;
+  gap: 16px;
 }
 
 .group-card {
   background-color: white;
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 20px;
   display: flex;
-  align-items: flex-start;
-  gap: 15px;
+  align-items: center;
+  gap: 16px;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.3s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  border: 1px solid transparent;
 }
 
 .group-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-color: #ebf8ff;
 }
 
-.group-icon {
-  font-size: 2.5rem;
-  flex-shrink: 0;
-  width: 60px;
-  height: 60px;
+.group-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f7fafc;
-  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.group-icon-wrapper.blue { background: #e0f2fe; color: #0ea5e9; }
+.group-icon-wrapper.green { background: #dcfce7; color: #22c55e; }
+.group-icon-wrapper.teal { background: #ccfbf1; color: #14b8a6; }
+.group-icon-wrapper.purple { background: #f3e8ff; color: #a855f7; }
+.group-icon-wrapper.orange { background: #ffedd5; color: #f97316; }
+.group-icon-wrapper.gray { background: #f3f4f6; color: #6b7280; }
+
+.group-icon {
+  width: 28px;
+  height: 28px;
 }
 
 .group-info {
@@ -489,145 +591,86 @@ onActivated(async () => {
 }
 
 .group-name {
-  font-size: 1.1rem;
+  font-size: 16px;
   font-weight: 600;
   color: #2d3748;
   margin: 0 0 4px 0;
 }
 
 .group-type {
-  font-size: 0.85rem;
-  color: #4299e1;
+  font-size: 12px;
+  color: #667eea;
   font-weight: 500;
   margin: 0 0 6px 0;
+  background: #ebf4ff;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
 }
 
 .group-desc {
-  font-size: 0.9rem;
+  font-size: 13px;
   color: #718096;
   margin: 0 0 10px 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .group-stats {
   display: flex;
-  gap: 15px;
-  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .stat-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 0.85rem;
-  color: #718096;
+  gap: 4px;
+  font-size: 12px;
+  color: #a0aec0;
 }
 
 .stat-icon {
-  font-size: 1rem;
+  width: 14px;
+  height: 14px;
 }
 
 .group-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-shrink: 0;
 }
 
 .invite-btn {
-  background-color: #4299e1;
-  color: white;
+  background-color: #ebf4ff;
+  color: #667eea;
   border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  font-size: 1.2rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.3s;
 }
 
 .invite-btn:hover {
-  background-color: #3182ce;
-  transform: scale(1.1);
+  background-color: #667eea;
+  color: white;
+  transform: scale(1.05);
+}
+
+.icon-small {
+  width: 18px;
+  height: 18px;
 }
 
 .action-arrow {
-  font-size: 1.5rem;
+  width: 20px;
+  height: 20px;
   color: #cbd5e0;
-}
-
-.avatar-icon {
-  font-size: 1.5rem;
-}
-
-.member-info {
-  flex: 1;
-}
-
-.member-name {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0 0 5px 0;
-}
-
-.member-relation {
-  font-size: 0.9rem;
-  color: #718096;
-  margin: 0 0 5px 0;
-}
-
-.member-status {
-  font-size: 0.8rem;
-  font-weight: 500;
-  margin: 0;
-}
-
-.member-status.active {
-  color: #48bb78;
-}
-
-.member-status.pending {
-  color: #ed8936;
-}
-
-.member-status.inactive {
-  color: #e53e3e;
-}
-
-.member-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.status-indicator.active {
-  background-color: #48bb78;
-}
-
-.status-indicator.pending {
-  background-color: #ed8936;
-}
-
-.status-indicator.inactive {
-  background-color: #e53e3e;
-}
-
-.action-arrow {
-  font-size: 1.2rem;
-  color: #a0aec0;
-  font-weight: 300;
 }
 
 .quick-actions {
@@ -635,113 +678,83 @@ onActivated(async () => {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 15px 20px;
+  padding: 16px 20px 24px;
   background-color: white;
-  box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
   display: flex;
-  gap: 10px;
-  z-index: 10;
+  gap: 12px;
+  z-index: 90;
 }
 
 .action-btn {
   flex: 1;
   border: none;
-  border-radius: 12px;
-  padding: 15px;
-  font-size: 0.95rem;
+  border-radius: 16px;
+  padding: 14px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: all 0.2s;
+  transition: all 0.3s;
 }
 
 .action-btn.primary {
-  background-color: #4299e1;
+
+  background: #4299e1;
+
   color: white;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
 .action-btn.primary:hover {
-  background-color: #3182ce;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
 }
 
 .action-btn.secondary {
   background-color: white;
-  color: #4299e1;
-  border: 2px solid #4299e1;
+  color: #667eea;
+  border: 1px solid #bfdbfe;
 }
 
 .action-btn.secondary:hover {
-  background-color: #ebf8ff;
+  background-color: #ebf4ff;
 }
 
 .btn-icon {
-  font-size: 1.2rem;
-  line-height: 1;
+  width: 18px;
+  height: 18px;
 }
 
-.scan-join-btn span {
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.loading-container {
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  gap: 16px;
-}
-
-.spinner {
-  width: 40px;
-  height: 40px;
-  border: 4px solid #e2e8f0;
-  border-top-color: #4299e1;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.loading-container p {
   color: #718096;
-  font-size: 0.95rem;
+  background: white;
+  border-radius: 20px;
+  border: 2px dashed #e2e8f0;
 }
 
-.error-banner {
-  background-color: #fed7d7;
-  color: #c53030;
-  padding: 16px 20px;
-  margin: 16px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  border-left: 4px solid #e53e3e;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 40px 20px;
-  color: #a0aec0;
-}
-
-.empty-state p {
-  margin: 0 0 8px 0;
-  font-size: 1rem;
+.empty-icon {
+  width: 48px;
+  height: 48px;
+  color: #cbd5e0;
+  margin-bottom: 16px;
 }
 
 .empty-hint {
-  font-size: 0.9rem;
-  color: #cbd5e0;
+  font-size: 13px;
+  color: #a0aec0;
+  margin-top: 8px;
 }
 
+/* 模态框样式 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -753,17 +766,22 @@ onActivated(async () => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
   padding: 20px;
 }
 
-.invite-modal,
-.create-modal {
+.create-modal, .invite-select-modal {
   background-color: white;
-  border-radius: 12px;
+  border-radius: 24px;
   width: 100%;
   max-width: 400px;
-  max-height: 80vh;
-  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
 }
 
 .modal-header {
@@ -775,7 +793,7 @@ onActivated(async () => {
 }
 
 .modal-title {
-  font-size: 1.2rem;
+  font-size: 18px;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
@@ -784,19 +802,23 @@ onActivated(async () => {
 .close-btn {
   background: none;
   border: none;
-  font-size: 1.5rem;
-  color: #a0aec0;
+  color: var(--text-tertiary);
   cursor: pointer;
   padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: var(--bg-body);
+  color: var(--text-primary);
 }
 
 .modal-content {
-  padding: 20px;
-}
-
-.modal-desc {
-  color: #718096;
-  margin: 0 0 20px 0;
+  padding: 24px;
 }
 
 .form-group {
@@ -805,127 +827,135 @@ onActivated(async () => {
 
 .form-group label {
   display: block;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #2d3748;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
-.form-input,
-.form-textarea,
-.form-select {
+.form-input, .form-textarea, .form-select {
   width: 100%;
   padding: 12px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-family: inherit;
-  transition: border-color 0.2s;
-  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  background: var(--bg-body);
+  transition: all 0.3s;
 }
 
-.form-input:focus,
-.form-textarea:focus,
-.form-select:focus {
+.form-input:focus, .form-textarea:focus, .form-select:focus {
   outline: none;
-  border-color: #4299e1;
+  border-color: var(--color-primary);
+  background: white;
+  box-shadow: 0 0 0 3px var(--primary-100);
 }
 
-.form-textarea {
-  resize: vertical;
+.select-wrapper {
+  position: relative;
 }
 
 .form-select {
-  background-color: white;
-  cursor: pointer;
+  appearance: none;
+  padding-right: 40px;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--text-tertiary);
+  pointer-events: none;
 }
 
 .invite-type-options {
-  display: flex;
-  gap: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
 .type-option {
-  flex: 1;
-  background-color: #f7fafc;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px 15px;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-}
-
-.type-option:hover {
-  background-color: #edf2f7;
-  border-color: #cbd5e0;
+  transition: all 0.3s;
 }
 
 .type-option.active {
-  background-color: #ebf8ff;
-  border-color: #4299e1;
+  border-color: var(--color-primary);
+  background: var(--primary-50);
 }
 
-.type-option .option-icon {
-  font-size: 2rem;
-}
-
-.type-option .option-label {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.invite-select-modal {
-  background-color: white;
+.option-icon-wrapper {
+  width: 48px;
+  height: 48px;
   border-radius: 12px;
-  width: 100%;
-  max-width: 400px;
-  max-height: 80vh;
-  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.option-icon-wrapper.blue { background: #e0f2fe; color: #0ea5e9; }
+.option-icon-wrapper.green { background: #dcfce7; color: #22c55e; }
+
+.option-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.option-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .modal-actions {
   display: flex;
   gap: 12px;
-  justify-content: flex-end;
-  margin-top: 24px;
+  margin-top: 32px;
 }
 
-.cancel-btn,
-.confirm-btn {
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 1rem;
+.cancel-btn, .confirm-btn {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  border: none;
+  transition: all 0.3s;
 }
 
 .cancel-btn {
-  background-color: #e2e8f0;
-  color: #4a5568;
+  background: var(--bg-body);
+  border: none;
+  color: var(--text-secondary);
 }
 
 .cancel-btn:hover {
-  background-color: #cbd5e0;
+  background: #e2e8f0;
 }
 
 .confirm-btn {
-  background-color: #4299e1;
+  background: var(--color-primary);
+  border: none;
   color: white;
 }
 
-.confirm-btn:hover {
-  background-color: #3182ce;
+.confirm-btn:hover:not(:disabled) {
+  background: var(--primary-700);
 }
 
 .confirm-btn:disabled {
-  background-color: #cbd5e0;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 </style>

@@ -621,13 +621,15 @@ onActivated(async () => {
   justify-content: center;
 }
 
+
 .group-info-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   margin: 20px;
   padding: 30px 20px;
   border-radius: 16px;
   color: white;
   text-align: center;
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.25);
 }
 
 .group-icon-large {
@@ -1036,7 +1038,7 @@ onActivated(async () => {
 .preview-avatar {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #667eea;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1119,7 +1121,7 @@ onActivated(async () => {
 }
 
 .save-remark-btn {
-  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  background: #4299e1;
   color: white;
 }
 
