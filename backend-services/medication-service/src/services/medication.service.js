@@ -261,11 +261,11 @@ async function createEncryptedPlanFromFrontend(doctorAddress, planData) {
 
         // 发送通知（不包含敏感信息）
         try {
-            await mqProducer.publishMedicationPlanCreated(patient_address.toLowerCase(), {
+            await mqProducer.publishMedicationPlanCreated({
                 plan_id: planId,
                 plan_name: "【新用药计划】",  // ⭐ 通用标识，不暴露具体内容
                 doctor_address: doctorAddress,
-                patient_address: patient_address,
+                patient_address: patient_address.toLowerCase(),
                 start_date
             });
             console.log(`📬 通知已发送给患者`);

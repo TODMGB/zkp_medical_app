@@ -6,6 +6,7 @@
 import { secureExchangeService } from './secureExchange';
 import { memberInfoService, type MemberInfo } from './memberInfo';
 import { authService } from './auth';
+import { medicationPlanStorageService } from './medicationPlanStorage';
 
 class MessageListenerService {
   private isListening = false;
@@ -66,20 +67,27 @@ class MessageListenerService {
       }
       console.log('✅ [消息监听] 用户已登录');
 
-      // 获取待处理的user_info类型消息
+      // 1. 获取待处理的user_info类型消息
       console.log('📡 [消息监听] 查询 user_info 类型的待处理消息...');
-      const messages = await secureExchangeService.getPendingMessages('user_info');
+      const userInfoMessages = await secureExchangeService.getPendingMessages('user_info');
+      console.log(`📊 [消息监听] 查询结果: 找到 ${userInfoMessages.length} 条待处理的用户信息消息`);
       
-      console.log(`📊 [消息监听] 查询结果: 找到 ${messages.length} 条待处理的用户信息消息`);
+      // 2. 获取待处理的medication_plan类型消息
+      console.log('📡 [消息监听] 查询 medication_plan 类型的待处理消息...');
+      const medicationPlanMessages = await secureExchangeService.getPendingMessages('medication_plan');
+      console.log(`📊 [消息监听] 查询结果: 找到 ${medicationPlanMessages.length} 条待处理的用药计划消息`);
+
+      // 3. 合并所有消息
+      const allMessages = [...userInfoMessages, ...medicationPlanMessages];
       
-      if (messages.length === 0) {
-        console.log('ℹ️ [消息监听] 没有待处理的用户信息消息');
+      if (allMessages.length === 0) {
+        console.log('ℹ️ [消息监听] 没有待处理的消息');
         return;
       }
 
       // 打印消息详情
-      messages.forEach((msg, index) => {
-        console.log(`📨 [消息监听] 消息 ${index + 1}/${messages.length}:`);
+      allMessages.forEach((msg, index) => {
+        console.log(`📨 [消息监听] 消息 ${index + 1}/${allMessages.length}:`);
         console.log(`   消息ID: ${msg.message_id}`);
         console.log(`   发送者: ${msg.sender_address}`);
         console.log(`   数据类型: ${msg.data_type}`);
@@ -87,9 +95,15 @@ class MessageListenerService {
       });
 
       // 处理每条消息
-      for (const message of messages) {
+      for (const message of allMessages) {
         try {
-          await this.processUserInfoMessage(message, wallet);
+          if (message.data_type === 'user_info') {
+            await this.processUserInfoMessage(message, wallet);
+          } else if (message.data_type === 'medication_plan') {
+            await this.processMedicationPlanMessage(message, wallet);
+          } else {
+            console.warn(`⚠️ [消息监听] 未知的消息类型: ${message.data_type}`);
+          }
         } catch (error) {
           console.error(`❌ [消息监听] 处理消息失败 (${message.message_id}):`, error);
         }
@@ -169,6 +183,82 @@ class MessageListenerService {
       console.log('✅ 消息已确认');
     } catch (error) {
       console.error('处理用户信息消息失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 处理用药计划消息
+   */
+  private async processMedicationPlanMessage(message: any, wallet: any): Promise<void> {
+    try {
+      console.log('📨 处理用药计划消息:', message.message_id);
+      console.log('  发送者地址:', message.sender_address);
+
+      // 获取发送者的公钥
+      const senderPublicKey = await secureExchangeService.getRecipientPublicKey(
+        message.sender_address
+      );
+
+      // 解密消息（第一层：secure-exchange 加密）
+      const decryptedData = await secureExchangeService.decryptMessage(
+        message.encrypted_data,
+        wallet,
+        senderPublicKey
+      );
+
+      // 打印完整的解密数据
+      console.log('✅ 用药计划消息解密成功！');
+      console.log('📋 解密后的消息数据:');
+      console.log(JSON.stringify(decryptedData, null, 2));
+      
+      // 检查是否包含加密计划数据
+      if (!decryptedData.encrypted_plan_data) {
+        console.warn('⚠️ 消息中不包含加密计划数据');
+        throw new Error('消息中缺少 encrypted_plan_data 字段');
+      }
+
+      console.log('📝 用药计划摘要:');
+      console.log('  计划ID:', decryptedData.plan_id);
+      console.log('  计划名称:', decryptedData.plan_name);
+      console.log('  医生地址:', decryptedData.doctor_address);
+      console.log('  加密数据长度:', decryptedData.encrypted_plan_data.length, '字符');
+
+      const currentUser = await authService.getUserInfo();
+      if (!currentUser) {
+        throw new Error('无法获取当前用户信息');
+      }
+      const patientSmartAccount = decryptedData.patient_address || currentUser.smart_account || wallet.address;
+
+      // 构建用药计划对象（包含加密的计划数据）
+      const medicationPlan = {
+        plan_id: decryptedData.plan_id,
+        doctor_address: decryptedData.doctor_address,
+        doctor_eoa: decryptedData.doctor_eoa,
+        doctor_public_key: decryptedData.doctor_public_key,
+        patient_address: patientSmartAccount,
+        patient_eoa: wallet.address,
+        start_date: decryptedData.start_date || new Date().toISOString().split('T')[0],
+        end_date: decryptedData.end_date || null,
+        encrypted_plan_data: decryptedData.encrypted_plan_data,  // 保存加密的计划数据
+        status: 'active' as const,
+        created_at: new Date().toISOString(),
+        plan_hash: decryptedData.plan_hash,
+        encryption_key_hash: decryptedData.encryption_key_hash,
+      };
+
+      // 保存用药计划到本地
+      await medicationPlanStorageService.savePlan(medicationPlan, message.message_id);
+      console.log('✅ 用药计划已保存到本地');
+
+      // 确认消息已接收
+      await secureExchangeService.acknowledgeMessage(
+        message.message_id,
+        '用药计划已接收并保存'
+      );
+      console.log('✅ 用药计划消息已确认');
+    } catch (error) {
+      console.error('处理用药计划消息失败:', error);
       throw error;
     }
   }

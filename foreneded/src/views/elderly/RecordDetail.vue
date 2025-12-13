@@ -125,12 +125,6 @@
 
         <!-- 操作按钮 -->
         <div class="actions">
-          <button v-if="!record.synced" @click="syncRecord" class="action-btn sync" :disabled="syncing">
-            <CloudUpload v-if="!syncing" class="icon-small" />
-            <Loader2 v-else class="icon-small spinning" />
-            <span v-if="!syncing">同步到云端</span>
-            <span v-else>同步中...</span>
-          </button>
           <button @click="exportRecord" class="action-btn export">
             <Download class="icon-small" />
             <span>导出记录</span>

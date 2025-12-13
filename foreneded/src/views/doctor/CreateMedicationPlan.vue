@@ -620,6 +620,18 @@ async function savePlan() {
     alert('请填写必填项');
     return;
   }
+  if (planForm.value.reminders.length === 0) {
+    alert('请至少添加一个用药提醒');
+    return;
+  }
+  const medsWithoutReminders = planForm.value.medications.filter(med => 
+    !planForm.value.reminders.some(rem => rem.medication_code === med.medication_code)
+  );
+  if (medsWithoutReminders.length > 0) {
+    const names = medsWithoutReminders.map(m => m.medication_name || m.medication_code).join('、');
+    alert(`以下药物尚未设置提醒，请先补充：${names}`);
+    return;
+  }
   
   try {
     isSaving.value = true;
@@ -716,13 +728,18 @@ async function notifyPatient(planId: string, encryptedData: string) {
     console.log('  ✅ 医生信息:', userInfo.smart_account);
     
     // 3. 准备通知数据
+    const doctorPublicKey = wallet.signingKey.publicKey;
     const notificationData = {
       plan_id: planId,
       plan_name: '【新用药计划】',
       doctor_address: userInfo.smart_account,
+      doctor_eoa: wallet.address,
+      doctor_public_key: doctorPublicKey,
       message: '您有一份新的用药计划，请查看。',
+      encrypted_plan_data: encryptedData,  // ✅ 包含加密的计划数据
     };
     console.log('3. 通知数据:', notificationData);
+    console.log('  加密数据长度:', encryptedData.length, '字符');
     
     // 4. 发送消息
     console.log('4. 发送 secure-exchange 消息...');
@@ -777,9 +794,18 @@ function goBack() {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #667eea;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.top-bar .title {
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+  text-align: center;
 }
 
 .back-btn, .save-btn {
@@ -789,7 +815,7 @@ function goBack() {
   color: white;
   border: none;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
   display: flex;
@@ -806,6 +832,7 @@ function goBack() {
 .save-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 
@@ -826,5 +853,627 @@ function goBack() {
   padding: 40px 0;
   color: var(--text-secondary);
   gap: 12px;
+}
+
+/* 内容区域 */
+.content {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* 步骤区域 */
+.section {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.step-badge {
+  width: 40px;
+  height: 40px;
+  background: #667eea;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+/* 表单组 */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.input-field,
+.textarea-field,
+.select-field {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s;
+  color: #2d3748;
+  background: white;
+}
+
+.input-field:focus,
+.textarea-field:focus,
+.select-field:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.input-field.small {
+  font-size: 13px;
+  padding: 10px;
+}
+
+.textarea-field {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+/* 患者选择 */
+.patient-selector {
+  margin-bottom: 16px;
+}
+
+.select-patient-btn {
+  width: 100%;
+  padding: 16px;
+  border: 2px dashed #cbd5e0;
+  border-radius: 12px;
+  background: #f9fafb;
+  color: #667eea;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.select-patient-btn:hover {
+  border-color: #667eea;
+  background: #f0f4ff;
+}
+
+.selected-patient-card {
+  background: #f0f4ff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.patient-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.patient-avatar {
+  width: 48px;
+  height: 48px;
+  background: #667eea;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.patient-details {
+  flex: 1;
+}
+
+.patient-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 4px;
+}
+
+.patient-address {
+  font-size: 13px;
+  color: #718096;
+  font-family: monospace;
+}
+
+.change-btn {
+  padding: 8px 16px;
+  background: white;
+  color: #667eea;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.change-btn:hover {
+  background: #667eea;
+  color: white;
+}
+
+/* 药物列表 */
+.medications-list {
+  margin-bottom: 16px;
+}
+
+.med-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.med-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.med-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.remove-btn {
+  padding: 6px 12px;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.remove-btn:hover {
+  background: #fecaca;
+}
+
+.med-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.med-form .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+/* 提醒列表 */
+.reminders-list {
+  margin-bottom: 16px;
+}
+
+.reminder-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.reminder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.reminder-time {
+  font-size: 16px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.reminder-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.reminder-form .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+/* 按钮 */
+.add-medication-btn,
+.add-reminder-btn {
+  width: 100%;
+  padding: 12px;
+  background: white;
+  color: #667eea;
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.add-medication-btn:hover,
+.add-reminder-btn:hover {
+  border-color: #667eea;
+  background: #f0f4ff;
+}
+
+/* 加密提示 */
+.encryption-notice {
+  background: #f0fdf4;
+  border: 1px solid #dcfce7;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.notice-icon {
+  width: 24px;
+  height: 24px;
+  color: #22c55e;
+  flex-shrink: 0;
+}
+
+.notice-text {
+  flex: 1;
+}
+
+.notice-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #166534;
+  margin-bottom: 4px;
+}
+
+.notice-desc {
+  font-size: 13px;
+  color: #4ade80;
+}
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  flex: 1;
+}
+
+.refresh-btn,
+.close-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  color: #667eea;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.refresh-btn:hover,
+.close-btn:hover {
+  background: #e5e7eb;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.textarea-field.small {
+  min-height: 80px;
+}
+
+.search-box {
+  position: relative;
+  margin: 16px 0 12px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 14px 48px 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  font-size: 15px;
+  color: #0f172a;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.18);
+  outline: none;
+}
+
+.search-icon {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  width: 20px;
+  height: 20px;
+}
+
+.search-results {
+  margin-top: 12px;
+  border-radius: 18px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: #f8fafc;
+}
+
+.med-name {
+  font-weight: 600;
+  color: #0f172a;
+  flex: 1;
+}
+
+.med-info {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.add-btn {
+  border: none;
+  background: #0ea5e9;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-btn:hover {
+  background: #0284c7;
+  box-shadow: 0 6px 14px rgba(14, 165, 233, 0.3);
+}
+
+.medications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.patient-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.patient-item:hover {
+  background: #f0f4ff;
+  border-color: #667eea;
+}
+
+.select-icon {
+  width: 20px;
+  height: 20px;
+  color: #cbd5e0;
+}
+
+.patient-item:hover .select-icon {
+  color: #667eea;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #718096;
+}
+
+.empty-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  color: #cbd5e0;
+}
+
+.empty-state p {
+  margin: 12px 0;
+  font-size: 16px;
+}
+
+.empty-state .hint {
+  font-size: 14px;
+  color: #a0aec0;
+}
+
+.refresh-manual-btn {
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.refresh-manual-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-small {
+  width: 20px;
+  height: 20px;
+}
+
+.arrow {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 768px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .med-form {
+    grid-template-columns: 1fr;
+  }
+
+  .reminder-form {
+    grid-template-columns: 1fr;
+  }
+
+  .section {
+    padding: 16px;
+  }
+
+  .modal-content {
+    max-height: 90vh;
+  }
 }
 </style>

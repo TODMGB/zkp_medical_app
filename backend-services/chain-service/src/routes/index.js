@@ -12,6 +12,7 @@ const recoveryRouter = require('./recovery.routes');     // 社交恢复
 const bundlerRouter = require('./bundler.routes');       // UserOperation 提交
 const paymasterRouter = require('./paymaster.routes');   // Paymaster 管理
 const zkpRouter = require('./zkp.routes');               // ZKP 证明验证
+const medicationCheckinRouter = require('./medication-checkin.routes');  // 用药打卡上链
 
 const router = Router();
 
@@ -29,6 +30,7 @@ router.get('/health', (req, res) => {
       bundler: '/bundler - UserOperation 提交',
       paymaster: '/paymaster - Paymaster 管理',
       zkp: '/zkp - ZKP证明验证',
+      medicationCheckin: '/medication-checkin - 用药打卡上链',
       ipfs: '/ipfs - IPFS 文件存储'
     }
   });
@@ -55,5 +57,8 @@ router.use('/paymaster', paymasterRouter);
 
 // 6. ZKP证明验证
 router.use('/zkp', zkpRouter);
+
+// 7. 用药打卡上链
+router.use('/medication-checkin', medicationCheckinRouter);
 
 module.exports = router;

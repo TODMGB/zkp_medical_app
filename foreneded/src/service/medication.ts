@@ -71,6 +71,9 @@ export interface MedicationPlanData {
 export interface MedicationPlan {
   plan_id: string;
   doctor_address: string;
+  doctor_eoa?: string;
+  doctor_public_key?: string;
+  patient_eoa?: string;
   patient_address: string;
   start_date: string;
   end_date: string;
@@ -237,7 +240,10 @@ class MedicationService {
       }
       
       console.log('✅ 用药计划创建成功:', plan.plan_id);
-      return plan;
+      return {
+        ...plan,
+        encrypted_plan_data: encryptedData,
+      };
     } catch (error: any) {
       console.error('❌ 创建用药计划失败:', error);
       throw error;

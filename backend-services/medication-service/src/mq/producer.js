@@ -35,11 +35,21 @@ async function publishNotification(notificationData) {
  * @param {object} planData - 用药计划数据
  */
 async function publishMedicationPlanCreated(planData) {
-  await publishNotification({
-    type: 'medication_plan_created',
-    recipient: planData.patient_address,
-    data: planData
-  });
+  try {
+    console.log('[MQ Producer] 准备发送用药计划创建通知...');
+    console.log('  患者地址:', planData.patient_address);
+    console.log('  计划ID:', planData.plan_id);
+    
+    await publishNotification({
+      type: 'medication_plan_created',
+      recipient_address: planData.patient_address,  // ✅ 改为 recipient_address 以匹配通知服务的字段
+      data: planData
+    });
+    console.log('[MQ Producer] ✅ 用药计划创建通知已发送');
+  } catch (error) {
+    console.error('[MQ Producer] ❌ 发送用药计划创建通知失败:', error);
+    throw error;
+  }
 }
 
 /**
@@ -47,11 +57,16 @@ async function publishMedicationPlanCreated(planData) {
  * @param {object} planData - 用药计划数据
  */
 async function publishMedicationPlanUpdated(planData) {
-  await publishNotification({
-    type: 'medication_plan_updated',
-    recipient: planData.patient_address,
-    data: planData
-  });
+  try {
+    await publishNotification({
+      type: 'medication_plan_updated',
+      recipient_address: planData.patient_address,
+      data: planData
+    });
+  } catch (error) {
+    console.error('[MQ Producer] ❌ 发送用药计划更新通知失败:', error);
+    throw error;
+  }
 }
 
 /**
@@ -59,11 +74,16 @@ async function publishMedicationPlanUpdated(planData) {
  * @param {object} shareData - 分享数据
  */
 async function publishMedicationPlanShared(shareData) {
-  await publishNotification({
-    type: 'medication_plan_shared',
-    recipient: shareData.recipient,
-    data: shareData
-  });
+  try {
+    await publishNotification({
+      type: 'medication_plan_shared',
+      recipient_address: shareData.recipient,
+      data: shareData
+    });
+  } catch (error) {
+    console.error('[MQ Producer] ❌ 发送用药计划分享通知失败:', error);
+    throw error;
+  }
 }
 
 module.exports = {

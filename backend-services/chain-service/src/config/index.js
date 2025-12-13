@@ -34,7 +34,7 @@ module.exports = {
     // 消息队列配置
     mq: {
         url: process.env.MQ_URL,                      // 消息队列 URL
-        exchangeName: process.env.MQ_EXCHANGE_NAME || 'app_events', // 交换机名称
+        exchangeName: process.env.MQ_EXCHANGE_NAME || 'exchange.notifications', // 交换机名称
     },
     // 以太坊区块链配置
     ethconfig: {
@@ -48,5 +48,7 @@ module.exports = {
         apiSecret: process.env.IPFS_API_SECRET,       // Pinata API Secret
         jwt: process.env.IPFS_JWT,                    // Pinata JWT Token
         gateway: process.env.IPFS_GATEWAY || 'https://tomato-legislative-coyote-504.mypinata.cloud', // Pinata Gateway
-    }
+    },
+    // JWT 配置
+    JWT_SECRET: process.env.JWT_SECRET,               // 用于验证来自 Gateway/用户服务的 Token
 };

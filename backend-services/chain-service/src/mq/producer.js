@@ -272,6 +272,55 @@ async function publishUserCreated(user) {
   }
 }
 
+// =======================================================
+// 用药打卡相关通知
+// =======================================================
+
+/**
+ * 发布用药打卡通知
+ * @param {string} userId - 用户 ID
+ * @param {string} weekKey - 周标识
+ * @param {string} ipfsCid - IPFS CID
+ * @param {string} txHash - 交易哈希（失败时为 null）
+ * @param {string} status - 状态 ('success' 或 'failed')
+ * @param {string} errorMessage - 错误信息（仅在失败时）
+ */
+async function publishMedicationCheckInNotification(userId, weekKey, ipfsCid, txHash, status, errorMessage = null) {
+  try {
+    let title, body, type, priority;
+
+    if (status === 'success') {
+      title = '用药打卡已上链';
+      body = `周 ${weekKey} 的用药打卡已成功上链，交易哈希: ${txHash.substring(0, 10)}...`;
+      type = 'medication_checkin_success';
+      priority = 'high';
+    } else {
+      title = '用药打卡上链失败';
+      body = `周 ${weekKey} 的用药打卡上链失败: ${errorMessage}`;
+      type = 'medication_checkin_failed';
+      priority = 'high';
+    }
+
+    await publishNotification({
+      recipient_address: userId,
+      title,
+      body,
+      type,
+      data: {
+        weekKey,
+        ipfsCid,
+        txHash,
+        status,
+        timestamp: Date.now()
+      },
+      priority,
+      channels: ['push', 'websocket']
+    });
+  } catch (error) {
+    console.error('[MQ Producer] Error publishing medication checkin notification:', error);
+  }
+}
+
 module.exports = {
   // 通用方法
   publishNotification,
@@ -285,6 +334,9 @@ module.exports = {
   publishRecoverySupported,
   publishRecoveryCancelled,
   publishRecoveryCompleted,
+  
+  // 用药打卡通知
+  publishMedicationCheckInNotification,
   
   // 原有功能
   publishUserCreated,

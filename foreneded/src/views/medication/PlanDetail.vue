@@ -300,19 +300,31 @@ async function decryptPlan() {
     }
     const myPrivateKey = wallet.privateKey;
     
-    // 3. 确定对方的公钥（医生或患者）
-    let peerAddress: string;
-    if (currentUser.smart_account === plan.value.patient_address) {
-      // 当前用户是患者，对方是医生
-      peerAddress = plan.value.doctor_address;
-    } else if (currentUser.smart_account === plan.value.doctor_address) {
-      // 当前用户是医生，对方是患者
-      peerAddress = plan.value.patient_address;
+    // 3. 确定身份与对方公钥地址
+    const currentSmart = currentUser.smart_account?.toLowerCase();
+    const currentEOA = wallet.address?.toLowerCase();
+    const patientSmart = plan.value.patient_address?.toLowerCase();
+    const patientEOA = plan.value.patient_eoa?.toLowerCase();
+    const doctorSmart = plan.value.doctor_address?.toLowerCase();
+    const doctorEOA = plan.value.doctor_eoa?.toLowerCase();
+    
+    const isPatient = currentSmart === patientSmart || currentEOA === patientEOA;
+    const isDoctor = currentSmart === doctorSmart || currentEOA === doctorEOA;
+    
+    let peerAddress: string | undefined;
+    if (isPatient) {
+      peerAddress = plan.value.doctor_address || plan.value.doctor_eoa;
+    } else if (isDoctor) {
+      peerAddress = plan.value.patient_address || plan.value.patient_eoa;
     } else {
       throw new Error('您无权查看此计划');
     }
     
-    console.log('  当前用户:', currentUser.smart_account);
+    if (!peerAddress) {
+      throw new Error('缺少对方地址，无法获取公钥');
+    }
+    
+    console.log('  当前用户:', currentUser.smart_account, '| EOA:', wallet.address);
     console.log('  对方地址:', peerAddress);
     
     // 4. 获取对方的公钥（优先从缓存，支持完全离线）
@@ -442,6 +454,7 @@ function goBack() {
   cursor: pointer;
   transition: all 0.3s;
   backdrop-filter: blur(5px);
+  font-weight: 600;
 }
 
 .back-btn:hover {
@@ -457,8 +470,9 @@ function goBack() {
 .title {
   color: white;
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .placeholder {
@@ -692,7 +706,7 @@ function goBack() {
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 700;
   flex-shrink: 0;
 }
 
@@ -826,7 +840,7 @@ function goBack() {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .encryption-text {
@@ -835,14 +849,16 @@ function goBack() {
 
 .encryption-title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 4px;
+  color: white;
 }
 
 .encryption-desc {
   font-size: 13px;
-  opacity: 0.9;
+  opacity: 0.95;
   line-height: 1.5;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 /* 操作按钮 */

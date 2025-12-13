@@ -49,12 +49,44 @@
           </div>
         </div>
 
-        <!-- 验证状态 -->
+        <!-- 链上信息 + 验证状态 -->
         <div v-if="proofResult.status === 'completed'" class="verification-section">
           <h2 class="section-title">
             <Shield class="title-icon" />
-            链上验证
+            链上信息
           </h2>
+
+          <div v-if="onchainRecord" class="onchain-card">
+            <div class="onchain-row">
+              <div class="meta-label">CID</div>
+              <div class="meta-value">
+                <span class="mono">{{ onchainRecord.ipfsCid }}</span>
+                <button class="ghost-btn" @click="() => copyText(onchainRecord?.ipfsCid)">
+                  <Copy class="icon-mini" />复制
+                </button>
+                <button class="ghost-btn" @click="() => openIpfs(onchainRecord?.ipfsCid || '')">
+                  <Globe class="icon-mini" />查看
+                </button>
+              </div>
+            </div>
+            <div class="onchain-row">
+              <div class="meta-label">Tx Hash</div>
+              <div class="meta-value">
+                <span class="mono">{{ onchainRecord.txHash }}</span>
+                <button class="ghost-btn" @click="() => copyText(onchainRecord?.txHash)">
+                  <Copy class="icon-mini" />复制
+                </button>
+                <button class="ghost-btn" @click="() => openTx(onchainRecord?.txHash || '')">
+                  <Link2 class="icon-mini" />浏览器
+                </button>
+              </div>
+            </div>
+            <div class="onchain-row meta">
+              <div class="meta-label">提交时间</div>
+              <div class="meta-value">{{ formatDateTime(onchainRecord.timestamp) }}</div>
+            </div>
+          </div>
+
           <div class="verification-status" :class="verificationStatus">
             <div class="status-icon-wrapper">
               <CheckCircle2 v-if="verificationStatus === 'verified'" class="status-icon success" />
@@ -66,15 +98,19 @@
               <p v-if="verificationMessage" class="status-message">{{ verificationMessage }}</p>
             </div>
           </div>
+          <div class="verification-meta" v-if="verificationRecord">
+            <p class="meta-text">
+              上次验证时间：{{ verificationRecord.verifiedAt ? formatDate(verificationRecord.verifiedAt) : formatDate(verificationRecord.lastCheckedAt) }}
+            </p>
+          </div>
           <button 
-            v-if="verificationStatus !== 'verified'"
             class="verify-btn"
             :disabled="verifying"
             @click="verifyProof"
           >
             <Shield v-if="!verifying" class="btn-icon" />
             <Loader2 v-else class="btn-icon spinner" />
-            {{ verifying ? '验证中...' : '开始验证' }}
+            {{ verificationButtonLabel }}
           </button>
         </div>
 
@@ -163,9 +199,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { weeklyCheckinService } from '@/service/weeklyCheckinService'
+import { weeklyCheckinService, type WeeklyVerificationRecord, type WeeklyOnchainRecord } from '@/service/weeklyCheckinService'
+import { buildZkpUrl } from '@/config/api.config'
 import { 
   ArrowLeft, 
   Info, 
@@ -178,8 +215,11 @@ import {
   AlertTriangle, 
   AlertCircle, 
   Download, 
+  FileText,
   FileQuestion,
-  Loader2
+  Loader2,
+  Link2,
+  Globe
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -190,6 +230,13 @@ const proofResult = ref<any>(null)
 const verifying = ref(false)
 const verificationStatus = ref<'pending' | 'verified' | 'failed'>('pending')
 const verificationMessage = ref('')
+const verificationRecord = ref<WeeklyVerificationRecord | null>(null)
+const onchainRecord = ref<WeeklyOnchainRecord | null>(null)
+
+const verificationButtonLabel = computed(() => {
+  if (verifying.value) return '验证中...'
+  return verificationStatus.value === 'verified' ? '重新验证' : '开始验证'
+})
 
 const goBack = () => {
   router.back()
@@ -215,6 +262,32 @@ const getStatusLabel = (status: string) => {
 
 const formatDate = (timestamp: number) => {
   return new Date(timestamp).toLocaleString('zh-CN')
+}
+
+const formatDateTime = (timestamp?: number) => {
+  if (!timestamp) return '-'
+  return new Date(timestamp).toLocaleString('zh-CN')
+}
+
+const copyText = async (text?: string) => {
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+    console.log('✅ 已复制到剪贴板')
+  } catch (error) {
+    console.error('复制失败:', error)
+  }
+}
+
+const openIpfs = (cid: string) => {
+  if (!cid) return
+  window.open(`https://ipfs.io/ipfs/${cid}`, '_blank')
+}
+
+const openTx = (txHash: string) => {
+  if (!txHash) return
+  const explorer = (window as any)?.CONFIG?.blockExplorerUrl || 'https://etherscan.io/tx/'
+  window.open(`${explorer}${txHash}`, '_blank')
 }
 
 const formatJson = (data: any) => {
@@ -322,9 +395,8 @@ const verifyProof = async () => {
     const requestBody = { pA, pB, pC, pubSignals }
 
     const token = await (await import('@/service/auth')).authService.getToken()
-    const API_GATEWAY_URL = (await import('@/config/api.config')).API_GATEWAY_URL
 
-    const response = await fetch(`${API_GATEWAY_URL}/erc4337/zkp/verify/weekly-summary`, {
+    const response = await fetch(buildZkpUrl('verifyWeeklySummary'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -338,16 +410,37 @@ const verifyProof = async () => {
     if ((result.success && result.valid) || (result.success && result.verified) || result.valid === true || result.verified === true) {
       verificationStatus.value = 'verified'
       verificationMessage.value = result.message || '✅ 证明验证成功'
+      await persistVerificationStatus('verified', verificationMessage.value, Date.now())
     } else {
       verificationStatus.value = 'failed'
       verificationMessage.value = result.message || result.error || '❌ 证明验证失败'
+      await persistVerificationStatus('failed', verificationMessage.value)
     }
   } catch (error) {
     verificationStatus.value = 'failed'
     verificationMessage.value = error instanceof Error ? error.message : '验证过程中出错'
+    await persistVerificationStatus('failed', verificationMessage.value)
   } finally {
     verifying.value = false
   }
+}
+
+const persistVerificationStatus = async (
+  status: 'pending' | 'verified' | 'failed',
+  message?: string,
+  verifiedAt?: number
+) => {
+  if (!proofResult.value) return
+  const record: WeeklyVerificationRecord = {
+    weekKey: proofResult.value.weekKey,
+    status,
+    message,
+    verifiedAt,
+    lastCheckedAt: Date.now(),
+  }
+
+  await weeklyCheckinService.saveVerificationStatus(record)
+  verificationRecord.value = record
 }
 
 onMounted(async () => {
@@ -363,7 +456,19 @@ onMounted(async () => {
 
     if (!proofResult.value) {
       alert('❌ 未找到证明数据')
+    } else {
+      const record = await weeklyCheckinService.getVerificationStatus(weekKey)
+      if (record) {
+        verificationRecord.value = record
+        verificationStatus.value = record.status
+        verificationMessage.value = record.message || ''
+      }
+      onchainRecord.value = await weeklyCheckinService.getWeeklyOnchainRecord(weekKey)
+      if (route.query.jobId && proofResult.value.jobId !== route.query.jobId) {
+        console.warn('路由参数中的 jobId 与本地记录不匹配')
+      }
     }
+    loading.value = false
   } catch (error) {
     console.error('加载证明详情失败:', error)
     alert('❌ 加载失败')
@@ -485,6 +590,90 @@ onMounted(async () => {
   padding: 20px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
+}
+
+.onchain-card {
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #ecfeff 0%, #dbeafe 100%);
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.onchain-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onchain-row.meta {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #0f172a;
+  border-top: 1px dashed rgba(15, 23, 42, 0.15);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.meta-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0369a1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.meta-value {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: #0f172a;
+}
+
+.meta-value .mono {
+  flex: 1;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  word-break: break-all;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+}
+
+.ghost-btn {
+  border: 1px solid rgba(14, 165, 233, 0.6);
+  background: rgba(255, 255, 255, 0.8);
+  color: #0369a1;
+  border-radius: 999px;
+  padding: 4px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ghost-btn:hover {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: #0ea5e9;
+  color: #0c4a6e;
+}
+
+.icon-mini {
+  width: 14px;
+  height: 14px;
 }
 
 .section-title {

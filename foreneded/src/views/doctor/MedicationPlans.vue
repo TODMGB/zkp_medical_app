@@ -311,7 +311,7 @@ function goBack() {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #667eea;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
 }
@@ -602,7 +602,7 @@ function goBack() {
   color: #667eea;
   border: none;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
   display: flex;
@@ -613,6 +613,7 @@ function goBack() {
 .page-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  color: #cbd5e0;
 }
 
 .page-btn:not(:disabled):hover {
@@ -621,8 +622,11 @@ function goBack() {
 }
 
 .page-info {
-  color: white;
+  color: #2d3748;
   font-size: 14px;
   font-weight: 500;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 8px;
 }
 </style>

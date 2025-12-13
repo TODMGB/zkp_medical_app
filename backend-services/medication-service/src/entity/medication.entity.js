@@ -25,15 +25,15 @@ async function createMedicationPlan(planData) {
 
     const sql = `
         INSERT INTO medication_plans (
-            plan_id, patient_address, doctor_address,
+            plan_id, patient_address, doctor_address, doctor_public_key, doctor_eoa,
             start_date, end_date, encrypted_plan_data, plan_hash,
             encryption_key_hash, created_by, updated_by
-        ) VALUES ($1, $2, $3, $4, $5, decode($6, 'hex'), $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, decode($8, 'hex'), $9, $10, $11, $12)
         RETURNING *
     `;
 
     const values = [
-        plan_id, patient_address, doctor_address,
+        plan_id, patient_address, doctor_address, planData.doctor_public_key, planData.doctor_eoa,
         start_date, end_date, encrypted_plan_data, plan_hash,
         encryption_key_hash, created_by, created_by  // ⭐ updated_by 初始值与 created_by 相同
     ];

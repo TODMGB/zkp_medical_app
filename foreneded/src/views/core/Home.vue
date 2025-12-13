@@ -239,6 +239,7 @@ import { medicationPlanStorageService } from '@/service/medicationPlanStorage'
 import { checkinStorageService } from '@/service/checkinStorage'
 import { medicationService } from '@/service/medication'
 import { secureExchangeService } from '@/service/secureExchange'
+import { medicationReminderScheduler } from '@/service/medicationReminderScheduler'
 import { zkpService } from '@/service/zkp'
 import type { MedicationPlan } from '@/service/medication'
 import BottomNav from '@/components/BottomNav.vue'
@@ -541,6 +542,8 @@ const loadTodayTasks = async () => {
     todayTasks.value = tasks
     totalTasks.value = tasks.length
     completedTasks.value = tasks.filter(t => t.status === 'completed').length
+
+    await medicationReminderScheduler.scheduleTasks(tasks)
     
     console.log(`\n✅ === 今日任务加载完成 ===`)
     console.log(`📊 统计: 总任务 ${tasks.length} 个，已完成 ${completedTasks.value} 个，待完成 ${tasks.length - completedTasks.value} 个`)
@@ -763,12 +766,14 @@ onBeforeUnmount(() => {
   font-weight: 700;
   margin: 0;
   line-height: 1.3;
+  color: white;
 }
 
 .date-text {
   font-size: 1rem;
-  opacity: 0.9;
+  opacity: 0.95;
   margin: 0;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .user-role-badge {
@@ -779,6 +784,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
   background-color: rgba(255, 255, 255, 0.25);
   backdrop-filter: blur(10px);
+  color: white;
 }
 
 .notification-bell {
@@ -872,6 +878,8 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: all 0.3s;
   background: transparent;
+  color: #4b5563;
+  font-weight: 500;
 }
 
 .tab.active {
@@ -915,6 +923,14 @@ onBeforeUnmount(() => {
   font-size: 2rem;
   font-weight: bold;
   color: #667eea;
+  margin-bottom: 8px;
+}
+
+.stat-item .stat-label {
+  display: block;
+  font-size: 0.9rem;
+  color: #4b5563;
+  font-weight: 500;
 }
 
 .st.action-icon {
@@ -1159,23 +1175,16 @@ onBeforeUnmount(() => {
   transform: scale(0.95);
 }
 
-.checkin-btn.disabled,
-.checkin-btn:disabled {
-  background: #cbd5e0;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
-}
-
 /* 未到时间的禁用状态 */
 .checkin-btn.disabled,
 .checkin-btn:disabled {
   background: #cbd5e1;
-  color: #64748b;
+  color: #2d3748;
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.8;
   box-shadow: 0 2px 4px rgba(148, 163, 184, 0.2);
   transform: none !important;
+  font-weight: 600;
 }
 
 .status-icon {

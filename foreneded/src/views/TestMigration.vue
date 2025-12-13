@@ -147,6 +147,7 @@ import { biometricService } from '@/service/biometric';
 import { scannerService } from '@/service/scanner';
 import { Device } from '@capacitor/device';
 import { Preferences } from '@capacitor/preferences';
+import { ACCOUNT_KEYS, AUTH_KEYS, DEBUG_KEYS } from '@/config/storage.config';
 import { 
   ArrowRightLeft, 
   QrCode, 
@@ -176,7 +177,7 @@ async function testGenerateQR() {
     
     // 模拟账户数据
     await Preferences.set({
-      key: 'accountInfo',
+      key: ACCOUNT_KEYS.INFO,
       value: JSON.stringify({
         address: '0x1234567890abcdef',
         ownerAddress: '0xabcdef1234567890',
@@ -187,7 +188,7 @@ async function testGenerateQR() {
     });
     
     await Preferences.set({
-      key: 'userInfo',
+      key: AUTH_KEYS.USER_INFO,
       value: JSON.stringify({
         username: '测试用户', // 使用 UserInfo 接口的字段名
         idCardNumber: '110101199001011234',
@@ -248,9 +249,9 @@ async function testServices() {
     const scannerSupported = await scannerService.isSupported();
     
     // 测试本地存储
-    await Preferences.set({ key: 'test', value: 'test' });
-    const storageTest = await Preferences.get({ key: 'test' });
-    await Preferences.remove({ key: 'test' });
+    await Preferences.set({ key: DEBUG_KEYS.TEST_ITEM, value: 'test' });
+    const storageTest = await Preferences.get({ key: DEBUG_KEYS.TEST_ITEM });
+    await Preferences.remove({ key: DEBUG_KEYS.TEST_ITEM });
     
     serviceStatus.value = {
       deviceId: deviceInfo.identifier,

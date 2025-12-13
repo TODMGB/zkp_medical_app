@@ -46,6 +46,41 @@ export interface WeeklyProofStatusMap {
   [weekKey: string]: WeeklyProofResult;
 }
 
+/**
+ * 周度链上记录接口
+ */
+export interface WeeklyOnchainRecord {
+  weekKey: string;
+  ipfsCid: string;
+  txHash: string;
+  timestamp: number;
+  blockNumber?: number;
+  status: 'pending' | 'confirmed' | 'failed';
+  error?: string;
+}
+
+/**
+ * 周度链上记录状态映射
+ */
+export interface WeeklyOnchainStatusMap {
+  [weekKey: string]: WeeklyOnchainRecord;
+}
+
+/**
+ * 周度链下验证状态
+ */
+export interface WeeklyVerificationRecord {
+  weekKey: string;
+  status: 'pending' | 'verified' | 'failed';
+  message?: string;
+  verifiedAt?: number;
+  lastCheckedAt: number;
+}
+
+export interface WeeklyVerificationStatusMap {
+  [weekKey: string]: WeeklyVerificationRecord;
+}
+
 // ==================== 周度打卡服务类 ====================
 
 class WeeklyCheckinService {
@@ -336,12 +371,142 @@ class WeeklyCheckinService {
   }
 
   /**
+   * 保存周度链上记录
+   */
+  public async saveWeeklyOnchainRecord(record: WeeklyOnchainRecord): Promise<void> {
+    try {
+      const key = generateKey(CHECKIN_KEYS.WEEKLY_ONCHAIN_PREFIX, record.weekKey);
+      await Preferences.set({
+        key,
+        value: JSON.stringify(record),
+      });
+
+      // 同时更新状态映射
+      await this.updateOnchainStatusMap(record);
+
+      console.log(`✅ 周度链上记录已保存: ${record.weekKey}, CID: ${record.ipfsCid}`);
+    } catch (error) {
+      console.error('保存周度链上记录失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取周度链上记录
+   */
+  public async getWeeklyOnchainRecord(weekKey: string): Promise<WeeklyOnchainRecord | null> {
+    try {
+      const key = generateKey(CHECKIN_KEYS.WEEKLY_ONCHAIN_PREFIX, weekKey);
+      const { value } = await Preferences.get({ key });
+      if (!value) return null;
+      return JSON.parse(value);
+    } catch (error) {
+      console.error(`获取周度链上记录失败 (${weekKey}):`, error);
+      return null;
+    }
+  }
+
+  /**
+   * 更新链上记录状态映射
+   */
+  private async updateOnchainStatusMap(record: WeeklyOnchainRecord): Promise<void> {
+    try {
+      const { value } = await Preferences.get({ key: CHECKIN_KEYS.WEEKLY_ONCHAIN_STATUS });
+      const statusMap: WeeklyOnchainStatusMap = value ? JSON.parse(value) : {};
+
+      statusMap[record.weekKey] = {
+        weekKey: record.weekKey,
+        ipfsCid: record.ipfsCid,
+        txHash: record.txHash,
+        timestamp: record.timestamp,
+        blockNumber: record.blockNumber,
+        status: record.status,
+        error: record.error,
+      };
+
+      await Preferences.set({
+        key: CHECKIN_KEYS.WEEKLY_ONCHAIN_STATUS,
+        value: JSON.stringify(statusMap),
+      });
+    } catch (error) {
+      console.error('更新链上记录状态映射失败:', error);
+    }
+  }
+
+  /**
+   * 获取所有链上记录状态
+   */
+  public async getAllOnchainStatus(): Promise<WeeklyOnchainStatusMap> {
+    try {
+      const { value } = await Preferences.get({ key: CHECKIN_KEYS.WEEKLY_ONCHAIN_STATUS });
+      if (!value) return {};
+      return JSON.parse(value);
+    } catch (error) {
+      console.error('获取链上记录状态失败:', error);
+      return {};
+    }
+  }
+
+  /**
+   * 获取某周的链上记录状态
+   */
+  public async getOnchainStatus(weekKey: string): Promise<WeeklyOnchainRecord | null> {
+    const statusMap = await this.getAllOnchainStatus();
+    return statusMap[weekKey] || null;
+  }
+
+  /**
+   * 保存链下验证状态
+   */
+  public async saveVerificationStatus(record: WeeklyVerificationRecord): Promise<void> {
+    try {
+      const { value } = await Preferences.get({ key: CHECKIN_KEYS.WEEKLY_VERIFICATION_STATUS });
+      const statusMap: WeeklyVerificationStatusMap = value ? JSON.parse(value) : {};
+
+      statusMap[record.weekKey] = {
+        ...record,
+        lastCheckedAt: record.lastCheckedAt || Date.now(),
+      };
+
+      await Preferences.set({
+        key: CHECKIN_KEYS.WEEKLY_VERIFICATION_STATUS,
+        value: JSON.stringify(statusMap),
+      });
+    } catch (error) {
+      console.error('保存链下验证状态失败:', error);
+    }
+  }
+
+  /**
+   * 获取所有链下验证状态
+   */
+  public async getAllVerificationStatus(): Promise<WeeklyVerificationStatusMap> {
+    try {
+      const { value } = await Preferences.get({ key: CHECKIN_KEYS.WEEKLY_VERIFICATION_STATUS });
+      if (!value) return {};
+      return JSON.parse(value);
+    } catch (error) {
+      console.error('获取链下验证状态失败:', error);
+      return {};
+    }
+  }
+
+  /**
+   * 获取某周的链下验证状态
+   */
+  public async getVerificationStatus(weekKey: string): Promise<WeeklyVerificationRecord | null> {
+    const statusMap = await this.getAllVerificationStatus();
+    return statusMap[weekKey] || null;
+  }
+
+  /**
    * 清空所有周度数据
    */
   public async clearAllWeeklyData(): Promise<void> {
     try {
       await Preferences.remove({ key: CHECKIN_KEYS.WEEKLY_GROUPED });
       await Preferences.remove({ key: CHECKIN_KEYS.WEEKLY_PROOF_STATUS });
+      await Preferences.remove({ key: CHECKIN_KEYS.WEEKLY_ONCHAIN_STATUS });
       console.log('🗑️ 所有周度数据已清空');
     } catch (error) {
       console.error('清空周度数据失败:', error);

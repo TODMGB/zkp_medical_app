@@ -72,6 +72,17 @@
             </div>
             <ChevronRight class="card-arrow" />
           </div>
+
+          <div class="test-card" @click="testMedicationDecryption">
+            <div class="card-icon-wrapper">
+              <Lock class="card-icon" />
+            </div>
+            <div class="card-content">
+              <h3 class="card-title">医药信息解密</h3>
+              <p class="card-desc">测试加密医药计划的解密</p>
+            </div>
+            <ChevronRight class="card-arrow" />
+          </div>
         </div>
       </div>
 
@@ -253,6 +264,10 @@ import { aaService } from '@/service/accountAbstraction';
 import { Preferences } from '@capacitor/preferences';
 import { Device } from '@capacitor/device';
 import { CLEAR_GROUPS, KEY_CATEGORIES } from '@/config/storage.config';
+import { medicationPlanStorageService } from '@/service/medicationPlanStorage';
+import { medicationService } from '@/service/medication';
+import { authService } from '@/service/auth';
+import { secureExchangeService } from '@/service/secureExchange';
 import { 
   ArrowLeft, 
   FlaskConical, 
@@ -274,7 +289,8 @@ import {
   Trash2, 
   Package, 
   Info,
-  ChevronRight
+  ChevronRight,
+  Lock
 } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -306,6 +322,107 @@ const goToAccountAbstraction = () => {
 
 const goToWeeklySummary = () => {
   router.push('/weekly-summary');
+};
+
+// 医药信息解密测试
+const testMedicationDecryption = async () => {
+  try {
+    console.log('🔐 开始医药信息解密测试...');
+    
+    // 1. 获取所有保存的用药计划
+    const allPlans = await medicationPlanStorageService.getAllPlans();
+    
+    if (allPlans.length === 0) {
+      alert('❌ 没有找到保存的用药计划，请先接收一个用药计划');
+      return;
+    }
+    
+    console.log(`📋 找到 ${allPlans.length} 个用药计划`);
+    
+    // 2. 获取第一个计划的详细信息
+    const fullPlan = allPlans[0];
+    
+    if (!fullPlan) {
+      alert('❌ 无法获取用药计划详情');
+      return;
+    }
+    
+    console.log('📝 计划信息:', fullPlan);
+    
+    // 3. 检查是否有加密数据
+    if (!fullPlan.encrypted_plan_data) {
+      alert('❌ 计划中没有加密数据');
+      return;
+    }
+    
+    console.log('🔒 加密数据长度:', fullPlan.encrypted_plan_data.length, '字符');
+    
+    // 4. 获取用户钱包和医生公钥
+    const userInfo = await authService.getUserInfo();
+    if (!userInfo) {
+      alert('❌ 无法获取用户信息');
+      return;
+    }
+    
+    const wallet = await aaService.getEOAWallet();
+    if (!wallet) {
+      alert('❌ 无法获取钱包');
+      return;
+    }
+    
+    console.log('👤 用户地址:', userInfo.smart_account);
+    console.log('👨‍⚕️ 医生地址:', fullPlan.doctor_address);
+    
+    // 5. 获取医生的公钥
+    console.log('🔑 获取医生公钥...');
+    const doctorPublicKey = await secureExchangeService.getRecipientPublicKey(
+      fullPlan.doctor_address
+    );
+    console.log('  ✅ 医生公钥获取成功');
+    
+    // 6. 解密计划数据
+    console.log('🔓 开始解密...');
+    const decryptedPlan = await medicationService.decryptPlanData(
+      fullPlan.encrypted_plan_data,
+      wallet.privateKey,
+      doctorPublicKey
+    );
+    
+    console.log('✅ 解密成功！');
+    console.log('📋 解密后的计划数据:', decryptedPlan);
+    
+    // 6. 显示解密结果
+    const resultMessage = `
+✅ 医药信息解密成功！
+
+📋 计划信息：
+• 计划名称: ${decryptedPlan.plan_name}
+• 诊断: ${decryptedPlan.diagnosis}
+• 开始日期: ${decryptedPlan.start_date}
+• 结束日期: ${decryptedPlan.end_date}
+
+💊 药物数量: ${decryptedPlan.medications.length} 种
+⏰ 提醒数量: ${decryptedPlan.reminders.length} 个
+
+📝 医嘱备注: ${decryptedPlan.notes || '无'}
+
+🔐 加密状态: 已成功解密
+    `.trim();
+    
+    alert(resultMessage);
+    
+    // 7. 打印详细信息到控制台
+    console.log('=== 完整解密数据 ===');
+    console.log('计划名称:', decryptedPlan.plan_name);
+    console.log('诊断:', decryptedPlan.diagnosis);
+    console.log('药物列表:', decryptedPlan.medications);
+    console.log('提醒列表:', decryptedPlan.reminders);
+    console.log('医嘱备注:', decryptedPlan.notes);
+    
+  } catch (error) {
+    console.error('❌ 解密失败:', error);
+    alert(`❌ 解密失败: ${error instanceof Error ? error.message : String(error)}`);
+  }
 };
 
 // 迁移功能测试
@@ -361,49 +478,8 @@ const clearAllData = async () => {
   }
 };
 
-const showCacheManager = async () => {
-  const categories = Object.entries(CLEAR_GROUPS).map(([key, value]) => ({
-    name: key,
-    label: KEY_CATEGORIES[key as keyof typeof KEY_CATEGORIES] || key,
-    count: value.length
-  }));
-
-  const categoryList = categories
-    .map(cat => `${cat.name} (${cat.count}): ${cat.label}`)
-    .join('\n');
-
-  const selected = prompt(
-    `选择要清除的缓存类别：\n\n${categoryList}\n\n请输入类别名称（如：AUTH, WALLET, CHECKIN等）或 ALL 清除所有`,
-    'CHECKIN'
-  );
-
-  if (!selected) return;
-
-  try {
-    if (selected.toUpperCase() === 'ALL') {
-      await Preferences.clear();
-      alert('✅ 已清除所有缓存');
-    } else {
-      const groupKey = selected.toUpperCase() as keyof typeof CLEAR_GROUPS;
-      const keysToRemove = CLEAR_GROUPS[groupKey];
-
-      if (!keysToRemove) {
-        alert('❌ 无效的类别名称');
-        return;
-      }
-
-      for (const key of keysToRemove) {
-        await Preferences.remove({ key });
-      }
-
-      alert(`✅ 已清除 ${groupKey} 类别的 ${keysToRemove.length} 个缓存项`);
-    }
-
-    await checkStatus();
-  } catch (error) {
-    console.error('清除缓存失败:', error);
-    alert('❌ 清除缓存失败');
-  }
+const showCacheManager = () => {
+  router.push('/cache-manager');
 };
 
 const toggleRegistrationStatus = async () => {
@@ -743,7 +819,7 @@ onMounted(() => {
 
 .tool-desc {
   margin: 0;
-  color: var(--text-tertiary);
+  color: var(--text-secondary);
   font-size: 0.8rem;
 }
 

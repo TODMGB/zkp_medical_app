@@ -122,6 +122,38 @@
           </div>
         </div>
       </div>
+
+      <!-- 链上记录 -->
+      <div v-if="thisWeekOnchainRecord" class="onchain-card">
+        <h3>
+          <Shield class="title-icon" />
+          链上记录
+        </h3>
+        <div class="onchain-field">
+          <span class="field-label">CID</span>
+          <div class="field-value">
+            <span class="mono">{{ thisWeekOnchainRecord?.ipfsCid }}</span>
+            <button class="ghost-btn" @click="() => copyText(thisWeekOnchainRecord?.ipfsCid || '')">
+              <Copy class="icon-mini" />
+              复制
+            </button>
+          </div>
+        </div>
+        <div class="onchain-field">
+          <span class="field-label">交易哈希</span>
+          <div class="field-value">
+            <span class="mono">{{ thisWeekOnchainRecord?.txHash }}</span>
+            <button class="ghost-btn" @click="() => copyText(thisWeekOnchainRecord?.txHash || '')">
+              <Copy class="icon-mini" />
+              复制
+            </button>
+          </div>
+        </div>
+        <div class="onchain-field meta">
+          <span class="field-label">提交时间</span>
+          <span class="field-value">{{ formatDateTime(thisWeekOnchainRecord?.timestamp) }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- 历史周卡片列表 -->
@@ -153,6 +185,13 @@
             <span class="stat-badge">
               <Percent class="badge-icon" />
               {{ weekData.stats.completionRate }}%
+            </span>
+            <span
+              class="stat-badge status"
+              :class="getOnchainRecord(weekData.weekKey) ? 'success' : 'pending'"
+            >
+              <Shield class="badge-icon" />
+              {{ getOnchainRecord(weekData.weekKey) ? '链上已记录' : '待上链' }}
             </span>
           </div>
 
@@ -188,9 +227,11 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomNav from '@/components/BottomNav.vue'
-import { weeklyCheckinService, type WeeklyCheckinData, type WeeklyProofResult } from '@/service/weeklyCheckinService'
-import { API_GATEWAY_URL } from '@/config/api.config'
+import { weeklyCheckinService, type WeeklyCheckinData, type WeeklyProofResult, type WeeklyOnchainRecord } from '@/service/weeklyCheckinService'
+import type { CheckInRecord } from '@/service/checkinStorage'
+import { API_GATEWAY_URL, buildZkpUrl } from '@/config/api.config'
 import { authService } from '@/service/auth'
+import { notificationService } from '@/service/notification'
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -222,6 +263,7 @@ const thisWeekData = ref<WeeklyCheckinData | null>(null)
 const previousWeeksData = ref<WeeklyCheckinData[]>([])
 const proofStatusMap = ref<Record<string, WeeklyProofResult>>({})
 const thisWeekProofStatus = ref<WeeklyProofResult | null>(null)
+const onchainStatusMap = ref<Record<string, WeeklyOnchainRecord>>({})
 
 // 轮询相关
 const pollingIntervals = ref<Record<string, NodeJS.Timeout>>({})
@@ -238,6 +280,10 @@ const thisWeekTitle = computed(() => {
 const thisWeekRange = computed(() => {
   if (!thisWeekData.value) return ''
   return `${thisWeekData.value.startDate} ~ ${thisWeekData.value.endDate}`
+})
+
+const thisWeekOnchainRecord = computed(() => {
+  return getOnchainRecord(thisWeekKey.value)
 })
 
 // 方法
@@ -257,6 +303,39 @@ const goBack = () => {
   router.back()
 }
 
+type DailyCheckinPayload = {
+  dayKey: string
+  totalCount: number
+  checkins: Array<{
+    recordId: string
+    timestamp: number
+    checkinCommitment: string
+    userCommitment: string
+    medicationCommitment: string
+    proof?: any
+    publicSignals?: string[]
+  }>
+}
+
+type WeeklySummaryPayload = {
+  weekKey: string
+  startDate: string
+  endDate: string
+  merkleRoot?: string
+  leavesCount: number
+  stats: WeeklyCheckinData['stats']
+}
+
+type SanitizedCheckinRecord = {
+  recordId: string
+  timestamp: number
+  checkinCommitment: string
+  userCommitment: string
+  medicationCommitment: string
+  proof?: any
+  publicSignals?: string[]
+}
+
 const refreshData = async () => {
   loading.value = true
   try {
@@ -264,6 +343,7 @@ const refreshData = async () => {
     previousWeeksData.value = await weeklyCheckinService.getPreviousWeeksData(4)
     proofStatusMap.value = await weeklyCheckinService.getAllProofStatus()
     thisWeekProofStatus.value = proofStatusMap.value[thisWeekKey.value] || null
+    onchainStatusMap.value = await weeklyCheckinService.getAllOnchainStatus()
     console.log('✅ 数据已刷新')
   } catch (error) {
     console.error('刷新数据失败:', error)
@@ -286,6 +366,75 @@ const getWeekProofStatus = (weekKey: string): WeeklyProofResult | null => {
   return proofStatusMap.value[weekKey] || null
 }
 
+const buildDailyRecordsPayload = (records: CheckInRecord[]): DailyCheckinPayload[] => {
+  const grouped = new Map<string, DailyCheckinPayload>()
+
+  records.forEach(record => {
+    const dayKey = new Date(record.timestamp).toISOString().split('T')[0]
+    if (!grouped.has(dayKey)) {
+      grouped.set(dayKey, {
+        dayKey,
+        totalCount: 0,
+        checkins: [],
+      })
+    }
+
+    grouped.get(dayKey)!.checkins.push({
+      recordId: record.id,
+      timestamp: record.timestamp,
+      checkinCommitment: record.checkin_commitment,
+      userCommitment: record.user_id_commitment,
+      medicationCommitment: record.medication_commitment,
+      proof: record.zkp_proof,
+      publicSignals: record.zkp_public_signals,
+    })
+    grouped.get(dayKey)!.totalCount++
+  })
+
+  return Array.from(grouped.values()).sort((a, b) => a.dayKey.localeCompare(b.dayKey))
+}
+
+const buildWeeklySummaryPayload = (weekData: WeeklyCheckinData): WeeklySummaryPayload => {
+  return {
+    weekKey: weekData.weekKey,
+    startDate: weekData.startDate,
+    endDate: weekData.endDate,
+    merkleRoot: weekData.merkleRoot,
+    leavesCount: weekData.leaves.length,
+    stats: weekData.stats,
+  }
+}
+
+const sanitizeRecordsForUpload = (records: CheckInRecord[]): SanitizedCheckinRecord[] => {
+  return records.map(record => ({
+    recordId: record.id,
+    timestamp: record.timestamp,
+    checkinCommitment: record.checkin_commitment,
+    userCommitment: record.user_id_commitment,
+    medicationCommitment: record.medication_commitment,
+    proof: record.zkp_proof,
+    publicSignals: record.zkp_public_signals,
+  }))
+}
+
+const getOnchainRecord = (weekKey: string): WeeklyOnchainRecord | null => {
+  return onchainStatusMap.value[weekKey] || null
+}
+
+const formatDateTime = (timestamp?: number) => {
+  if (!timestamp) return '-'
+  return new Date(timestamp).toLocaleString('zh-CN')
+}
+
+const copyText = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    console.log('✅ 已复制到剪贴板')
+  } catch (error) {
+    console.error('复制失败:', error)
+  }
+}
+
 const generateWeeklyProof = async (weekKey: string = thisWeekKey.value) => {
   try {
     proofGenerating.value = true
@@ -302,7 +451,7 @@ const generateWeeklyProof = async (weekKey: string = thisWeekKey.value) => {
     const merkleRoot = await weeklyCheckinService.calculateMerkleRoot(weekData.leaves)
     const token = await authService.getToken()
 
-    const response = await fetch(`${API_GATEWAY_URL}/zkp/prove/weekly-summary`, {
+    const response = await fetch(buildZkpUrl('proveWeeklySummary'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -367,13 +516,78 @@ const generateWeeklyProof = async (weekKey: string = thisWeekKey.value) => {
   }
 }
 
+const submitProofToChain = async (weekKey: string, proofResult: WeeklyProofResult) => {
+  try {
+    if (!proofResult.proof || !proofResult.calldata || !proofResult.publicSignals) {
+      console.warn('证明数据不完整，无法上链')
+      return
+    }
+
+    const weekData = weekKey === thisWeekKey.value 
+      ? thisWeekData.value 
+      : previousWeeksData.value.find(w => w.weekKey === weekKey)
+
+    if (!weekData) {
+      console.warn('周数据不存在')
+      return
+    }
+
+    const token = await authService.getToken()
+    const userInfo = await authService.getUserInfo()
+    
+    if (!userInfo?.smart_account) {
+      console.warn('无法获取用户 Smart Account 地址')
+      return
+    }
+    
+    // 构建上链数据
+    const onchainData = {
+      weekKey,
+      proof: proofResult.proof,
+      publicSignals: proofResult.publicSignals,
+      calldata: proofResult.calldata,
+      records: sanitizeRecordsForUpload(weekData.records),
+      leaves: weekData.leaves,
+      merkleRoot: weekData.merkleRoot,
+      timestamp: Date.now(),
+      smartAccountAddress: userInfo.smart_account,
+    }
+
+    console.log('📤 开始上链流程，发送数据到后端...')
+
+    const response = await fetch(`${API_GATEWAY_URL}/chain/medication-checkin/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(onchainData),
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const result = await response.json()
+
+    if (result.success) {
+      console.log('✅ 上链请求已提交，等待链上确认...')
+      // 后端会通过通知服务异步发送交易结果
+    } else {
+      console.error('❌ 上链请求失败:', result.message)
+    }
+  } catch (error) {
+    console.error('❌ 上链流程出错:', error)
+  }
+}
+
 const pollProofStatus = (weekKey: string, jobId: string, maxAttempts: number = 120) => {
   let attempts = 0
 
   const poll = async () => {
     try {
       const token = await authService.getToken()
-      const response = await fetch(`${API_GATEWAY_URL}/zkp/proof-status/${jobId}`, {
+      const response = await fetch(buildZkpUrl('proofStatus', { pathParams: { jobId } }), {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -413,10 +627,16 @@ const pollProofStatus = (weekKey: string, jobId: string, maxAttempts: number = 1
           thisWeekProofStatus.value = proofResult
         }
 
-        if (status === 'completed' || status === 'failed') {
+        if (status === 'completed') {
           clearInterval(pollingIntervals.value[weekKey])
           delete pollingIntervals.value[weekKey]
           console.log(`✅ 证明状态更新: ${status}`)
+          // 证明完成后，提交到链上
+          await submitProofToChain(weekKey, proofResult)
+        } else if (status === 'failed') {
+          clearInterval(pollingIntervals.value[weekKey])
+          delete pollingIntervals.value[weekKey]
+          console.log(`❌ 证明状态更新: ${status}`)
         }
       }
     } catch (error) {
@@ -459,11 +679,74 @@ const viewProofDetail = (weekKey: string = thisWeekKey.value) => {
 
 onMounted(async () => {
   await refreshData()
+
+  // 连接 WebSocket 以接收通知
+  try {
+    await notificationService.connect()
+    console.log('✅ 通知服务已连接')
+  } catch (error) {
+    console.error('连接通知服务失败:', error)
+  }
+
+  // 监听用药打卡成功通知
+  notificationService.on('notification', handleMedicationCheckInNotification)
 })
 
 onBeforeUnmount(() => {
   Object.values(pollingIntervals.value).forEach(interval => clearInterval(interval))
+  
+  // 取消通知监听
+  notificationService.off('notification', handleMedicationCheckInNotification)
 })
+
+/**
+ * 处理用药打卡通知
+ */
+const handleMedicationCheckInNotification = async (notification: any) => {
+  try {
+    // 只处理用药打卡相关通知
+    if (!notification.type?.includes('medication_checkin')) {
+      return
+    }
+
+    console.log('📬 收到用药打卡通知:', notification)
+
+    const { weekKey, ipfsCid, txHash, status } = notification.data || {}
+
+    if (!weekKey || !ipfsCid) {
+      console.warn('通知数据不完整')
+      return
+    }
+
+    if (status === 'success' && txHash) {
+      // 构建链上记录
+      const onchainRecord: WeeklyOnchainRecord = {
+        weekKey,
+        ipfsCid,
+        txHash,
+        timestamp: notification.data?.timestamp || Date.now(),
+        status: 'confirmed'
+      }
+
+      // 保存到本地
+      await weeklyCheckinService.saveWeeklyOnchainRecord(onchainRecord)
+      onchainStatusMap.value = {
+        ...onchainStatusMap.value,
+        [weekKey]: onchainRecord,
+      }
+
+      console.log(`✅ 交易已确认，weekKey: ${weekKey}, txHash: ${txHash}`)
+      console.log(`📝 链上记录已保存到本地`)
+
+      // 刷新数据显示最新状态
+      await refreshData()
+    } else if (status === 'failed') {
+      console.error(`❌ 用药打卡上链失败: ${notification.data?.error}`)
+    }
+  } catch (error) {
+    console.error('处理通知失败:', error)
+  }
+}
 </script>
 
 <style scoped>
@@ -620,6 +903,40 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
+.stat-badge {
+  background: #f7fafc;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s;
+}
+
+.stat-badge.status {
+  background: #ecfeff;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.stat-badge.status.success {
+  background: #dcfce7;
+  color: #065f46;
+  border-color: #bbf7d0;
+}
+
+.stat-badge.status.pending {
+  background: #fef9c3;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.stat-badge .badge-icon {
+  width: 14px;
+  height: 14px;
+  color: inherit;
+}
+
 .week-records {
   background: white;
   border-radius: 20px;
@@ -701,6 +1018,75 @@ onBeforeUnmount(() => {
   padding: 20px;
   box-shadow: var(--shadow-sm);
   border: 1px solid #e2e8f0;
+}
+
+.onchain-card {
+  margin-top: 16px;
+  background: #ecfeff;
+  border: 1px solid #bae6fd;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.onchain-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.onchain-field.meta {
+  font-size: 13px;
+  color: #0369a1;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.field-label {
+  font-size: 13px;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.field-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #0c4a6e;
+}
+
+.mono {
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.ghost-btn {
+  border: 1px solid #0ea5e9;
+  background: transparent;
+  color: #0369a1;
+  border-radius: 999px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ghost-btn:hover {
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.icon-mini {
+  width: 14px;
+  height: 14px;
 }
 
 .proof-action {

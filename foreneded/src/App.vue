@@ -24,6 +24,8 @@ const route = useRoute()
 const showExitToast = ref(false)
 let lastBackPress = 0
 let backButtonListener: any = null
+let listenerRetryTimer: ReturnType<typeof setTimeout> | null = null
+const LISTENER_RETRY_INTERVAL = 5000
 
 // 定义哪些路由是"退出点"（在这些页面按返回键需要确认退出）
 const exitRoutes = ['/splash', '/home', '/login']
@@ -47,6 +49,7 @@ onUnmounted(async () => {
     backButtonListener.remove()
   }
   
+  clearMessageListenerRetry()
   // 停止消息监听
   await stopMessageListener()
 })
@@ -83,13 +86,14 @@ async function initLocalNotification() {
 /**
  * 启动消息监听服务
  */
-async function startMessageListener() {
+async function startMessageListener(force = false) {
   try {
     const { authService } = await import('@/service/auth')
     const isLoggedIn = await authService.isLoggedIn()
     
     if (!isLoggedIn) {
       console.log('用户未登录，跳过消息监听启动')
+      scheduleMessageListenerRetry()
       return
     }
     
@@ -98,16 +102,23 @@ async function startMessageListener() {
     const wallet = await aaService.getEOAWallet()
     
     if (!wallet) {
-      console.warn('无法获取钱包，跳过消息监听启动')
+      console.warn('无法获取钱包，稍后重试消息监听启动')
+      scheduleMessageListenerRetry()
       return
     }
     
     // 启动消息监听
     const { messageListenerService } = await import('@/service/messageListener')
+    if (messageListenerService.isActive() && !force) {
+      clearMessageListenerRetry()
+      return
+    }
     await messageListenerService.startListening(wallet)
+    clearMessageListenerRetry()
     console.log('✅ 消息监听服务已启动')
   } catch (error) {
     console.error('启动消息监听失败:', error)
+    scheduleMessageListenerRetry()
   }
 }
 
@@ -120,6 +131,22 @@ async function stopMessageListener() {
     messageListenerService.stopListening()
   } catch (error) {
     console.error('停止消息监听失败:', error)
+  }
+}
+
+function scheduleMessageListenerRetry() {
+  if (listenerRetryTimer) {
+    return
+  }
+  listenerRetryTimer = setInterval(() => {
+    startMessageListener(true)
+  }, LISTENER_RETRY_INTERVAL)
+}
+
+function clearMessageListenerRetry() {
+  if (listenerRetryTimer) {
+    clearInterval(listenerRetryTimer)
+    listenerRetryTimer = null
   }
 }
 

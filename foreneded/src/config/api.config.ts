@@ -4,7 +4,7 @@
  */
 
 // 后端服务器配置
-const BACKEND_IP = '192.168.20.192'; // 可以修改为实际后端IP
+const BACKEND_IP = '192.168.211.192'; // 可以修改为实际后端IP
 const API_GATEWAY_PORT = 3000;
 
 // API Gateway 基础地址
@@ -165,6 +165,16 @@ export const API_CONFIG = {
   },
 };
 
+// 零知识证明（ZKP）服务配置
+export const ZKP_CONFIG = {
+  baseUrl: API_GATEWAY_URL,
+  endpoints: {
+    proveWeeklySummary: '/zkp/prove/weekly-summary',
+    proofStatus: '/zkp/proof-status/:jobId',
+    verifyWeeklySummary: '/chain/zkp/verify/weekly-summary',
+  },
+};
+
 /**
  * 通用URL构建辅助函数
  */
@@ -180,6 +190,36 @@ function buildUrlFromConfig(
       .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
       .join('&');
     url += `?${queryString}`;
+  }
+
+  return url;
+}
+
+/**
+ * 零知识证明服务URL构建函数
+ */
+export function buildZkpUrl(
+  endpoint: keyof typeof ZKP_CONFIG.endpoints,
+  options?: {
+    pathParams?: Record<string, string | number>;
+    query?: Record<string, string | number>;
+  }
+): string {
+  let url = `${ZKP_CONFIG.baseUrl}${ZKP_CONFIG.endpoints[endpoint]}`;
+
+  if (options?.pathParams) {
+    Object.entries(options.pathParams).forEach(([key, value]) => {
+      url = url.replace(`:${key}`, String(value));
+    });
+  }
+
+  if (options?.query) {
+    const queryString = Object.entries(options.query)
+      .map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`)
+      .join('&');
+    if (queryString) {
+      url += url.includes('?') ? `&${queryString}` : `?${queryString}`;
+    }
   }
 
   return url;

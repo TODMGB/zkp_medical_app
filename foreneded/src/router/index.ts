@@ -46,6 +46,7 @@ import GuardianSetup from '../views/management/GuardianSetup.vue'
 import AccountMigration from '../views/management/AccountMigration.vue'
 import TestMigration from '../views/TestMigration.vue'
 import TestCenter from '../views/TestCenter.vue'
+import CacheManager from '../views/CacheManager.vue'
 
 const routes = [
   // 原有页面（保留用于开发测试）
@@ -244,6 +245,11 @@ const routes = [
     path: '/test-center',
     name: 'TestCenter',
     component: TestCenter
+  },
+  {
+    path: '/cache-manager',
+    name: 'CacheManager',
+    component: CacheManager
   },
 ]
 
