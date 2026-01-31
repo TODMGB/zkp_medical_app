@@ -193,9 +193,25 @@ class WeeklyCheckinService {
         recordCount: weekData.records.length,
       }));
 
+      const { value } = await Preferences.get({ key: CHECKIN_KEYS.WEEKLY_GROUPED });
+      const existing = value ? JSON.parse(value) : [];
+      const mergedMap = new Map<string, any>();
+
+      if (Array.isArray(existing)) {
+        existing.forEach((item: any) => {
+          if (item?.weekKey) mergedMap.set(String(item.weekKey), item);
+        });
+      }
+
+      data.forEach(item => {
+        mergedMap.set(item.weekKey, item);
+      });
+
+      const merged = Array.from(mergedMap.values());
+
       await Preferences.set({
         key: CHECKIN_KEYS.WEEKLY_GROUPED,
-        value: JSON.stringify(data),
+        value: JSON.stringify(merged),
       });
 
       console.log('✅ 周度分组数据已缓存');
@@ -232,9 +248,28 @@ class WeeklyCheckinService {
    */
   public async getPreviousWeeksData(count: number = 4): Promise<WeeklyCheckinData[]> {
     const grouped = await this.groupRecordsByWeek();
-    const weeks = Array.from(grouped.values()).sort((a, b) => 
-      b.weekKey.localeCompare(a.weekKey)
-    );
+    const cached = await this.getCachedWeeklyGrouped();
+
+    const merged = new Map<string, WeeklyCheckinData>();
+    Array.from(grouped.values()).forEach(week => {
+      merged.set(week.weekKey, week);
+    });
+
+    cached.forEach((week: any) => {
+      if (!week?.weekKey) return;
+      if (merged.has(week.weekKey)) return;
+      merged.set(week.weekKey, {
+        weekKey: week.weekKey,
+        startDate: week.startDate,
+        endDate: week.endDate,
+        records: [],
+        leaves: Array.isArray(week.leaves) ? week.leaves : [],
+        merkleRoot: week.merkleRoot,
+        stats: week.stats,
+      });
+    });
+
+    const weeks = Array.from(merged.values()).sort((a, b) => b.weekKey.localeCompare(a.weekKey));
     return weeks.slice(0, count);
   }
 
@@ -288,6 +323,9 @@ class WeeklyCheckinService {
         status: result.status,
         createdAt: result.createdAt,
         updatedAt: result.updatedAt,
+        proof: result.proof,
+        publicSignals: result.publicSignals,
+        calldata: result.calldata,
         error: result.error,
       };
 

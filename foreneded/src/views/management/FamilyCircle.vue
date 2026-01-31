@@ -151,31 +151,6 @@
               <ChevronDown class="select-arrow" />
             </div>
           </div>
-          <div class="form-group">
-            <label>邀请类型</label>
-            <div class="invite-type-options">
-              <button 
-                class="type-option" 
-                :class="{ active: inviteTypeSelect === 'family' }"
-                @click="inviteTypeSelect = 'family'"
-              >
-                <div class="option-icon-wrapper blue">
-                  <Users class="option-icon" />
-                </div>
-                <span class="option-label">家属</span>
-              </button>
-              <button 
-                class="type-option" 
-                :class="{ active: inviteTypeSelect === 'doctor' }"
-                @click="inviteTypeSelect = 'doctor'"
-              >
-                <div class="option-icon-wrapper green">
-                  <Stethoscope class="option-icon" />
-                </div>
-                <span class="option-label">医生</span>
-              </button>
-            </div>
-          </div>
           <div class="modal-actions">
             <button class="cancel-btn" @click="closeInviteSelectModal">取消</button>
             <button 
@@ -196,6 +171,7 @@
 import { ref, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { relationService } from '@/service/relation'
+import { uiService } from '@/service/ui'
 import { 
   ArrowLeft, 
   Plus, 
@@ -232,7 +208,6 @@ const newGroupDesc = ref('')
 
 // 邀请选择表单
 const selectedGroupId = ref<number | string | ''>('')
-const inviteTypeSelect = ref<'family' | 'doctor'>('family')
 
 // 加载所有访问组
 const loadAccessGroups = async () => {
@@ -329,10 +304,14 @@ const viewGroupDetail = (group: any) => {
 
 // 快速邀请到指定群组（卡片上的+按钮）
 const inviteToGroup = (group: any) => {
-  // 预选该群组，然后显示邀请弹框
-  selectedGroupId.value = group.id
-  inviteTypeSelect.value = group.group_type === 'FAMILY' ? 'family' : 'doctor'
-  showInviteSelectModal.value = true
+  router.push({
+    name: 'Invitation',
+    query: {
+      groupId: group.id,
+      groupName: group.group_name,
+      groupType: group.group_type,
+    }
+  })
 }
 
 // 显示创建群组弹窗（右上角+按钮）
@@ -350,7 +329,7 @@ const closeCreateGroupModal = () => {
 // 创建新群组
 const createNewGroup = async () => {
   if (!newGroupName.value.trim()) {
-    alert('请输入群组名称')
+    uiService.toast('请输入群组名称', { type: 'warning' })
     return
   }
   
@@ -366,10 +345,10 @@ const createNewGroup = async () => {
     await loadAccessGroups()
     closeCreateGroupModal()
     
-    alert('群组创建成功！')
+    uiService.toast('群组创建成功！', { type: 'success' })
   } catch (error: any) {
     console.error('创建群组失败:', error)
-    alert('创建失败: ' + (error.message || '未知错误'))
+    uiService.toast('创建失败: ' + (error.message || '未知错误'), { type: 'error' })
   } finally {
     isLoading.value = false
   }
@@ -378,7 +357,6 @@ const createNewGroup = async () => {
 // 显示邀请弹窗（底部按钮）
 const showInviteModal = () => {
   selectedGroupId.value = ''
-  inviteTypeSelect.value = 'family'
   showInviteSelectModal.value = true
 }
 
@@ -390,11 +368,11 @@ const closeInviteSelectModal = () => {
 // 确认邀请
 const confirmInvite = () => {
   if (!selectedGroupId.value) {
-    alert('请选择群组')
+    uiService.toast('请选择群组', { type: 'warning' })
     return
   }
   
-  const selectedGroup = accessGroups.value.find(g => g.id === selectedGroupId.value)
+  const selectedGroup = accessGroups.value.find(g => g.id == selectedGroupId.value)
   
   router.push({
     name: 'Invitation',
@@ -402,7 +380,6 @@ const confirmInvite = () => {
       groupId: selectedGroupId.value,
       groupName: selectedGroup?.group_name,
       groupType: selectedGroup?.group_type,
-      type: inviteTypeSelect.value
     }
   })
   
@@ -411,7 +388,10 @@ const confirmInvite = () => {
 
 // 扫码加入其他人的群组
 const scanToJoin = () => {
-  router.push('/qr-scanner')
+  router.push({
+    name: 'QRScanner',
+    query: { mode: 'group' }
+  })
 }
 
 const goBack = () => {
@@ -775,6 +755,10 @@ onActivated(async () => {
   border-radius: 24px;
   width: 100%;
   max-width: 400px;
+  max-height: min(560px, calc(100dvh - 40px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
@@ -819,6 +803,11 @@ onActivated(async () => {
 
 .modal-content {
   padding: 24px;
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
 }
 
 .form-group {
@@ -921,7 +910,29 @@ onActivated(async () => {
 .modal-actions {
   display: flex;
   gap: 12px;
-  margin-top: 32px;
+  margin-top: auto;
+  padding-top: 20px;
+}
+
+@media (max-width: 420px) {
+  .modal-overlay {
+    padding: 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .create-modal, .invite-select-modal {
+    border-radius: 20px;
+    max-width: 100%;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-bottom));
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-content {
+    padding: 16px;
+  }
 }
 
 .cancel-btn, .confirm-btn {

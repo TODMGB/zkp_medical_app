@@ -112,6 +112,89 @@ async function updateEncryptionPublicKey(smartAccount, encryptionPublicKey) {
   return rows[0];
 }
 
+async function ensureIdentityBindingsTable() {
+  const createTableQuery = `
+    CREATE TABLE IF NOT EXISTS user_identity_bindings (
+      smart_account VARCHAR(42) PRIMARY KEY,
+      phone_hash VARCHAR(64),
+      email_hash VARCHAR(64),
+      id_card_hash VARCHAR(64),
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+  `;
+
+  await pool.query(createTableQuery);
+
+  await pool.query(`ALTER TABLE user_identity_bindings ADD COLUMN IF NOT EXISTS phone_hash VARCHAR(64);`);
+  await pool.query(`ALTER TABLE user_identity_bindings ADD COLUMN IF NOT EXISTS email_hash VARCHAR(64);`);
+  await pool.query(`ALTER TABLE user_identity_bindings ADD COLUMN IF NOT EXISTS id_card_hash VARCHAR(64);`);
+
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS user_identity_bindings_phone_hash_uq ON user_identity_bindings(phone_hash) WHERE phone_hash IS NOT NULL;`
+  );
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS user_identity_bindings_email_hash_uq ON user_identity_bindings(email_hash) WHERE email_hash IS NOT NULL;`
+  );
+  await pool.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS user_identity_bindings_idcard_hash_uq ON user_identity_bindings(id_card_hash) WHERE id_card_hash IS NOT NULL;`
+  );
+}
+
+async function upsertIdentityBinding({ smartAccount, phoneHash, emailHash, idCardHash }) {
+  const query = `
+    INSERT INTO user_identity_bindings (smart_account, phone_hash, email_hash, id_card_hash, updated_at)
+    VALUES ($1, $2, $3, $4, NOW())
+    ON CONFLICT (smart_account)
+    DO UPDATE SET
+      phone_hash = EXCLUDED.phone_hash,
+      email_hash = EXCLUDED.email_hash,
+      id_card_hash = EXCLUDED.id_card_hash,
+      updated_at = NOW()
+    RETURNING *;
+  `;
+
+  const { rows } = await pool.query(query, [
+    smartAccount,
+    phoneHash || null,
+    emailHash || null,
+    idCardHash || null
+  ]);
+  return rows[0] || null;
+}
+
+async function findSmartAccountByIdentity({ phoneHash, emailHash, idCardHash }) {
+  const conditions = [];
+  const values = [];
+  let queryIndex = 1;
+
+  if (phoneHash) {
+    conditions.push(`phone_hash = $${queryIndex++}`);
+    values.push(phoneHash);
+  }
+  if (emailHash) {
+    conditions.push(`email_hash = $${queryIndex++}`);
+    values.push(emailHash);
+  }
+  if (idCardHash) {
+    conditions.push(`id_card_hash = $${queryIndex++}`);
+    values.push(idCardHash);
+  }
+
+  if (conditions.length === 0) return null;
+
+  const query = `
+    SELECT smart_account, phone_hash, email_hash, id_card_hash
+    FROM user_identity_bindings
+    WHERE ${conditions.join(' OR ')}
+    ORDER BY updated_at DESC
+    LIMIT 1;
+  `;
+
+  const { rows } = await pool.query(query, values);
+  return rows[0] || null;
+}
+
 /**
  * 生成唯一的用户 ID (UUID)
  * @returns {string} 返回 UUID 字符串
@@ -128,5 +211,8 @@ module.exports = {
   createUser,                     // 创建新用户
   addUserRole,                    // 添加用户角色
   updateEncryptionPublicKey,      // 更新加密公钥
+  ensureIdentityBindingsTable,
+  upsertIdentityBinding,
+  findSmartAccountByIdentity,
   generateUId,                    // 生成用户 ID
 };

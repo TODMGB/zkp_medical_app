@@ -4,6 +4,28 @@
 // =======================================================
 const authService = require('../services/auth.service');
 const userinfoService = require('../services/userinfo.service');
+const crypto = require('crypto');
+const userEntity = require('../entity/user.entity');
+
+function normalizeEmail(email) {
+  if (!email) return null;
+  return String(email).trim().toLowerCase();
+}
+
+function normalizePhone(phone) {
+  if (!phone) return null;
+  return String(phone).trim();
+}
+
+function normalizeIdCard(idCard) {
+  if (!idCard) return null;
+  return String(idCard).trim();
+}
+
+function sha256Hex(input) {
+  if (!input) return null;
+  return crypto.createHash('sha256').update(String(input), 'utf8').digest('hex');
+}
 
 /**
  * 用户注册HTTP接口
@@ -53,6 +75,8 @@ async function register(req, res, next) {
         eoa_address,
         smart_account_address,
         phone_number: personInfo.phone_number,
+        email: email || personInfo.email,
+        id_card_number,
         username: personInfo.full_name,  // 使用真实姓名
         role: personInfo.role,      // 使用查询到的角色
         encryption_public_key       // 传递加密公钥
@@ -64,6 +88,8 @@ async function register(req, res, next) {
         eoa_address,
         smart_account_address,
         phone_number: phone_number,
+        email,
+        id_card_number,
         username: "家属用户_" + phone_number,  // 使用真实姓名
         role: "guardian",     // 使用查询到的角色
         encryption_public_key // 传递加密公钥
@@ -90,11 +116,78 @@ async function register(req, res, next) {
       });
     }
 
+    if (error.code === 'IDENTITY_ALREADY_BOUND') {
+      return res.status(409).json({
+        success: false,
+        message: '身份标识已绑定到其他账号',
+        code: 'IDENTITY_ALREADY_BOUND'
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: '注册失败',
       code: 'REGISTRATION_FAILED'
     });
+  }
+}
+
+async function resolveSmartAccount(req, res, next) {
+  try {
+    const { phone_number, id_card_number, email } = req.body || {};
+
+    if (!phone_number && !id_card_number && !email) {
+      return res.status(400).json({
+        success: false,
+        message: '至少需要提供一个身份标识（phone_number、id_card_number 或 email）',
+        code: 'MISSING_IDENTITY_FIELDS'
+      });
+    }
+
+    const personInfo = await userinfoService.lookupPersonInfo({
+      id_card_number,
+      phone_number,
+      email
+    });
+
+    if (!personInfo) {
+      return res.status(404).json({
+        success: false,
+        message: '未找到人员记录',
+        code: 'PERSON_NOT_FOUND'
+      });
+    }
+
+    await userEntity.ensureIdentityBindingsTable();
+
+    const binding = await userEntity.findSmartAccountByIdentity({
+      phoneHash: sha256Hex(normalizePhone(personInfo.phone_number || phone_number)),
+      emailHash: sha256Hex(normalizeEmail(email || personInfo.email)),
+      idCardHash: sha256Hex(normalizeIdCard(id_card_number))
+    });
+
+    if (!binding) {
+      return res.status(404).json({
+        success: false,
+        message: '未找到对应账号',
+        code: 'SMART_ACCOUNT_NOT_FOUND'
+      });
+    }
+
+    const user = await userEntity.findUserBySmartAccount(binding.smart_account);
+    const roles = user?.roles ? user.roles.filter(r => r !== null) : [];
+
+    return res.status(200).json({
+      success: true,
+      message: '解析成功',
+      data: {
+        smart_account: binding.smart_account,
+        username: user?.username || null,
+        roles
+      }
+    });
+  } catch (error) {
+    next(error);
   }
 }
 
@@ -223,5 +316,6 @@ async function updateEncryptionKey(req, res, next) {
 module.exports = {
   register,
   login,
-  updateEncryptionKey
+  updateEncryptionKey,
+  resolveSmartAccount
 };

@@ -7,6 +7,49 @@
 const recoveryService = require('../services/recovery.service');
 const bundlerService = require('../services/bundler.service');
 const mqProducer = require('../mq/producer');
+const { ethers } = require('ethers');
+const addresses = require('../../smart_contract/addresses.json');
+
+function parseRecoveryActionFromUserOp(userOp) {
+  try {
+    const callData = userOp?.callData;
+    if (!callData || callData === '0x') return null;
+
+    const accountAbi = addresses.SocialRecoveryAccount.abi;
+    const iface = new ethers.Interface(accountAbi);
+
+    const outer = iface.parseTransaction({ data: callData });
+    if (!outer || outer.name !== 'execute') return null;
+
+    const accountAddress = String(outer.args?.[0] || '').toLowerCase();
+    const innerData = String(outer.args?.[2] || '0x');
+    if (!accountAddress || !accountAddress.startsWith('0x')) return null;
+    if (!innerData || innerData === '0x') return null;
+
+    const inner = iface.parseTransaction({ data: innerData });
+    if (!inner || !inner.name) return null;
+
+    if (inner.name === 'initiateRecovery' || inner.name === 'supportRecovery') {
+      const newOwnerAddress = String(inner.args?.[0] || '').toLowerCase();
+      return {
+        action: inner.name,
+        accountAddress,
+        newOwnerAddress
+      };
+    }
+
+    if (inner.name === 'cancelRecovery') {
+      return {
+        action: inner.name,
+        accountAddress
+      };
+    }
+
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
 /**
  * 构建守护者发起恢复的未签名 UserOperation（安全方法）
@@ -306,7 +349,116 @@ async function submitUserOp(req, res, next) {
       });
     }
 
+    const parsed = parseRecoveryActionFromUserOp(userOp);
     const result = await bundlerService.handleSubmit(userOp);
+
+    if (result?.status === 1 && parsed?.accountAddress) {
+      try {
+        const accountAddress = parsed.accountAddress;
+        const guardianInfo = await recoveryService.getGuardians(accountAddress).catch(() => null);
+        const guardians = Array.isArray(guardianInfo?.guardians)
+          ? guardianInfo.guardians.map(a => String(a).toLowerCase())
+          : [];
+        const requiredApprovals = parseInt(String(guardianInfo?.threshold || '0'), 10) || 0;
+
+        const status = await recoveryService.getRecoveryStatus(accountAddress).catch(() => null);
+        const currentApprovals = status?.approvalCount != null
+          ? parseInt(String(status.approvalCount), 10) || 0
+          : 0;
+        const executed = Boolean(status?.executed);
+        const newOwnerOnChain = status?.newOwner ? String(status.newOwner).toLowerCase() : '';
+
+        const recipients = Array.from(new Set([accountAddress, ...guardians].filter(Boolean)));
+        const guardianAddress = userOp?.sender ? String(userOp.sender).toLowerCase() : '';
+
+        if (parsed.action === 'initiateRecovery') {
+          for (const recipient of recipients) {
+            await mqProducer.publishNotification({
+              recipient_address: recipient,
+              title: '⚠️ 账户恢复已发起',
+              body: `守护者 ${guardianAddress.substring(0, 10)}... 发起了账户恢复请求`,
+              type: 'recovery_initiated',
+              data: {
+                account_address: accountAddress,
+                guardian_address: guardianAddress,
+                new_owner_address: parsed.newOwnerAddress,
+                tx_hash: result.txHash,
+                current_approvals: currentApprovals,
+                required_approvals: requiredApprovals,
+                executed,
+                timestamp: Date.now()
+              },
+              priority: 'high',
+              channels: ['push', 'websocket']
+            });
+          }
+        }
+
+        if (parsed.action === 'supportRecovery') {
+          for (const recipient of recipients) {
+            await mqProducer.publishNotification({
+              recipient_address: recipient,
+              title: '⚠️ 账户恢复获得新支持',
+              body: `守护者 ${guardianAddress.substring(0, 10)}... 支持了恢复请求 (${currentApprovals}/${requiredApprovals})`,
+              type: 'recovery_supported',
+              data: {
+                account_address: accountAddress,
+                guardian_address: guardianAddress,
+                new_owner_address: parsed.newOwnerAddress,
+                tx_hash: result.txHash,
+                current_approvals: currentApprovals,
+                required_approvals: requiredApprovals,
+                executed,
+                timestamp: Date.now()
+              },
+              priority: 'high',
+              channels: ['push', 'websocket']
+            });
+          }
+        }
+
+        if (parsed.action === 'cancelRecovery') {
+          const cancelledBy = userOp?.sender ? String(userOp.sender).toLowerCase() : accountAddress;
+          for (const recipient of recipients) {
+            await mqProducer.publishNotification({
+              recipient_address: recipient,
+              title: '账户恢复已取消',
+              body: `账户 ${accountAddress.substring(0, 10)}... 的恢复请求已被取消`,
+              type: recipient === accountAddress ? 'recovery_cancelled' : 'recovery_cancelled_guardian',
+              data: {
+                account_address: accountAddress,
+                cancelled_by: cancelledBy,
+                tx_hash: result.txHash,
+                timestamp: Date.now()
+              },
+              priority: 'high',
+              channels: ['push', 'websocket']
+            });
+          }
+        }
+
+        if (executed) {
+          for (const recipient of recipients) {
+            await mqProducer.publishNotification({
+              recipient_address: recipient,
+              title: '✅ 账户恢复成功',
+              body: `账户 ${accountAddress.substring(0, 10)}... 已完成恢复`,
+              type: 'recovery_completed',
+              data: {
+                account_address: accountAddress,
+                new_owner_address: newOwnerOnChain || parsed.newOwnerAddress,
+                tx_hash: result.txHash,
+                timestamp: Date.now()
+              },
+              priority: 'urgent',
+              channels: ['push', 'websocket']
+            });
+          }
+        }
+      } catch (mqError) {
+        console.error('❌ [MQ] 发送恢复通知失败（不影响主流程）:', mqError);
+      }
+    }
     
     res.status(200).json({ 
       success: true, 

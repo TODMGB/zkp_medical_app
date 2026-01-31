@@ -15,6 +15,13 @@ const router = Router();
 router.post('/build', guardianController.buildAddGuardian);
 
 /**
+ * 构建移除守护者的未签名 UserOperation（安全方法）
+ * POST /guardian/remove/build
+ * Body: { accountAddress, guardianAddress }
+ */
+router.post('/remove/build', guardianController.buildRemoveGuardian);
+
+/**
  * 添加守护者（已弃用：不安全，需要私钥）
  * POST /guardian
  * Body: { accountAddress, ownerPrivateKey, guardianAddress }

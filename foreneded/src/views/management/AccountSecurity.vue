@@ -162,12 +162,11 @@ const changePin = () => {
 }
 
 const manageGuardians = () => {
-  router.push('/family-circle')
+  router.push('/guardian-setup')
 }
 
 const testRecovery = () => {
-  // 测试恢复流程
-  console.log('测试恢复流程')
+  router.push('/guardian-setup')
 }
 
 const deviceMigration = () => {

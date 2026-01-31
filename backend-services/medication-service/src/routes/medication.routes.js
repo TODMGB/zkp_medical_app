@@ -15,11 +15,14 @@ const router = Router();
 // 创建用药计划（医生）
 router.post('/plans', medicationController.createMedicationPlan);
 
-// 查询用药计划详情
-router.get('/plans/:planId', medicationController.getMedicationPlanById);
+// 查询患者的所有用药计划
+router.get('/plans/patient/:patientAddress', medicationController.getPatientPlans);
 
 // 查询医生创建的用药计划
 router.get('/plans/doctor/:doctorAddress', medicationController.getDoctorPlans);
+
+// 查询用药计划详情
+router.get('/plans/:planId', medicationController.getMedicationPlanById);
 
 // 更新用药计划
 router.put('/plans/:planId', medicationController.updateMedicationPlan);

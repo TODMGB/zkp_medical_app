@@ -123,6 +123,54 @@ async function buildAddGuardianUserOp(accountAddress, guardianAddress) {
 }
 
 /**
+ * 构建移除守护者的未签名 UserOperation（安全：不需要私钥）
+ * @param {string} accountAddress - 账户地址
+ * @param {string} guardianAddress - 要移除的守护者地址
+ * @returns {Promise<object>} 返回未签名的 UserOp 和 UserOpHash
+ */
+async function buildRemoveGuardianUserOp(accountAddress, guardianAddress) {
+  console.log('[Recovery] 构建移除守护者UserOp');
+  console.log('  Account:', accountAddress);
+  console.log('  Guardian:', guardianAddress);
+
+  const accountInterface = new ethers.Interface(accountAbi);
+
+  // 编码 removeGuardian 调用
+  const removeGuardianCallData = accountInterface.encodeFunctionData('removeGuardian', [guardianAddress]);
+
+  // 编码 execute 调用（账户调用自己）
+  const executeCallData = accountInterface.encodeFunctionData('execute', [
+    accountAddress, // 调用自己
+    0,
+    removeGuardianCallData
+  ]);
+
+  const nonce = await entryPointContract.getNonce(accountAddress);
+
+  const userOp = {
+    sender: accountAddress,
+    nonce: nonce.toString(),
+    initCode: '0x',
+    callData: executeCallData,
+    callGasLimit: '300000',
+    verificationGasLimit: '500000',
+    preVerificationGas: '100000',
+    maxFeePerGas: ethers.parseUnits('10', 'gwei').toString(),
+    maxPriorityFeePerGas: ethers.parseUnits('2', 'gwei').toString(),
+    paymasterAndData: PAYMASTER_ADDRESS,
+    signature: '0x'
+  };
+
+  const userOpHash = await entryPointContract.getUserOpHash(userOp);
+
+  return {
+    userOp,
+    userOpHash,
+    guardianAddress
+  };
+}
+
+/**
  * 通过 UserOperation 添加守护者（已弃用：不安全，需要私钥）
  * @deprecated 请使用 buildAddGuardianUserOp + bundler.handleSubmit
  * @param {string} accountAddress - 账户地址
@@ -737,6 +785,7 @@ module.exports = {
   createAccount,
   // 新的安全方法（不需要私钥）
   buildAddGuardianUserOp,
+  buildRemoveGuardianUserOp,
   buildChangeThresholdUserOp,
   buildInitiateRecoveryUserOp,
   buildSupportRecoveryUserOp,

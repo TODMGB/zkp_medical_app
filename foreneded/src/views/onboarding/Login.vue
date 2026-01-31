@@ -99,6 +99,10 @@
           还没有账户？
           <router-link to="/splash" class="link">开始使用</router-link>
         </p>
+        <p class="footer-text">
+          账号丢失？
+          <router-link to="/recover-account" class="link">恢复账号</router-link>
+        </p>
       </div>
     </div>
   </div>
@@ -109,6 +113,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { aaService } from '../../service/accountAbstraction';
 import { biometricService } from '../../service/biometric';
+import { recoveryPendingService } from '../../service/recoveryPending';
 import { 
   Pill, 
   Fingerprint, 
@@ -175,7 +180,14 @@ const handleBiometricLogin = async () => {
     }
     
     console.log('✅ 登录成功（本地）！');
-    // 登录成功，跳转到主页
+    try {
+      const pending = await recoveryPendingService.getPending();
+      if (pending?.old_smart_account) {
+        router.replace('/recovery-progress');
+        return;
+      }
+    } catch (e) {
+    }
     router.replace('/home');
     
   } catch (error: any) {
@@ -229,6 +241,14 @@ const handlePasswordLogin = async () => {
     }
     
     console.log('✅ 登录成功（本地）！');
+    try {
+      const pending = await recoveryPendingService.getPending();
+      if (pending?.old_smart_account) {
+        router.replace('/recovery-progress');
+        return;
+      }
+    } catch (e) {
+    }
     // 登录成功，跳转到主页
     router.replace('/home');
     

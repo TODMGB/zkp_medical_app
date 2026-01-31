@@ -227,10 +227,11 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import BottomNav from '@/components/BottomNav.vue'
-import { weeklyCheckinService, type WeeklyCheckinData, type WeeklyProofResult, type WeeklyOnchainRecord } from '@/service/weeklyCheckinService'
+import { weeklyCheckinService, type WeeklyProofResult, type WeeklyOnchainRecord, type WeeklyCheckinData } from '@/service/weeklyCheckinService'
+import { checkinIpfsRestoreService } from '@/service/checkinIpfsRestore'
 import type { CheckInRecord } from '@/service/checkinStorage'
-import { API_GATEWAY_URL, buildZkpUrl } from '@/config/api.config'
 import { authService } from '@/service/auth'
+import { API_GATEWAY_URL, buildZkpUrl } from '@/config/api.config'
 import { notificationService } from '@/service/notification'
 import { 
   ArrowLeft, 
@@ -678,6 +679,12 @@ const viewProofDetail = (weekKey: string = thisWeekKey.value) => {
 }
 
 onMounted(async () => {
+  try {
+    await checkinIpfsRestoreService.restoreFromChainCids()
+  } catch (e) {
+    console.warn('IPFS 周包回灌失败（不影响页面继续加载）:', e)
+  }
+
   await refreshData()
 
   // 连接 WebSocket 以接收通知

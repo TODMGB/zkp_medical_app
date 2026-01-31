@@ -145,6 +145,7 @@ import { aaService } from '@/service/accountAbstraction';
 import { secureExchangeService } from '@/service/secureExchange';
 import { medicationPlanStorageService } from '@/service/medicationPlanStorage';
 import { checkinStorageService } from '@/service/checkinStorage';
+import { uiService } from '@/service/ui';
 import { 
   ArrowLeft, 
   ClipboardList, 
@@ -170,7 +171,7 @@ const lastCheckInRecord = ref<any>(null);
 
 // 药物数据
 const todayMedications = ref<any[]>([]);
-const allMedications = ref<MedicationDetail[]>([]);
+const allMedications = ref<Array<MedicationDetail & { plan_id?: string }>>([]);
 
 // ==================== 生命周期 ====================
 
@@ -211,7 +212,7 @@ async function loadMedications() {
     const wallet = await aaService.getEOAWallet();
     if (!wallet) return;
     
-    const allMeds: MedicationDetail[] = [];
+    const allMeds: Array<MedicationDetail & { plan_id?: string }> = [];
     const todayMeds: any[] = [];
     
     for (const plan of plans) {
@@ -233,7 +234,7 @@ async function loadMedications() {
         console.log('  ✅ 计划解密成功');
         
         // 添加药物到列表
-        allMeds.push(...planData.medications);
+        allMeds.push(...(planData.medications || []).map(m => ({ ...m, plan_id: plan.plan_id })));
         
         // 提取今日提醒
         const now = new Date();
@@ -253,6 +254,7 @@ async function loadMedications() {
             if (med) {
               todayMeds.push({
                 ...med,
+                plan_id: plan.plan_id,
                 reminder_time: reminder.reminder_time,
                 reminder_message: reminder.reminder_message,
               });
@@ -297,7 +299,7 @@ async function loadPlanMedications(planId: string) {
       doctorPublicKey
     );
     
-    allMedications.value = planData.medications;
+    allMedications.value = (planData.medications || []).map(m => ({ ...m, plan_id: plan.plan_id }));
   } catch (error) {
     console.error('加载计划药物失败:', error);
   }
@@ -324,7 +326,7 @@ async function startScan() {
     await performCheckIn(mockMedication);
   } catch (error: any) {
     console.error('扫码失败:', error);
-    alert('扫码失败: ' + error.message);
+    uiService.toast('扫码失败: ' + error.message, { type: 'error' });
   } finally {
     scanning.value = false;
   }
@@ -358,6 +360,10 @@ async function performCheckIn(medication: any) {
       medication.medication_name,
       medication.dosage
     );
+
+    if (medication?.plan_id) {
+      record.plan_id = String(medication.plan_id);
+    }
     
     // 3. 保存到本地存储（离线可用）
     console.log('  💾 保存到本地...');
@@ -391,7 +397,7 @@ async function performCheckIn(medication: any) {
     console.log('✅ 打卡完成');
   } catch (error: any) {
     console.error('❌ 打卡失败:', error);
-    alert('打卡失败: ' + error.message);
+    uiService.toast('打卡失败: ' + error.message, { type: 'error' });
   }
 }
 

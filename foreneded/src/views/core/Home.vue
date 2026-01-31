@@ -241,6 +241,7 @@ import { medicationService } from '@/service/medication'
 import { secureExchangeService } from '@/service/secureExchange'
 import { medicationReminderScheduler } from '@/service/medicationReminderScheduler'
 import { zkpService } from '@/service/zkp'
+import { uiService } from '@/service/ui'
 import type { MedicationPlan } from '@/service/medication'
 import BottomNav from '@/components/BottomNav.vue'
 import { API_GATEWAY_URL } from '@/config/api.config'
@@ -399,11 +400,11 @@ const handleCheckIn = async (task: any) => {
     await loadTodayTasks()
     
     // 显示成功提示
-    alert(`✅ ${task.medication} 打卡成功！`)
+    uiService.toast(`✅ ${task.medication} 打卡成功！`, { type: 'success' })
     
   } catch (error: any) {
     console.error('❌ 打卡失败:', error)
-    alert(`打卡失败: ${error.message}`)
+    uiService.toast(`打卡失败: ${error.message}`, { type: 'error' })
   } finally {
     task.checking = false
   }

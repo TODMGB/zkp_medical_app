@@ -41,6 +41,7 @@ function startGrpcServer() {
     server.addService(secureExchangeProto.SecureExchange.service, {
       SendEncryptedMessage: exchangeHandlers.sendEncryptedMessage,
       GetEncryptedMessages: exchangeHandlers.getEncryptedMessages,
+      GetPlanShareRecipients: exchangeHandlers.getPlanShareRecipients,
       GetMessageById: exchangeHandlers.getMessageById,
       MarkMessageAsRead: exchangeHandlers.markMessageAsRead,
       RevokeMessage: exchangeHandlers.revokeMessage,

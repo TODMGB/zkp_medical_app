@@ -56,6 +56,35 @@ export interface LoginResponse {
   user: UserInfo;
 }
 
+export interface ResolveSmartAccountRequest {
+  id_card_number: string;
+  phone_number: string;
+  email?: string;
+}
+
+export interface ResolveSmartAccountResponse {
+  smart_account: string;
+  username: string | null;
+  roles: string[];
+}
+
+export interface StartRecoveryRequest {
+  id_card_number: string;
+  phone_number: string;
+  email?: string;
+  new_owner_address: string;
+}
+
+export interface StartRecoveryResponse {
+  session_id: string;
+  old_smart_account: string;
+  new_owner_address: string;
+  guardians: string[];
+  threshold: number;
+  status: string;
+  expires_at: string;
+}
+
 class AuthService {
   private token: string | null = null;
   private userInfo: UserInfo | null = null;
@@ -161,6 +190,50 @@ class AuthService {
     }
   }
 
+  public async resolveSmartAccount(params: ResolveSmartAccountRequest): Promise<ResolveSmartAccountResponse> {
+    const response = await fetch(buildAuthUrl('resolveSmartAccount'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.message || '解析账号失败');
+    }
+
+    const result = await response.json();
+    if (!result?.success || !result?.data?.smart_account) {
+      throw new Error(result?.message || '解析账号失败');
+    }
+
+    return result.data as ResolveSmartAccountResponse;
+  }
+
+  public async startRecovery(params: StartRecoveryRequest): Promise<StartRecoveryResponse> {
+    const response = await fetch(buildAuthUrl('startRecovery'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => null);
+      throw new Error(error?.message || '发起恢复请求失败');
+    }
+
+    const result = await response.json();
+    if (!result?.success || !result?.data?.session_id) {
+      throw new Error(result?.message || '发起恢复请求失败');
+    }
+
+    return result.data as StartRecoveryResponse;
+  }
+
   /**
    * 用户登录
    * @param eoaWallet EOA钱包（用于签名）
@@ -263,6 +336,15 @@ class AuthService {
         // 4. 保存token和用户信息
         await this.saveToken(loginResponse.data.token);
         await this.saveUserInfo(userInfo);
+
+        try {
+          const savedElderMode = localStorage.getItem('elderMode');
+          if (savedElderMode === null && (userInfo.roles || []).includes('elderly')) {
+            localStorage.setItem('elderMode', 'true');
+            document.documentElement.classList.add('elder-mode');
+          }
+        } catch (e) {
+        }
         
         this.token = loginResponse.data.token;
         this.userInfo = userInfo;

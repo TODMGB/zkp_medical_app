@@ -11,29 +11,20 @@
         <div class="welcome-icon">🎉</div>
         <h1 class="welcome-title">注册成功！</h1>
         <p class="welcome-desc">
-          {{ userRole === 'ELDERLY' ? '您可以邀请家人或医生加入，让他们能够查看您的健康数据' : '您可以扫描老人的邀请码加入他们的健康管理圈' }}
+          {{ userRole === 'ELDERLY' ? '您可以邀请成员加入访问组，让他们按权限查看您的健康数据' : '您可以扫描邀请码加入对方的访问组' }}
         </p>
       </div>
       
       <!-- 老人角色：显示邀请选项 -->
       <div v-if="userRole === 'ELDERLY'" class="invite-section">
-        <h2 class="section-title">邀请家人或医生</h2>
+        <h2 class="section-title">邀请成员加入访问组</h2>
         
         <div class="invite-options">
-          <button class="invite-option-btn" @click="showInviteFamily">
-            <div class="option-icon">👨‍👩‍👧‍👦</div>
+          <button class="invite-option-btn" @click="showInviteMembers">
+            <div class="option-icon">👥</div>
             <div class="option-text">
-              <h3>邀请家人</h3>
-              <p>让家人关注您的健康</p>
-            </div>
-            <div class="option-arrow">→</div>
-          </button>
-          
-          <button class="invite-option-btn" @click="showInviteDoctor">
-            <div class="option-icon">👨‍⚕️</div>
-            <div class="option-text">
-              <h3>邀请医生</h3>
-              <p>让医生管理您的医疗</p>
+              <h3>生成邀请码/二维码</h3>
+              <p>选择访问组后邀请对方加入</p>
             </div>
             <div class="option-arrow">→</div>
           </button>
@@ -92,6 +83,7 @@
 import { ref } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { relationService } from '../../service/relation';
+import { uiService } from '@/service/ui';
 
 const router = useRouter();
 const route = useRoute();
@@ -108,12 +100,8 @@ const continueToHome = () => {
   router.push({ name: 'Home' });
 };
 
-const showInviteFamily = () => {
-  router.push({ name: 'Invitation', query: { type: 'family' } });
-};
-
-const showInviteDoctor = () => {
-  router.push({ name: 'Invitation', query: { type: 'doctor' } });
+const showInviteMembers = () => {
+  router.push({ name: 'Invitation' });
 };
 
 const goToScanner = () => {
@@ -138,7 +126,7 @@ const handleInviteCode = async () => {
       console.log('后端登录状态正常');
     } catch (loginError: any) {
       console.error('自动登录失败:', loginError);
-      alert('请先登录账户');
+      uiService.toast('请先登录账户', { type: 'warning' });
       router.push({ name: 'Login', query: { redirect: '/add-family' } });
       return;
     }
@@ -167,7 +155,7 @@ const handleInviteCode = async () => {
     router.push({ name: 'Home', state: { message: '成功加入！' } });
   } catch (error: any) {
     console.error('接受邀请失败:', error);
-    alert(error.message || '邀请码无效');
+    uiService.toast(error.message || '邀请码无效', { type: 'error' });
   }
 };
 </script>

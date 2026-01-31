@@ -39,11 +39,21 @@ async function publishNotification(notificationData) {
 
   const { type, priority = 'normal', payload } = notificationData;
 
-  // 构造 routing key: notification.{priority}
-  const routingKey = `notification.${priority}`;
+  let effectivePriority = (priority || 'normal').toString().toLowerCase();
+  if (effectivePriority === 'urgent') {
+    effectivePriority = 'high';
+  }
+  if (!['high', 'normal', 'low'].includes(effectivePriority)) {
+    effectivePriority = 'normal';
+  }
+  const normalizedPriority = effectivePriority.toUpperCase();
+
+  const routingType = (type || 'unknown').toLowerCase().replace(/_/g, '.');
+  const routingKey = `notification.${effectivePriority}.${routingType}`;
 
   const message = {
     type,
+    priority: normalizedPriority,
     ...payload,
     timestamp: Date.now()
   };
@@ -55,6 +65,7 @@ async function publishNotification(notificationData) {
       Buffer.from(JSON.stringify(message)),
       {
         persistent: true, // 消息持久化
+        priority: effectivePriority === 'high' ? 10 : effectivePriority === 'low' ? 1 : 5,
         contentType: 'application/json'
       }
     );

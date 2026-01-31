@@ -8,11 +8,40 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { ethers } = require('ethers');
 
+function normalizeEmail(email) {
+  if (!email) return null;
+  return String(email).trim().toLowerCase();
+}
+
+function normalizePhone(phone) {
+  if (!phone) return null;
+  return String(phone).trim();
+}
+
+function normalizeIdCard(idCard) {
+  if (!idCard) return null;
+  return String(idCard).trim();
+}
+
+function sha256Hex(input) {
+  if (!input) return null;
+  return crypto.createHash('sha256').update(String(input), 'utf8').digest('hex');
+}
+
 /**
  * 用户注册服务
  */
 async function register(userData) {
-  const { eoa_address, smart_account_address, phone_number, username, role, encryption_public_key } = userData;
+  const {
+    eoa_address,
+    smart_account_address,
+    phone_number,
+    id_card_number,
+    email,
+    username,
+    role,
+    encryption_public_key
+  } = userData;
 
   try {
     // 1. 检查用户是否已存在
@@ -57,6 +86,23 @@ async function register(userData) {
       username: username, // 使用真实姓名，如果没有则使用手机号
       encryptionPublicKey: encryption_public_key || null // 保存加密公钥
     });
+
+    try {
+      await userEntity.ensureIdentityBindingsTable();
+      await userEntity.upsertIdentityBinding({
+        smartAccount: smart_account_address.toLowerCase(),
+        phoneHash: sha256Hex(normalizePhone(phone_number)),
+        emailHash: sha256Hex(normalizeEmail(email)),
+        idCardHash: sha256Hex(normalizeIdCard(id_card_number))
+      });
+    } catch (bindError) {
+      if (bindError && bindError.code === '23505') {
+        const error = new Error('身份标识已绑定到其他账号');
+        error.code = 'IDENTITY_ALREADY_BOUND';
+        throw error;
+      }
+      throw bindError;
+    }
 
     // 4. 添加用户角色（如果提供了角色）
     const roles = [];

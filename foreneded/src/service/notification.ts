@@ -6,13 +6,16 @@
 import { NOTIFICATION_CONFIG, buildNotificationUrl } from '@/config/api.config'
 import { authService } from './auth'
 import { localNotificationService } from './localNotification'
+import { Preferences } from '@capacitor/preferences'
 
 // 通知接口
+export type NotificationPriority = 'urgent' | 'high' | 'normal' | 'low'
+
 export interface Notification {
   notification_id: string
   recipient_address: string
   type: string
-  priority: 'urgent' | 'high' | 'normal'
+  priority: NotificationPriority
   title: string
   body: string
   data?: Record<string, any>
@@ -21,6 +24,220 @@ export interface Notification {
   created_at: string
   sent_at?: string
   read_at?: string | null
+}
+
+const URGENT_NOTIFICATION_TYPES = new Set<string>([
+  'recovery_initiated',
+  'recovery_completed',
+  'recovery_completed_old_owner',
+  'migration_session_created',
+  'migration_completed',
+])
+
+export function getNotificationRoute(type: string, data?: Record<string, any>): string {
+  if (!type) return '/notifications'
+
+  if (type.includes('medication_checkin')) {
+    return '/weekly-summary'
+  }
+
+  if (type.includes('medication_plan') || type === 'new_medication_plan') {
+    return '/elderly/my-medication-plans'
+  }
+
+  if (type.includes('medication')) {
+    return '/medication-history'
+  }
+
+  if (type.includes('relationship') || type.includes('friend_request') || type === 'friend_added' || type === 'invitation_created') {
+    if (type === 'invitation_created' && data?.token) {
+      return '/invitation'
+    }
+    return '/relationships'
+  }
+
+  if (type.includes('migration')) {
+    return '/account-migration'
+  }
+
+  if (type.includes('recovery')) {
+    if (type === 'recovery_requested') {
+      const oldSmartAccount = data?.old_smart_account || data?.oldSmartAccount || ''
+      const newOwnerAddress = data?.new_owner_address || data?.newOwnerAddress || ''
+      const sessionId = data?.session_id || data?.sessionId || ''
+      const expiresAt = data?.expires_at || data?.expiresAt || ''
+
+      const params = new URLSearchParams()
+      if (oldSmartAccount) params.set('old_smart_account', String(oldSmartAccount))
+      if (newOwnerAddress) params.set('new_owner_address', String(newOwnerAddress))
+      if (sessionId) params.set('session_id', String(sessionId))
+      if (expiresAt) params.set('expires_at', String(expiresAt))
+
+      const query = params.toString()
+      return query ? `/recovery-request?${query}` : '/recovery-request'
+    }
+
+    if (
+      type === 'recovery_initiated' ||
+      type === 'recovery_supported' ||
+      type === 'recovery_cancelled' ||
+      type === 'recovery_cancelled_guardian' ||
+      type === 'recovery_completed' ||
+      type === 'recovery_completed_old_owner'
+    ) {
+      const accountAddress = data?.account_address || data?.accountAddress || ''
+      const newOwnerAddress = data?.new_owner_address || data?.newOwnerAddress || ''
+
+      const params = new URLSearchParams()
+      if (accountAddress) params.set('old_smart_account', String(accountAddress))
+      if (newOwnerAddress) params.set('new_owner_address', String(newOwnerAddress))
+
+      const query = params.toString()
+      return query ? `/recovery-request?${query}` : '/recovery-request'
+    }
+
+    return '/account-security'
+  }
+
+  if (type === 'guardian_added' || type === 'threshold_changed') {
+    return '/guardian-setup'
+  }
+
+  if (type.startsWith('zkp.')) {
+    return '/weekly-summary'
+  }
+
+  return '/notifications'
+}
+
+export type NotificationMainCategory = 'medication' | 'relationship' | 'security' | 'system' | 'message' | 'other'
+
+export function getNotificationCategoryLabel(type: string): string {
+  if (!type) return '其他通知'
+
+  if (type.startsWith('zkp.')) return 'ZKP证明'
+
+  if (type.includes('medication_checkin')) return '用药打卡'
+
+  const categoryMap: Record<string, string> = {
+    'medication_reminder': '用药提醒',
+    'new_medication_plan': '用药计划',
+    'medication_plan_updated': '用药计划',
+    'medication_plan_created': '用药计划',
+    'medication_plan_shared': '用药计划',
+    'medication_plan_cancelled': '用药计划',
+
+    'relationship_invitation_accepted': '关系管理',
+    'relationship_joined_group': '关系管理',
+    'relationship_suspended': '关系管理',
+    'relationship_resumed': '关系管理',
+    'relationship_revoked': '关系管理',
+    'invitation_created': '关系邀请',
+
+    'friend_request_received': '关系管理',
+    'friend_request_sent': '关系管理',
+    'friend_request_accepted': '关系管理',
+    'friend_request_rejected': '关系管理',
+    'friend_request_cancelled': '关系管理',
+    'friend_added': '关系管理',
+
+    'migration_session_created': '账户迁移',
+    'migration_completed': '账户迁移',
+    'system_notification': '系统通知',
+
+    'guardian_added': '守护者管理',
+    'threshold_changed': '守护者管理',
+    'recovery_initiated': '账户恢复',
+    'recovery_supported': '账户恢复',
+    'recovery_cancelled': '账户恢复',
+    'recovery_cancelled_guardian': '账户恢复',
+    'recovery_completed': '账户恢复',
+    'recovery_completed_old_owner': '账户恢复',
+    'recovery_request_received': '账户恢复',
+    'recovery_requested': '账户恢复',
+
+    'encrypted_message': '加密消息',
+  }
+  return categoryMap[type] || '其他通知'
+}
+
+export function getNotificationMainCategory(type: string): NotificationMainCategory {
+  const category = getNotificationCategoryLabel(type)
+  if (category.includes('用药') || category.includes('ZKP')) return 'medication'
+  if (category.includes('关系') || category.includes('邀请')) return 'relationship'
+  if (category.includes('恢复') || category.includes('守护者')) return 'security'
+  if (category.includes('迁移') || category.includes('系统')) return 'system'
+  if (category.includes('消息')) return 'message'
+  return 'other'
+}
+
+export function normalizeNotification(raw: any): Notification {
+  const notification_id = String(raw?.notification_id || raw?.notificationId || raw?.id || '')
+  const recipient_address = String(raw?.recipient_address || raw?.userId || raw?.recipient || '')
+  const type = String(raw?.type || '')
+
+  const rawPriority = String(raw?.priority || 'normal').toLowerCase()
+  let basePriority: NotificationPriority
+  if (rawPriority === 'urgent') {
+    basePriority = 'high'
+  } else if (rawPriority === 'high') {
+    basePriority = 'high'
+  } else if (rawPriority === 'low') {
+    basePriority = 'low'
+  } else {
+    basePriority = 'normal'
+  }
+
+  const priority: NotificationPriority = URGENT_NOTIFICATION_TYPES.has(type) ? 'urgent' : basePriority
+
+  const title = String(raw?.title || type || 'Notification')
+  const body = String(raw?.body || raw?.message || '您有一条新通知')
+  const data = (raw?.data && typeof raw.data === 'object') ? raw.data : undefined
+  const channels = Array.isArray(raw?.channels) ? raw.channels : ['push', 'websocket']
+  const status = String(raw?.status || 'pending')
+  const created_at = normalizeNotificationTime(raw?.created_at) || new Date().toISOString()
+
+  return {
+    notification_id,
+    recipient_address,
+    type,
+    priority,
+    title,
+    body,
+    data,
+    channels,
+    status,
+    created_at,
+    sent_at: raw?.sent_at ? (normalizeNotificationTime(raw?.sent_at) || String(raw?.sent_at)) : raw?.sent_at,
+    read_at: raw?.read_at ? (normalizeNotificationTime(raw?.read_at) || String(raw?.read_at)) : (raw?.read_at ?? null),
+  }
+}
+
+function normalizeNotificationTime(input: any): string {
+  if (input === undefined || input === null) return ''
+  if (typeof input === 'number') {
+    const d = new Date(input)
+    return isNaN(d.getTime()) ? '' : d.toISOString()
+  }
+
+  let s = String(input).trim()
+  if (!s) return ''
+
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+    s = s.replace(' ', 'T')
+  }
+
+  if (/[zZ]$/.test(s) || /[+\-]\d{2}:?\d{2}$/.test(s)) {
+    return s
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(s)) {
+    return `${s}Z`
+  }
+
+  const parsed = new Date(s)
+  if (!isNaN(parsed.getTime())) return parsed.toISOString()
+  return s
 }
 
 // WebSocket消息类型
@@ -38,6 +255,39 @@ class NotificationService {
   private reconnectDelay = 1000 // 初始1秒
   private isIntentionallyClosed = false
   private listeners: Map<string, Set<(data: any) => void>> = new Map()
+
+  private readonly FILTERED_NOTIFICATION_TYPES = new Set<string>(['encrypted_message'])
+
+  private readonly USER_INFO_AUTO_SEND_TTL_MS = 24 * 60 * 60 * 1000
+
+  private isFilteredNotificationType(type: string): boolean {
+    return this.FILTERED_NOTIFICATION_TYPES.has(String(type || ''))
+  }
+
+  private getAutoUserInfoSentKey(myAccount: string, peerAddress: string): string {
+    return `auto_user_info_sent_${String(myAccount).toLowerCase()}_${String(peerAddress).toLowerCase()}`
+  }
+
+  private async canAutoSendUserInfo(myAccount: string, peerAddress: string): Promise<boolean> {
+    const key = this.getAutoUserInfoSentKey(myAccount, peerAddress)
+    try {
+      const { value } = await Preferences.get({ key })
+      if (!value) return true
+      const lastSentAt = Number(value)
+      if (!Number.isFinite(lastSentAt) || lastSentAt <= 0) return true
+      return Date.now() - lastSentAt > this.USER_INFO_AUTO_SEND_TTL_MS
+    } catch (e) {
+      return true
+    }
+  }
+
+  private async markAutoUserInfoSent(myAccount: string, peerAddress: string): Promise<void> {
+    const key = this.getAutoUserInfoSentKey(myAccount, peerAddress)
+    try {
+      await Preferences.set({ key, value: String(Date.now()) })
+    } catch (e) {
+    }
+  }
 
   /**
    * 连接WebSocket
@@ -95,6 +345,9 @@ class NotificationService {
     this.reconnectAttempts = 0
     this.reconnectDelay = 1000
     this.startHeartbeat()
+
+    this.cleanupFilteredUnreadNotifications().catch(() => {
+    })
   }
 
   /**
@@ -113,12 +366,23 @@ class NotificationService {
 
         case 'notification':
           console.log('收到新通知:', message.data)
+          const normalizedNotification = normalizeNotification(message.data)
+
+          if (this.isFilteredNotificationType(normalizedNotification.type)) {
+            try {
+              if (!normalizedNotification.read_at) {
+                this.markAsReadViaWS(normalizedNotification.notification_id)
+              }
+            } catch (e) {
+            }
+            return
+          }
           // 发送事件给订阅者
-          this.emit('notification', message.data)
+          this.emit('notification', normalizedNotification)
           // 显示系统通知栏
-          this.showLocalNotification(message.data)
+          this.showLocalNotification(normalizedNotification)
           // 处理特殊通知：新成员加入时自动发送用户信息
-          this.handleSpecialNotification(message.data)
+          this.handleSpecialNotification(normalizedNotification)
           break
 
         case 'pong':
@@ -154,6 +418,14 @@ class NotificationService {
    */
   private async handleSpecialNotification(notification: Notification): Promise<void> {
     try {
+      if (notification.type === 'recovery_completed') {
+        try {
+          const { recoveryResyncService } = await import('./recoveryResyncService')
+          await recoveryResyncService.resyncAfterRecovery({ force: true })
+        } catch (e) {
+        }
+      }
+
       // 处理"新成员加入"通知：邀请者自动发送用户信息给新成员
       if (notification.type === 'relationship_invitation_accepted') {
         console.log('📨 检测到新成员加入通知，准备发送用户信息...')
@@ -181,6 +453,15 @@ class NotificationService {
           console.warn('⚠️ 无法获取用户信息，跳过发送用户信息')
           return
         }
+
+        const myAccount = userInfo?.smart_account ? String(userInfo.smart_account) : ''
+        if (myAccount) {
+          const canSend = await this.canAutoSendUserInfo(myAccount, viewerAddress)
+          if (!canSend) {
+            console.log('ℹ️ [邀请者自动信息交换] 已发送过用户信息，跳过自动发送:', viewerAddress)
+            return
+          }
+        }
         
         console.log('  ✅ 钱包和用户信息获取成功')
         console.log('  邀请者地址:', userInfo.smart_account)
@@ -200,6 +481,10 @@ class NotificationService {
           viewerAddress,
           userInfoData
         )
+
+        if (myAccount) {
+          await this.markAutoUserInfoSent(myAccount, viewerAddress)
+        }
         
         console.log('✅ [邀请者自动信息交换] 用户信息已成功发送给新成员！')
         console.log('  消息ID:', messageId)
@@ -369,10 +654,54 @@ class NotificationService {
       }
 
       const result = await response.json()
-      return result.data || []
+      return (result.data || [])
+        .map((n: any) => normalizeNotification(n))
+        .filter((n: Notification) => !this.isFilteredNotificationType(n.type))
     } catch (error: any) {
       console.error('获取通知列表失败:', error)
       throw error
+    }
+  }
+
+  private async cleanupFilteredUnreadNotifications(): Promise<void> {
+    try {
+      const headers = await authService.getAuthHeader()
+      const queryParams = new URLSearchParams()
+      queryParams.append('status', 'unread')
+      queryParams.append('limit', '200')
+      queryParams.append('offset', '0')
+
+      const url = buildNotificationUrl('getNotifications')
+      const fullUrl = `${url}?${queryParams}`
+
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      })
+
+      if (!response.ok) {
+        return
+      }
+
+      const result = await response.json()
+      const list: Notification[] = (result.data || []).map((n: any) => normalizeNotification(n))
+      const targets = list.filter(n => this.isFilteredNotificationType(n.type) && !n.read_at)
+      if (targets.length === 0) return
+
+      for (const n of targets) {
+        try {
+          if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.markAsReadViaWS(n.notification_id)
+          } else {
+            await this.markAsRead(n.notification_id)
+          }
+        } catch (e) {
+        }
+      }
+    } catch (e) {
     }
   }
 

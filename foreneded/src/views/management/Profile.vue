@@ -2,6 +2,9 @@
   <div class="profile-page">
     <!-- 顶部个人信息卡片 -->
     <div class="profile-header">
+      <button class="qr-entry-btn" @click="showQrModal = true">
+        <QrCode class="qr-entry-icon" />
+      </button>
       <div class="user-card">
         <div class="user-avatar">
           <div class="avatar-icon-wrapper">
@@ -97,17 +100,6 @@
     
     <!-- 功能菜单 -->
     <div class="menu-section">
-      <div class="menu-item" @click="goToFamilyCircle">
-        <div class="menu-icon-wrapper blue">
-          <Users class="menu-icon" />
-        </div>
-        <div class="menu-content">
-          <h3 class="menu-title">我的家庭圈</h3>
-          <p class="menu-desc">管理家人和医生</p>
-        </div>
-        <ChevronRight class="menu-arrow" />
-      </div>
-      
       <div class="menu-item" @click="goToGuardianSetup">
         <div class="menu-icon-wrapper orange">
           <Shield class="menu-icon" />
@@ -153,6 +145,20 @@
         <ChevronRight class="menu-arrow" />
       </div>
     </div>
+
+    <div v-if="showQrModal" class="qr-modal-overlay" @click="showQrModal = false">
+      <div class="qr-modal" @click.stop>
+        <div class="qr-modal-header">
+          <h3 class="qr-modal-title">我的二维码</h3>
+          <button class="qr-modal-close" @click="showQrModal = false">×</button>
+        </div>
+        <div class="qr-modal-body">
+          <QRCode :value="smartAccount" :size="220" />
+          <div class="qr-modal-address">{{ formatAddress(smartAccount) }}</div>
+          <button class="qr-modal-copy" @click="copyAddress(smartAccount)">复制地址</button>
+        </div>
+      </div>
+    </div>
       
     <!-- Toast 提示 -->
     <div v-if="showToast" class="toast" :class="toastType">
@@ -173,6 +179,7 @@ import { Device } from '@capacitor/device'
 import { authService } from '@/service/auth'
 import { aaService } from '@/service/accountAbstraction'
 import { unreadCount, notificationBadgeService } from '@/service/notificationBadge'
+import QRCode from '@/components/QRCode.vue'
 import BottomNav from '@/components/BottomNav.vue'
 import { 
   User, 
@@ -185,11 +192,11 @@ import {
   Globe, 
   CheckCircle2, 
   XCircle, 
-  Users, 
   Bell, 
   Settings, 
   ChevronRight, 
-  AlertCircle 
+  AlertCircle,
+  QrCode
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -210,6 +217,8 @@ const newUserName = ref('')
 const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error'>('success')
+
+const showQrModal = ref(false)
 
 // 角色判断
 const isElderly = computed(() => userRoles.value.includes('elderly'))
@@ -309,10 +318,6 @@ const showToastMessage = (message: string, type: 'success' | 'error') => {
 }
 
 // 页面跳转
-const goToFamilyCircle = () => {
-  router.push('/family-circle')
-}
-
 const goToGuardianSetup = () => {
   router.push('/guardian-setup')
 }
@@ -399,6 +404,102 @@ onMounted(async () => {
   padding: 30px 20px 50px;
   border-radius: 0 0 30px 30px;
   box-shadow: var(--shadow-lg);
+  position: relative;
+}
+
+.qr-entry-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.qr-entry-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 20px;
+}
+
+.qr-modal {
+  width: 100%;
+  max-width: 420px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.qr-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.qr-modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+.qr-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: none;
+  background: #f3f4f6;
+  color: #334155;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.qr-modal-body {
+  padding: 18px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.qr-modal-address {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #475569;
+}
+
+.qr-modal-copy {
+  border: none;
+  background: var(--color-primary);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .user-card {

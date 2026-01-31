@@ -38,6 +38,37 @@ async function buildAddGuardian(req, res, next) {
 }
 
 /**
+ * 构建移除守护者的未签名 UserOperation（安全方法）
+ * POST /guardian/remove/build
+ * Body: { accountAddress, guardianAddress }
+ */
+async function buildRemoveGuardian(req, res, next) {
+  try {
+    const { accountAddress, guardianAddress } = req.body;
+
+    if (!accountAddress || !guardianAddress) {
+      return res.status(400).json({
+        success: false,
+        message: 'accountAddress 和 guardianAddress 为必填项'
+      });
+    }
+
+    const result = await recoveryService.buildRemoveGuardianUserOp(
+      accountAddress,
+      guardianAddress
+    );
+
+    res.status(200).json({
+      success: true,
+      data: result,
+      message: '请使用返回的 userOpHash 在客户端签名，然后调用 /guardian/submit 提交'
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
  * 添加守护者（已弃用：不安全，需要私钥）
  * POST /guardian
  * Body: { accountAddress, ownerPrivateKey, guardianAddress }
@@ -227,6 +258,7 @@ async function submitUserOp(req, res, next) {
 module.exports = {
   // 新的安全方法
   buildAddGuardian,
+  buildRemoveGuardian,
   buildChangeThreshold,
   submitUserOp,
   // 旧的不安全方法（已弃用但保留向后兼容）

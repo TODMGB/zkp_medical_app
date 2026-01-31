@@ -103,6 +103,38 @@
             保存中...
           </span>
         </button>
+
+        <button
+          class="save-threshold-btn"
+          style="margin-top: 12px"
+          @click="checkRecoveryStatus"
+        >
+          查看恢复状态
+        </button>
+
+        <button
+          class="save-threshold-btn"
+          style="margin-top: 12px"
+          @click="initiateRecovery"
+        >
+          发起恢复
+        </button>
+
+        <button
+          class="save-threshold-btn"
+          style="margin-top: 12px"
+          @click="supportRecovery"
+        >
+          支持恢复
+        </button>
+
+        <button
+          class="save-threshold-btn"
+          style="margin-top: 12px"
+          @click="cancelRecovery"
+        >
+          取消恢复
+        </button>
       </div>
     </div>
     
@@ -181,6 +213,7 @@ import { guardianService } from '../../service/guardian';
 import { aaService } from '../../service/accountAbstraction';
 import { relationService } from '../../service/relation';
 import { authService } from '../../service/auth';
+import { uiService } from '@/service/ui';
 import type { Relationship } from '../../service/relation';
 import { 
   ArrowLeft, 
@@ -348,7 +381,7 @@ const loadRelations = async () => {
   }
 };
 
-const loadGuardians = async () => {
+const loadGuardians = async (notifyOnError = false): Promise<boolean> => {
   try {
     const accountAddress = aaService.getAbstractAccountAddress();
     if (!accountAddress) {
@@ -361,8 +394,13 @@ const loadGuardians = async () => {
     currentThreshold.value = info.threshold;
     
     console.log('守护者信息:', info);
+    return true;
   } catch (error: any) {
     console.error('加载守护者失败:', error);
+    if (notifyOnError) {
+      uiService.toast(error.message || '加载守护者失败', { type: 'error' });
+    }
+    return false;
   }
 };
 
@@ -374,7 +412,7 @@ const addGuardian = async () => {
   
   try {
     const accountAddress = aaService.getAbstractAccountAddress();
-    const eoaWallet = (aaService as any).eoaWallet;
+    const eoaWallet = aaService.getEOAWallet();
     
     if (!accountAddress || !eoaWallet) {
       throw new Error('请先登录');
@@ -394,8 +432,12 @@ const addGuardian = async () => {
     );
     
     // 重新加载列表
-    await loadGuardians();
+    const refreshed = await loadGuardians(true);
+    await loadRelations();
     closeAddGuardian();
+    uiService.toast(refreshed ? '添加守护者成功' : '添加守护者成功，但刷新列表失败', {
+      type: refreshed ? 'success' : 'warning',
+    });
   } catch (error: any) {
     console.error('添加守护者失败:', error);
     addError.value = error.message || '添加失败';
@@ -413,7 +455,7 @@ const saveThreshold = async () => {
   
   try {
     const accountAddress = aaService.getAbstractAccountAddress();
-    const eoaWallet = (aaService as any).eoaWallet;
+    const eoaWallet = aaService.getEOAWallet();
     
     if (!accountAddress || !eoaWallet) {
       throw new Error('请先登录');
@@ -426,19 +468,159 @@ const saveThreshold = async () => {
     );
     
     currentThreshold.value = threshold.value;
-    alert('阈值设置成功！');
+    uiService.toast('阈值设置成功！', { type: 'success' });
   } catch (error: any) {
     console.error('设置阈值失败:', error);
-    alert(error.message || '设置失败');
+    uiService.toast(error.message || '设置失败', { type: 'error' });
   } finally {
     isSaving.value = false;
   }
 };
 
-const confirmRemove = (guardian: string) => {
-  if (confirm(`确定要移除守护者 ${formatAddress(guardian)} 吗？`)) {
-    // TODO: 实现移除守护者功能
-    alert('移除功能暂未实现');
+const checkRecoveryStatus = async () => {
+  try {
+    const accountAddress = aaService.getAbstractAccountAddress();
+    if (!accountAddress) {
+      throw new Error('未找到账户地址');
+    }
+
+    const [info, status] = await Promise.all([
+      guardianService.getAccountInfo(accountAddress).catch(() => null),
+      guardianService.getRecoveryStatus(accountAddress),
+    ]);
+
+    const owner = info?.owner ? String(info.owner) : '未知';
+    await uiService.alert(
+      `当前Owner: ${owner}\n恢复目标新Owner: ${status.newOwner || '-'}\n已同意人数: ${status.approvalCount || 0}\n是否已执行: ${status.executed ? '是' : '否'}`,
+      { title: '恢复状态' }
+    );
+  } catch (error: any) {
+    console.error('查询恢复状态失败:', error);
+    uiService.toast(error.message || '查询失败', { type: 'error' });
+  }
+};
+
+const confirmRemove = async (guardian: string) => {
+  const ok = await uiService.confirm(`确定要移除守护者 ${formatAddress(guardian)} 吗？`, { title: '确认操作' });
+  if (ok) {
+    await removeGuardian(guardian);
+  }
+};
+
+const removeGuardian = async (guardianAddress: string) => {
+  try {
+    const accountAddress = aaService.getAbstractAccountAddress();
+    const eoaWallet = aaService.getEOAWallet();
+    if (!accountAddress || !eoaWallet) {
+      throw new Error('请先登录');
+    }
+
+    await guardianService.removeGuardian(accountAddress, guardianAddress, eoaWallet);
+    const refreshed = await loadGuardians(true);
+    uiService.toast(refreshed ? '移除守护者成功' : '移除守护者成功，但刷新列表失败', {
+      type: refreshed ? 'success' : 'warning',
+    });
+  } catch (error: any) {
+    console.error('移除守护者失败:', error);
+    uiService.toast(error.message || '移除失败', { type: 'error' });
+  }
+};
+
+const initiateRecovery = async () => {
+  try {
+    const accountAddressInput = await uiService.prompt({
+      title: '发起恢复',
+      message: '请输入要恢复的账户地址（Smart Account）',
+      defaultValue: aaService.getAbstractAccountAddress() || '',
+      placeholder: '0x...',
+      confirmText: '下一步',
+      cancelText: '取消',
+    });
+    if (!accountAddressInput) return;
+
+    const newOwnerAddress = await uiService.prompt({
+      title: '发起恢复',
+      message: '请输入新的Owner地址（EOA）',
+      placeholder: '0x...',
+      confirmText: '确认发起',
+      cancelText: '取消',
+    });
+    if (!newOwnerAddress) return;
+
+    const guardianAccountAddress = aaService.getAbstractAccountAddress();
+    const eoaWallet = aaService.getEOAWallet();
+    if (!guardianAccountAddress || !eoaWallet) {
+      throw new Error('请先登录');
+    }
+
+    await guardianService.initiateRecovery(accountAddressInput, guardianAccountAddress, newOwnerAddress, eoaWallet);
+    await checkRecoveryStatus();
+    uiService.toast('已发起恢复', { type: 'success' });
+  } catch (error: any) {
+    console.error('发起恢复失败:', error);
+    uiService.toast(error.message || '发起失败', { type: 'error' });
+  }
+};
+
+const supportRecovery = async () => {
+  try {
+    const accountAddressInput = await uiService.prompt({
+      title: '支持恢复',
+      message: '请输入要支持恢复的账户地址（Smart Account）',
+      defaultValue: aaService.getAbstractAccountAddress() || '',
+      placeholder: '0x...',
+      confirmText: '下一步',
+      cancelText: '取消',
+    });
+    if (!accountAddressInput) return;
+
+    const newOwnerAddress = await uiService.prompt({
+      title: '支持恢复',
+      message: '请输入恢复目标的新Owner地址（EOA）',
+      placeholder: '0x...',
+      confirmText: '确认支持',
+      cancelText: '取消',
+    });
+    if (!newOwnerAddress) return;
+
+    const guardianAccountAddress = aaService.getAbstractAccountAddress();
+    const eoaWallet = aaService.getEOAWallet();
+    if (!guardianAccountAddress || !eoaWallet) {
+      throw new Error('请先登录');
+    }
+
+    await guardianService.supportRecovery(accountAddressInput, guardianAccountAddress, newOwnerAddress, eoaWallet);
+    await checkRecoveryStatus();
+    uiService.toast('已支持恢复', { type: 'success' });
+  } catch (error: any) {
+    console.error('支持恢复失败:', error);
+    uiService.toast(error.message || '支持失败', { type: 'error' });
+  }
+};
+
+const cancelRecovery = async () => {
+  try {
+    const accountAddressInput = await uiService.prompt({
+      title: '取消恢复',
+      message: '请输入要取消恢复的账户地址（Smart Account）',
+      defaultValue: aaService.getAbstractAccountAddress() || '',
+      placeholder: '0x...',
+      confirmText: '确认取消',
+      cancelText: '返回',
+    });
+    if (!accountAddressInput) return;
+
+    const eoaWallet = aaService.getEOAWallet();
+    if (!eoaWallet) {
+      throw new Error('请先登录');
+    }
+
+    await guardianService.cancelRecovery(accountAddressInput, eoaWallet);
+    await checkRecoveryStatus();
+    uiService.toast('已取消恢复', { type: 'success' });
+  } catch (error: any) {
+    console.error('取消恢复失败:', error);
+    uiService.toast(error.message || '取消失败', { type: 'error' });
   }
 };
 

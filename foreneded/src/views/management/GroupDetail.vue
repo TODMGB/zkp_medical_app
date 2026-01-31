@@ -16,6 +16,9 @@
         <h2 class="group-name">{{ groupInfo?.group_name }}</h2>
         <p class="group-type">{{ getGroupTypeText(groupInfo?.group_type) }}</p>
         <p class="group-desc">{{ groupInfo?.description || '暂无描述' }}</p>
+        <button v-if="!isGroupOwner" class="sync-btn" @click="requestSync" :disabled="syncing">
+          {{ syncing ? '同步请求中...' : '请求同步' }}
+        </button>
         <div class="group-stats">
           <span class="stat-badge">
             <span class="stat-icon">👥</span>
@@ -25,6 +28,70 @@
             <span class="stat-icon">📋</span>
             <span>{{ getGroupPermissions(groupInfo?.group_type) }}</span>
           </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="members-section">
+      <div class="section-header">
+        <h3 class="section-title">共享打卡统计</h3>
+        <button class="refresh-btn" @click="refreshSharedData" :disabled="isLoading">刷新</button>
+      </div>
+
+      <div v-if="sharedStats.length === 0 && !isLoading" class="empty-state">
+        <p>暂无共享统计</p>
+        <p class="empty-hint">可以点击“请求同步”获取历史统计</p>
+      </div>
+
+      <div class="members-list">
+        <div
+          v-for="s in sharedStats"
+          :key="`${s.group_id}_${s.week_key}`"
+          class="member-card"
+        >
+          <div class="member-avatar">
+            <div class="avatar-icon">📊</div>
+          </div>
+          <div class="member-info">
+            <h4 class="member-name">周：{{ s.week_key }}</h4>
+            <p v-if="s.start_date" class="member-role">周期：{{ s.start_date }} 至 {{ s.end_date || '-' }}</p>
+            <p class="member-address-sub">总打卡：{{ s.stats?.totalCount ?? '-' }} 次</p>
+            <p class="member-role">覆盖天数：{{ s.stats?.daysCovered ?? '-' }} / 7</p>
+            <p class="member-role">完成率：{{ s.stats?.completionRate ?? '-' }}%</p>
+            <p class="member-status accepted">已接收</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="members-section">
+      <div class="section-header">
+        <h3 class="section-title">共享用药计划</h3>
+      </div>
+
+      <div v-if="sharedPlans.length === 0 && !isLoading" class="empty-state">
+        <p>暂无共享计划</p>
+        <p class="empty-hint">计划拥有者分享后会出现在这里</p>
+      </div>
+
+      <div class="members-list">
+        <div
+          v-for="p in sharedPlans"
+          :key="`${p.group_id}_${p.plan_id}`"
+          class="member-card"
+          @click="openSharedPlan(p)"
+        >
+          <div class="member-avatar">
+            <div class="avatar-icon">📄</div>
+          </div>
+          <div class="member-info">
+            <h4 class="member-name">计划ID：{{ p.plan_id }}</h4>
+            <p class="member-address-sub">密钥版本：{{ p.key_version || '-' }}</p>
+            <p v-if="p.plan_summary?.start_date" class="member-role">
+              周期：{{ p.plan_summary.start_date }} 至 {{ p.plan_summary.end_date || '长期' }}
+            </p>
+            <p class="member-status accepted">已接收</p>
+          </div>
         </div>
       </div>
     </div>
@@ -44,6 +111,11 @@
     <div class="members-section">
       <div class="section-header">
         <h3 class="section-title">群组成员</h3>
+        <div class="header-actions">
+          <button v-if="isGroupOwner" class="refresh-btn" @click="openAddMemberModal" :disabled="isLoading || addingMember">
+            {{ addingMember ? '添加中...' : '添加成员' }}
+          </button>
+        </div>
       </div>
       
       <div v-if="members.length === 0 && !isLoading" class="empty-state">
@@ -91,29 +163,82 @@
         </div>
       </div>
     </div>
-    
-    <!-- 邀请类型选择弹窗 -->
-    <div v-if="showInviteTypeModal" class="modal-overlay" @click="closeInviteTypeModal">
-      <div class="invite-type-sheet" @click.stop>
-        <div class="sheet-header">
-          <h3>选择邀请类型</h3>
-          <button class="close-btn" @click="closeInviteTypeModal">×</button>
+
+    <!-- 从好友选择添加成员 -->
+    <div v-if="showAddMemberModal" class="modal-overlay modal-center" @click="closeAddMemberModal">
+      <div class="friend-picker-modal" @click.stop>
+        <div class="modal-header">
+          <h3 class="modal-title">从好友中添加</h3>
+          <button class="close-btn" @click="closeAddMemberModal">×</button>
         </div>
-        <div class="type-options">
-          <button class="type-option-btn" @click="confirmInviteType('family')">
-            <span class="type-icon">👨‍👩‍👧‍👦</span>
-            <div class="type-info">
-              <h4>邀请家属</h4>
-              <p>让家人加入此群组</p>
+
+        <div class="modal-content">
+          <div class="friend-picker-actions">
+            <input
+              v-model="friendSearch"
+              type="text"
+              class="friend-search-input"
+              placeholder="搜索姓名/备注/地址"
+            />
+            <button class="refresh-btn" @click="loadFriendCandidates" :disabled="friendsLoading || addingMember">
+              {{ friendsLoading ? '加载中...' : '刷新' }}
+            </button>
+          </div>
+
+          <div v-if="friendsLoading" class="empty-state">
+            <p>加载好友列表中...</p>
+          </div>
+
+          <div v-else-if="filteredFriendCandidates.length === 0" class="empty-state">
+            <p>暂无可添加的好友</p>
+            <p class="empty-hint">提示：已在群里的好友不会显示</p>
+          </div>
+
+          <div v-else class="friend-list">
+            <div
+              v-for="f in filteredFriendCandidates"
+              :key="f.address"
+              class="friend-item"
+              :class="{ selected: isFriendSelected(f.address) }"
+              @click="toggleFriendSelection(f.address)"
+            >
+              <input
+                class="friend-select-checkbox"
+                type="checkbox"
+                :checked="isFriendSelected(f.address)"
+                @click.stop="toggleFriendSelection(f.address)"
+              />
+              <div class="friend-avatar">{{ getFriendRoleIcon(f.address) }}</div>
+              <div class="friend-info">
+                <div class="friend-name">{{ getMemberDisplayName(f.address) }}</div>
+                <div class="friend-address">{{ formatAddress(f.address) }}</div>
+                <div v-if="getFriendRoleLabels(f.address).length > 0" class="friend-tags">
+                  <span v-for="roleLabel in getFriendRoleLabels(f.address)" :key="roleLabel" class="friend-tag">
+                    {{ roleLabel }}
+                  </span>
+                </div>
+              </div>
+              <button class="friend-add-btn" :disabled="addingMember" @click.stop="addMemberToGroup(f.address)">
+                {{ addingMember ? '添加中...' : '添加' }}
+              </button>
             </div>
-          </button>
-          <button class="type-option-btn" @click="confirmInviteType('doctor')">
-            <span class="type-icon">👨‍⚕️</span>
-            <div class="type-info">
-              <h4>邀请医生</h4>
-              <p>让医生加入此群组</p>
-            </div>
-          </button>
+          </div>
+
+          <div class="friend-picker-footer">
+            <button class="friend-footer-btn" @click="selectAllFilteredFriends" :disabled="friendsLoading || addingMember">
+              全选
+            </button>
+            <button class="friend-footer-btn" @click="clearFriendSelection" :disabled="friendsLoading || addingMember || selectedFriendCount === 0">
+              清空
+            </button>
+            <div class="friend-footer-spacer"></div>
+            <button class="friend-footer-btn" @click="addMemberByPrompt" :disabled="addingMember">
+              手动输入地址
+            </button>
+            <button class="friend-add-selected-btn" @click="addSelectedFriends" :disabled="addingMember || selectedFriendCount === 0">
+              添加所选 ({{ selectedFriendCount }})
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -194,11 +319,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { relationService } from '@/service/relation'
 import { memberRemarkService } from '@/service/memberRemark'
 import { memberInfoService, type MemberInfo } from '@/service/memberInfo'
+import { sharedMedicationPlanStorageService } from '@/service/sharedMedicationPlanStorage'
+import { sharedCheckinStatsStorageService } from '@/service/sharedCheckinStatsStorage'
+import { uiService } from '@/service/ui'
+import { UserRoleUtils } from '@/utils/userRoles'
 
 const router = useRouter()
 const route = useRoute()
@@ -207,8 +336,19 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const groupInfo = ref<any>(null)
 const members = ref<any[]>([])
+const sharedPlans = ref<any[]>([])
+const sharedStats = ref<any[]>([])
+const isGroupOwner = ref(false)
+const syncing = ref(false)
 const selectedMember = ref<any>(null)
-const showInviteTypeModal = ref(false)
+
+const addingMember = ref(false)
+
+const showAddMemberModal = ref(false)
+const friendsLoading = ref(false)
+const friendSearch = ref('')
+const friendCandidates = ref<{ address: string }[]>([])
+const selectedFriendAddresses = ref<string[]>([])
 
 // 备注相关状态
 const showRemarkEditor = ref(false)
@@ -217,6 +357,73 @@ const remarkInput = ref('')
 const memberRemarks = ref<Record<string, string>>({})
 const memberInfos = ref<Record<string, MemberInfo>>({})
 const quickRemarkOptions = ['儿子', '女儿', '父亲', '母亲', '主治医生', '护士', '康复师']
+
+const openSharedPlan = (p: any) => {
+  if (!p?.group_id || !p?.plan_id) return
+  router.push(`/shared-plan/${p.group_id}/${p.plan_id}`)
+}
+
+const refreshSharedData = async () => {
+  try {
+    const [plans, stats] = await Promise.all([
+      sharedMedicationPlanStorageService.getSharedPlansByGroup(groupId.value).catch(() => []),
+      sharedCheckinStatsStorageService.getSharedStatsByGroup(groupId.value).catch(() => []),
+    ])
+    sharedPlans.value = plans || []
+    sharedStats.value = stats || []
+  } catch (e) {
+    console.warn('刷新共享数据失败（不影响页面）:', e)
+  }
+}
+
+const requestSync = async () => {
+  try {
+    if (!groupInfo.value?.owner_address) {
+      uiService.toast('群组 owner_address 缺失，无法请求同步', { type: 'error' })
+      return
+    }
+
+    const { aaService } = await import('@/service/accountAbstraction')
+    const wallet = aaService.getEOAWallet()
+    if (!wallet) {
+      uiService.toast('无法获取钱包', { type: 'error' })
+      return
+    }
+
+    const weeksBackInput = await uiService.prompt({
+      title: '请求同步',
+      message: '同步最近多少周的打卡统计？',
+      defaultValue: '8',
+      placeholder: '1-52',
+      confirmText: '发送请求',
+      cancelText: '取消',
+    })
+    if (!weeksBackInput) {
+      return
+    }
+
+    const parsed = weeksBackInput ? Number.parseInt(weeksBackInput, 10) : 8
+    const safeParsed = Number.isFinite(parsed) ? parsed : 8
+    const weeksBack = Math.max(1, Math.min(52, safeParsed))
+
+    syncing.value = true
+    const { syncService } = await import('@/service/syncService')
+    const messageId = await syncService.requestSyncToOwner(wallet, groupInfo.value.owner_address, groupId.value, {
+      weeksBack,
+      includePlans: true,
+      includeStats: true,
+    })
+
+    await refreshSharedData()
+
+    uiService.toast(`同步请求已发送，消息ID: ${messageId}`, { type: 'success', durationMs: 2600 })
+  } catch (error: any) {
+    console.error('请求同步失败:', error)
+    uiService.toast('请求同步失败: ' + (error.message || '未知错误'), { type: 'error' })
+  } finally {
+    syncing.value = false
+  }
+}
 
 // 获取群组ID - 可能是数字或字符串
 const groupId = ref<number | string>(
@@ -276,6 +483,18 @@ const loadGroupDetail = async () => {
     const memberList = await relationService.getGroupMembers(groupId.value)
     console.log('群组成员:', memberList)
     members.value = memberList || []
+
+    await refreshSharedData()
+
+    try {
+      const { authService } = await import('@/service/auth')
+      const userInfo = await authService.getUserInfo()
+      const mySmart = userInfo?.smart_account?.toLowerCase() || ''
+      const ownerSmart = String(groupInfo.value?.owner_address || '').toLowerCase()
+      isGroupOwner.value = !!mySmart && !!ownerSmart && mySmart === ownerSmart
+    } catch (e) {
+      isGroupOwner.value = false
+    }
     
     // 4. 加载成员备注
     await loadMemberRemarks()
@@ -396,6 +615,44 @@ const getMemberDisplayName = (address: string) => {
   return formatAddress(address)
 }
 
+const getFriendRoleIcon = (address: string) => {
+  const info = memberInfos.value[address]
+  const role = info?.roles?.[0] || ''
+  return UserRoleUtils.getRoleIcon(role)
+}
+
+const getFriendRoleLabels = (address: string) => {
+  const info = memberInfos.value[address]
+  const roles = info?.roles || []
+  return roles.slice(0, 3).map(r => UserRoleUtils.getRoleDisplayName(r))
+}
+
+const isFriendSelected = (address: string) => {
+  const norm = String(address || '').toLowerCase()
+  return selectedFriendAddresses.value.some(a => String(a || '').toLowerCase() === norm)
+}
+
+const toggleFriendSelection = (address: string) => {
+  const norm = String(address || '').toLowerCase()
+  if (!norm) return
+  if (isFriendSelected(address)) {
+    selectedFriendAddresses.value = selectedFriendAddresses.value.filter(a => String(a || '').toLowerCase() !== norm)
+  } else {
+    selectedFriendAddresses.value = [...selectedFriendAddresses.value, address]
+  }
+}
+
+const clearFriendSelection = () => {
+  selectedFriendAddresses.value = []
+}
+
+const selectAllFilteredFriends = () => {
+  const addrs = filteredFriendCandidates.value.map(f => f.address).filter(Boolean)
+  selectedFriendAddresses.value = Array.from(new Set(addrs.map(a => String(a))))
+}
+
+const selectedFriendCount = computed(() => selectedFriendAddresses.value.length)
+
 // 获取角色文本
 const getRoleText = (member: any) => {
   // TODO: 从用户信息服务获取真实角色
@@ -418,44 +675,256 @@ const getStatusText = (status: string) => {
   }
 }
 
-// 显示邀请类型选择弹窗
 const inviteToGroup = () => {
   if (!groupInfo.value) {
-    alert('群组信息未加载，请稍后重试')
+    uiService.toast('群组信息未加载，请稍后重试', { type: 'warning' })
     return
   }
-  showInviteTypeModal.value = true
-}
 
-// 关闭邀请类型选择弹窗
-const closeInviteTypeModal = () => {
-  showInviteTypeModal.value = false
-}
-
-// 确认邀请类型并跳转
-const confirmInviteType = (type: 'family' | 'doctor') => {
-  if (!groupInfo.value) {
-    alert('群组信息未加载')
-    return
-  }
-  
-  console.log('跳转到邀请页面，参数:', {
-    groupId: groupId.value,
-    groupName: groupInfo.value.group_name,
-    groupType: groupInfo.value.group_type,
-    type: type
-  })
-  
   router.push({
     name: 'Invitation',
-    query: { 
+    query: {
       groupId: groupId.value,
       groupName: groupInfo.value.group_name,
       groupType: groupInfo.value.group_type,
-      type: type
     }
   })
-  closeInviteTypeModal()
+}
+
+const extractAddressFromInput = (value: string): string | null => {
+  const addressRegex = /(0x[a-fA-F0-9]{40})/
+  const match = String(value || '').trim().match(addressRegex)
+  return match?.[1] || null
+}
+
+const addMemberByAddress = async (address: string): Promise<boolean> => {
+  if (!isGroupOwner.value) {
+    uiService.toast('只有群主可以添加成员', { type: 'warning' })
+    return false
+  }
+
+  if (!address) {
+    uiService.toast('地址格式不正确', { type: 'error' })
+    return false
+  }
+
+  try {
+    addingMember.value = true
+    await relationService.addGroupMember(groupId.value, address)
+    uiService.toast('成员已添加', { type: 'success' })
+
+    try {
+      const { aaService } = await import('@/service/accountAbstraction')
+      const wallet = aaService.getEOAWallet()
+      if (!wallet) {
+        throw new Error('无法获取钱包')
+      }
+
+      const { accessGroupKeyService } = await import('@/service/accessGroupKeyService')
+      const result = await accessGroupKeyService.shareGroupKeyToMembers(wallet, groupId.value, [address])
+      uiService.toast(`已发送组密钥(v${result.keyVersion})给新成员`, { type: 'success', durationMs: 2400 })
+    } catch (shareError: any) {
+      console.error('发送组密钥失败:', shareError)
+      uiService.toast('成员已添加，但发送组密钥失败，请稍后重试', { type: 'warning', durationMs: 2600 })
+    }
+
+    await loadGroupDetail()
+    return true
+  } catch (error: any) {
+    console.error('添加成员失败:', error)
+    uiService.toast('添加失败: ' + (error.message || '未知错误'), { type: 'error' })
+    return false
+  } finally {
+    addingMember.value = false
+  }
+}
+
+const loadFriendCandidates = async () => {
+  try {
+    friendsLoading.value = true
+
+    const myRelationships = await relationService.getMyRelationships()
+    const friends = (myRelationships.asOwner || [])
+      .filter(r => r.access_group_name === '好友')
+      .filter(r => r.status === 'active' || r.status === 'accepted')
+      .map(r => r.visitor_address)
+      .filter(addr => !!addr)
+
+    const existingMembers = new Set(
+      (members.value || [])
+        .map(m => String(m?.viewer_address || '').toLowerCase())
+        .filter(v => !!v)
+    )
+
+    const uniq: string[] = []
+    const seen = new Set<string>()
+    for (const addr of friends) {
+      const norm = String(addr).toLowerCase()
+      if (!norm) continue
+      if (existingMembers.has(norm)) continue
+      if (seen.has(norm)) continue
+      seen.add(norm)
+      uniq.push(addr)
+    }
+
+    if (uniq.length > 0) {
+      try {
+        const remarkMap = await memberRemarkService.getBatchRemarks(uniq)
+        memberRemarks.value = { ...memberRemarks.value, ...(remarkMap || {}) }
+      } catch (e) {
+        console.warn('加载好友备注失败（不影响添加）:', e)
+      }
+
+      for (const addr of uniq) {
+        if (memberInfos.value[addr]) continue
+        try {
+          const info = await memberInfoService.getMemberInfo(addr)
+          if (info) {
+            memberInfos.value[info.smart_account] = info
+            memberInfos.value[addr] = info
+            if (info.eoa_address) {
+              memberInfos.value[info.eoa_address] = info
+            }
+          }
+        } catch (e) {
+          console.warn('加载好友信息失败（不影响添加）:', e)
+        }
+      }
+    }
+
+    friendCandidates.value = uniq.map(address => ({ address }))
+  } catch (error: any) {
+    console.error('加载好友列表失败:', error)
+    uiService.toast('加载好友列表失败: ' + (error.message || '未知错误'), { type: 'warning' })
+    friendCandidates.value = []
+  } finally {
+    friendsLoading.value = false
+  }
+}
+
+const openAddMemberModal = async () => {
+  if (!isGroupOwner.value) {
+    uiService.toast('只有群主可以添加成员', { type: 'warning' })
+    return
+  }
+
+  showAddMemberModal.value = true
+  friendSearch.value = ''
+  clearFriendSelection()
+  await loadFriendCandidates()
+}
+
+const closeAddMemberModal = () => {
+  showAddMemberModal.value = false
+  clearFriendSelection()
+}
+
+const addMembersByAddresses = async (addresses: string[]): Promise<{ success: string[]; failed: { address: string; error: any }[] }> => {
+  const normalized = Array.from(
+    new Set(
+      (addresses || [])
+        .filter(Boolean)
+        .map(a => String(a).trim())
+        .filter(a => !!a)
+    )
+  )
+
+  if (!isGroupOwner.value) {
+    uiService.toast('只有群主可以添加成员', { type: 'warning' })
+    return { success: [], failed: normalized.map(a => ({ address: a, error: new Error('not_owner') })) }
+  }
+
+  if (normalized.length === 0) {
+    uiService.toast('请先选择要添加的好友', { type: 'warning' })
+    return { success: [], failed: [] }
+  }
+
+  const success: string[] = []
+  const failed: { address: string; error: any }[] = []
+
+  try {
+    addingMember.value = true
+
+    for (const addr of normalized) {
+      try {
+        await relationService.addGroupMember(groupId.value, addr)
+        success.push(addr)
+      } catch (e: any) {
+        failed.push({ address: addr, error: e })
+      }
+    }
+
+    if (success.length > 0) {
+      try {
+        const { aaService } = await import('@/service/accountAbstraction')
+        const wallet = aaService.getEOAWallet()
+        if (!wallet) {
+          throw new Error('无法获取钱包')
+        }
+        const { accessGroupKeyService } = await import('@/service/accessGroupKeyService')
+        const result = await accessGroupKeyService.shareGroupKeyToMembers(wallet, groupId.value, success)
+        uiService.toast(`已发送组密钥(v${result.keyVersion})给 ${success.length} 个新成员`, { type: 'success', durationMs: 2400 })
+      } catch (shareError: any) {
+        console.error('批量发送组密钥失败:', shareError)
+        uiService.toast('成员已添加，但批量发送组密钥失败，请稍后重试', { type: 'warning', durationMs: 2600 })
+      }
+    }
+
+    const summary = `添加完成：成功 ${success.length}，失败 ${failed.length}`
+    uiService.toast(summary, { type: failed.length > 0 ? 'warning' : 'success', durationMs: 2600 })
+
+    await loadGroupDetail()
+    if (showAddMemberModal.value) {
+      await loadFriendCandidates()
+    }
+  } finally {
+    addingMember.value = false
+  }
+
+  return { success, failed }
+}
+
+const addSelectedFriends = async () => {
+  const { success } = await addMembersByAddresses(selectedFriendAddresses.value)
+  if (success.length > 0) {
+    closeAddMemberModal()
+  }
+}
+
+const filteredFriendCandidates = computed(() => {
+  const q = friendSearch.value.trim().toLowerCase()
+  if (!q) return friendCandidates.value
+
+  return friendCandidates.value.filter(f => {
+    const addr = String(f.address || '').toLowerCase()
+    const name = String(getMemberDisplayName(f.address) || '').toLowerCase()
+    const remark = String(memberRemarks.value[f.address] || '').toLowerCase()
+    return addr.includes(q) || name.includes(q) || remark.includes(q)
+  })
+})
+
+const addMemberByPrompt = async () => {
+  const input = await uiService.prompt({
+    title: '添加成员',
+    message: '请输入成员 Smart Account 地址',
+    placeholder: '0x...',
+    confirmText: '添加',
+    cancelText: '取消',
+  })
+  if (!input) return
+
+  const address = extractAddressFromInput(input)
+  const ok = await addMemberByAddress(address || '')
+  if (ok) {
+    closeAddMemberModal()
+  }
+}
+
+const addMemberToGroup = async (address: string) => {
+  const ok = await addMemberByAddress(address)
+  if (ok) {
+    closeAddMemberModal()
+  }
 }
 
 // 显示成员操作菜单
@@ -474,12 +943,12 @@ const suspendMember = async () => {
   
   try {
     await relationService.suspendRelationship(selectedMember.value.id)
-    alert('已暂停该成员的访问权限')
+    uiService.toast('已暂停该成员的访问权限', { type: 'success' })
     await loadGroupDetail()
     closeMemberActions()
   } catch (error: any) {
     console.error('暂停失败:', error)
-    alert('操作失败: ' + (error.message || '未知错误'))
+    uiService.toast('操作失败: ' + (error.message || '未知错误'), { type: 'error' })
   }
 }
 
@@ -487,18 +956,48 @@ const suspendMember = async () => {
 const revokeMember = async () => {
   if (!selectedMember.value) return
   
-  if (!confirm('确定要撤销该成员的授权吗？此操作不可恢复。')) {
+  const ok = await uiService.confirm('确定要撤销该成员的授权吗？此操作不可恢复。', {
+    title: '确认撤销',
+    confirmText: '撤销',
+    cancelText: '取消',
+  })
+  if (!ok) {
     return
   }
   
   try {
     await relationService.revokeRelationship(selectedMember.value.id)
-    alert('已撤销该成员的授权')
+
+    try {
+      const { aaService } = await import('@/service/accountAbstraction')
+      const wallet = aaService.getEOAWallet()
+      if (!wallet) {
+        throw new Error('无法获取钱包')
+      }
+
+      const { accessGroupKeyService } = await import('@/service/accessGroupKeyService')
+      const result = await accessGroupKeyService.rotateGroupKeyAndShare(
+        wallet,
+        groupId.value,
+        selectedMember.value.viewer_address
+      )
+
+      uiService.toast(
+        `已撤销该成员的授权，已轮换组密钥(v${result.keyVersion})并发送给 ${result.sharedCount} 个成员`,
+        { type: 'success', durationMs: 2800 }
+      )
+    } catch (rotateError: any) {
+      console.error('轮换组密钥失败:', rotateError)
+      await uiService.alert('已撤销该成员的授权，但密钥轮换失败，请稍后重试（否则撤权无法生效）', {
+        title: '提示',
+      })
+    }
+
     await loadGroupDetail()
     closeMemberActions()
   } catch (error: any) {
     console.error('撤销失败:', error)
-    alert('操作失败: ' + (error.message || '未知错误'))
+    uiService.toast('操作失败: ' + (error.message || '未知错误'), { type: 'error' })
   }
 }
 
@@ -532,7 +1031,7 @@ const saveRemark = async () => {
     closeRemarkModal()
   } catch (error) {
     console.error('保存备注失败:', error)
-    alert('保存失败，请重试')
+    uiService.toast('保存失败，请重试', { type: 'error' })
   }
 }
 
@@ -542,7 +1041,12 @@ const deleteRemark = async () => {
     return
   }
   
-  if (!confirm('确定要删除该备注吗？')) {
+  const ok = await uiService.confirm('确定要删除该备注吗？', {
+    title: '确认删除',
+    confirmText: '删除',
+    cancelText: '取消',
+  })
+  if (!ok) {
     return
   }
   
@@ -554,7 +1058,7 @@ const deleteRemark = async () => {
     closeRemarkModal()
   } catch (error) {
     console.error('删除备注失败:', error)
-    alert('删除失败，请重试')
+    uiService.toast('删除失败，请重试', { type: 'error' })
   }
 }
 
@@ -564,6 +1068,37 @@ const goBack = () => {
 
 onMounted(async () => {
   await loadGroupDetail()
+
+  const handler = (ev: any) => {
+    try {
+      const payload = ev?.detail?.payload
+      const gid = payload?.group_id != null ? String(payload.group_id) : ''
+      if (!gid || gid !== String(groupId.value)) return
+
+      const plansShared = payload?.plans_shared != null ? Number(payload.plans_shared) : 0
+      const statsShared = payload?.stats_shared != null ? Number(payload.stats_shared) : 0
+      const keyVersion = payload?.key_version != null ? Number(payload.key_version) : undefined
+
+      refreshSharedData()
+      uiService.toast(
+        `同步完成：计划 ${plansShared} 条，统计 ${statsShared} 条${keyVersion != null ? `，密钥版本 v${keyVersion}` : ''}`,
+        { type: 'success', durationMs: 2800 }
+      )
+    } catch (e) {
+      console.warn('处理 sync_done 事件失败（不影响页面）:', e)
+    }
+  }
+
+  ;(window as any).__syncDoneHandler = handler
+  window.addEventListener('sync_done', handler as any)
+})
+
+onBeforeUnmount(() => {
+  const handler = (window as any).__syncDoneHandler
+  if (handler) {
+    window.removeEventListener('sync_done', handler)
+    ;(window as any).__syncDoneHandler = undefined
+  }
 })
 
 // 页面激活时也重新加载（从其他页面返回时）
@@ -611,16 +1146,34 @@ onActivated(async () => {
   background-color: #4299e1;
   color: white;
   border: none;
-  width: 32px;
-  height: 32px;
   border-radius: 50%;
-  font-size: 1.2rem;
-  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  font-size: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
 }
 
+.sync-btn {
+  margin-top: 12px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.sync-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .group-info-card {
   background: #667eea;
@@ -714,13 +1267,37 @@ onActivated(async () => {
 
 .section-header {
   margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
+
+ .header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+ }
 
 .section-title {
   font-size: 1.1rem;
   font-weight: 600;
   color: #2d3748;
   margin: 0;
+}
+
+.refresh-btn {
+  background: none;
+  border: 1px solid #e2e8f0;
+  color: #4a5568;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .empty-state {
@@ -858,6 +1435,165 @@ onActivated(async () => {
   justify-content: center;
   z-index: 1000;
 }
+
+ .modal-overlay.modal-center {
+  align-items: center;
+  padding: 20px;
+ }
+
+ .friend-picker-modal {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+ }
+
+ .friend-picker-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+ }
+
+ .friend-search-input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 14px;
+ }
+
+ .friend-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 46vh;
+  overflow-y: auto;
+ }
+
+ .friend-item {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+ }
+
+ .friend-item.selected {
+  border-color: #667eea;
+  background: #eef2ff;
+ }
+
+ .friend-select-checkbox {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+ }
+
+ .friend-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+ }
+
+ .friend-info {
+  flex: 1;
+  min-width: 0;
+ }
+
+ .friend-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+ }
+
+ .friend-address {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #718096;
+  font-family: monospace;
+ }
+
+ .friend-tags {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+ }
+
+ .friend-tag {
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: #e6fffa;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+  font-size: 11px;
+  font-weight: 600;
+ }
+
+ .friend-add-btn {
+  border: none;
+  background: #4299e1;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+ }
+
+ .friend-add-btn:disabled {
+  opacity: 0.6;
+ }
+
+ .friend-picker-footer {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+ }
+
+ .friend-footer-spacer {
+  flex: 1;
+ }
+
+ .friend-footer-btn {
+  border: none;
+  background: #edf2f7;
+  color: #4a5568;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+ }
+
+ .friend-footer-btn:disabled {
+  opacity: 0.6;
+ }
+
+ .friend-add-selected-btn {
+  border: none;
+  background: #667eea;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 800;
+ }
+
+ .friend-add-selected-btn:disabled {
+  opacity: 0.6;
+ }
 
 .action-sheet,
 .invite-type-sheet {

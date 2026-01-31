@@ -1,0 +1,274 @@
+﻿
+==============================
+DATABASE: bs_example
+==============================
+-- tables
+ table_schema | table_name 
+--------------+------------
+ public       | users
+(1 行记录)
+
+-- views
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema | sequence_name 
+-----------------+---------------
+ public          | users_id_seq
+(1 行记录)
+
+
+==============================
+DATABASE: bs_gateway_db
+==============================
+-- tables
+ table_schema |    table_name    
+--------------+------------------
+ public       | permissions
+ public       | role_permissions
+ public       | roles
+(3 行记录)
+
+-- views
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema |   sequence_name    
+-----------------+--------------------
+ public          | permissions_id_seq
+ public          | roles_id_seq
+(2 行记录)
+
+
+==============================
+DATABASE: bs_medication_db
+==============================
+-- tables
+ table_schema |     table_name     
+--------------+--------------------
+ public       | common_medications
+ public       | medication_plans
+(2 行记录)
+
+-- views
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema | sequence_name 
+-----------------+---------------
+(0 行记录)
+
+
+==============================
+DATABASE: bs_notification_db
+==============================
+-- tables
+ table_schema |      table_name       
+--------------+-----------------------
+ public       | devices
+ public       | notification_settings
+ public       | notifications
+ public       | websocket_connections
+(4 行记录)
+
+-- views
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema | sequence_name 
+-----------------+---------------
+(0 行记录)
+
+
+==============================
+DATABASE: bs_relationship_db
+==============================
+-- tables
+ table_schema |       table_name       
+--------------+------------------------
+ public       | access_group_templates
+ public       | access_groups
+ public       | invitations
+ public       | relationships
+(4 行记录)
+
+-- views
+ table_schema |       table_name       
+--------------+------------------------
+ public       | v_access_groups_detail
+(1 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema |         sequence_name         
+-----------------+-------------------------------
+ public          | access_group_templates_id_seq
+ public          | access_groups_id_seq
+ public          | invitations_id_seq
+ public          | relationships_id_seq
+(4 行记录)
+
+
+==============================
+DATABASE: bs_secure_exchange_db
+==============================
+-- tables
+ table_schema |       table_name        
+--------------+-------------------------
+ public       | encrypted_messages
+ public       | exchange_sessions
+ public       | message_acknowledgments
+(3 行记录)
+
+-- views
+ table_schema |    table_name     
+--------------+-------------------
+ public       | v_active_sessions
+ public       | v_message_stats
+(2 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema |         sequence_name          
+-----------------+--------------------------------
+ public          | message_acknowledgments_id_seq
+(1 行记录)
+
+
+==============================
+DATABASE: bs_userInfo_db
+==============================
+-- tables
+ table_schema |   table_name   
+--------------+----------------
+ public       | person_records
+(1 行记录)
+
+-- views
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema |     sequence_name     
+-----------------+-----------------------
+ public          | person_records_id_seq
+(1 行记录)
+
+
+==============================
+DATABASE: bs_user_service_db
+==============================
+-- tables
+ table_schema | table_name 
+--------------+------------
+ public       | user_roles
+ public       | users
+(2 行记录)
+
+-- views
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema | sequence_name 
+-----------------+---------------
+(0 行记录)
+
+
+==============================
+DATABASE: migration_db
+==============================
+-- tables
+ table_schema |     table_name     
+--------------+--------------------
+ public       | migration_sessions
+(1 行记录)
+
+-- views
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema | sequence_name 
+-----------------+---------------
+(0 行记录)
+
+
+==============================
+DATABASE: root
+==============================
+-- tables
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- views
+ table_schema | table_name 
+--------------+------------
+(0 行记录)
+
+-- matviews
+ schemaname | matviewname 
+------------+-------------
+(0 行记录)
+
+-- sequences
+ sequence_schema | sequence_name 
+-----------------+---------------
+(0 行记录)
+
+

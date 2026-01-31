@@ -149,6 +149,30 @@ async function getEncryptedMessages(call, callback) {
     }
 }
 
+async function getPlanShareRecipients(call, callback) {
+    try {
+        const { plan_id, sender_address } = call.request;
+
+        if (!plan_id) {
+            throw new Error('plan_id is required');
+        }
+
+        const recipient_addresses = await messageService.getPlanShareRecipients(plan_id, sender_address);
+
+        callback(null, {
+            recipient_addresses,
+            total_count: recipient_addresses.length
+        });
+    } catch (error) {
+        console.error('❌ RPC: 获取计划分享收件人失败:', error.message);
+        const grpc = require('@grpc/grpc-js');
+        callback({
+            code: grpc.status.INTERNAL,
+            message: error.message
+        });
+    }
+}
+
 /**
  * 获取单个消息详情
  * @param {Object} call - gRPC调用对象
@@ -292,6 +316,7 @@ async function markMultipleAsRead(call, callback) {
 module.exports = {
     sendEncryptedMessage,
     getEncryptedMessages,
+    getPlanShareRecipients,
     getMessageById,
     markMessageAsRead,
     revokeMessage,

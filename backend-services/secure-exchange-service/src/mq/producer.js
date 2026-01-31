@@ -17,7 +17,14 @@ async function publishNotification(notification) {
 
     // 确定优先级和路由键
     let priority = (notification.priority || 'normal').toLowerCase();
-    
+    // 将 urgent 映射到 high（因为通知服务只有 high/normal/low）
+    if (priority === 'urgent') {
+      priority = 'high';
+    }
+    if (!['high', 'normal', 'low'].includes(priority)) {
+      priority = 'normal';
+    }
+
     // ✅ 转为大写，匹配通知服务的数据库格式
     const normalizedPriority = priority.toUpperCase();
     
@@ -35,7 +42,7 @@ async function publishNotification(notification) {
     // 发布消息到指定的交换机
     channel.publish(EXCHANGE_NAME, routingKey, message, {
       persistent: true, // 将消息标记为持久化
-      priority: priority === 'high' ? 10 : priority === 'urgent' ? 20 : 5
+      priority: priority === 'high' ? 10 : priority === 'low' ? 1 : 5
     });
 
     console.log(`[MQ Producer] Sent notification '${routingKey}' to ${notification.recipient_address}`);

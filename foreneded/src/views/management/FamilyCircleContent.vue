@@ -98,6 +98,7 @@ import { ref, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { relationService, type AccessGroupStats } from '@/service/relation'
 import { authService } from '@/service/auth'
+import { uiService } from '@/service/ui'
 
 const router = useRouter()
 
@@ -160,7 +161,7 @@ const hideCreateModal = () => {
 // 创建自定义群组
 const createCustomGroup = async () => {
   if (!newGroupName.value.trim()) {
-    alert('请输入群组名称')
+    uiService.toast('请输入群组名称', { type: 'warning' })
     return
   }
   
@@ -182,14 +183,14 @@ const createCustomGroup = async () => {
       userInfo.smart_account
     )
     
-    alert('群组创建成功！')
+    uiService.toast('群组创建成功！', { type: 'success' })
     hideCreateModal()
     
     // 重新加载群组列表
     await loadAccessGroups()
   } catch (error: any) {
     console.error('创建群组失败:', error)
-    alert('创建失败: ' + (error.message || '未知错误'))
+    uiService.toast('创建失败: ' + (error.message || '未知错误'), { type: 'error' })
   }
 }
 

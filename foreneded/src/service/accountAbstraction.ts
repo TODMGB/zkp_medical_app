@@ -205,6 +205,31 @@ class AccountAbstractionService {
     }
   }
 
+  public clearLocalSession(): void {
+    this.eoaWallet = null;
+    this.abstractAccountAddress = null;
+  }
+
+  public async loginWithDecryptedWallet(decryptedWallet: ethers.Wallet | ethers.HDNodeWallet): Promise<void> {
+    try {
+      this.eoaWallet = decryptedWallet.connect(this.provider);
+
+      console.log('EOA地址:', this.eoaWallet.address);
+
+      const { value } = await Preferences.get({ key: WALLET_KEYS.ACCOUNT_ADDRESS });
+      this.abstractAccountAddress = value;
+
+      if (this.abstractAccountAddress) {
+        console.log('抽象账户地址:', this.abstractAccountAddress);
+      }
+
+      console.log('✅ 登录成功！');
+    } catch (error) {
+      console.error('登录失败:', error);
+      throw error;
+    }
+  }
+
   /**
    * 调用后端登录API（需要先调用login方法解密EOA）
    */

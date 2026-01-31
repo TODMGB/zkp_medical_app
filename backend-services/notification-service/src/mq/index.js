@@ -29,6 +29,7 @@ async function startConsumers(wss) {
     // 绑定两种格式的 routing key
     await channel.bindQueue(highQueue.queue, EXCHANGE_NAME, 'notification.high');
     await channel.bindQueue(highQueue.queue, EXCHANGE_NAME, 'notification.high.*');
+    await channel.bindQueue(highQueue.queue, EXCHANGE_NAME, 'notification.high.#');
     console.log(`[MQ Consumer] Queue "${highQueue.queue}" is ready (HIGH priority)`);
     
     // ==========================================
@@ -40,6 +41,7 @@ async function startConsumers(wss) {
     // 绑定两种格式的 routing key
     await channel.bindQueue(normalQueue.queue, EXCHANGE_NAME, 'notification.normal');
     await channel.bindQueue(normalQueue.queue, EXCHANGE_NAME, 'notification.normal.*');
+    await channel.bindQueue(normalQueue.queue, EXCHANGE_NAME, 'notification.normal.#');
     console.log(`[MQ Consumer] Queue "${normalQueue.queue}" is ready (NORMAL priority)`);
     
     // ==========================================
@@ -51,6 +53,7 @@ async function startConsumers(wss) {
     // 绑定两种格式的 routing key
     await channel.bindQueue(lowQueue.queue, EXCHANGE_NAME, 'notification.low');
     await channel.bindQueue(lowQueue.queue, EXCHANGE_NAME, 'notification.low.*');
+    await channel.bindQueue(lowQueue.queue, EXCHANGE_NAME, 'notification.low.#');
     console.log(`[MQ Consumer] Queue "${lowQueue.queue}" is ready (LOW priority)`);
     
     // ==========================================

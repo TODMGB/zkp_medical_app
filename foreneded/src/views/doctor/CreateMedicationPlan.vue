@@ -180,6 +180,48 @@
           <div class="step-badge">4</div>
           <h2>设置提醒</h2>
         </div>
+
+        <div class="reminder-bulk">
+          <div class="bulk-row">
+            <div class="bulk-label">批量添加</div>
+            <div class="bulk-times">
+              <button type="button" class="bulk-time-btn" @click="bulkReminderTime = '08:00'">08:00</button>
+              <button type="button" class="bulk-time-btn" @click="bulkReminderTime = '12:00'">12:00</button>
+              <button type="button" class="bulk-time-btn" @click="bulkReminderTime = '18:00'">18:00</button>
+              <button type="button" class="bulk-time-btn" @click="bulkReminderTime = '21:00'">21:00</button>
+            </div>
+          </div>
+
+          <div class="bulk-form">
+            <div class="form-group">
+              <label>提醒时间</label>
+              <input v-model="bulkReminderTime" type="time" class="input-field small" />
+            </div>
+            <div class="form-group">
+              <label>提醒日期</label>
+              <select v-model="bulkReminderDays" class="select-field">
+                <option value="everyday">每天</option>
+                <option value="weekdays">工作日</option>
+                <option value="weekends">周末</option>
+              </select>
+            </div>
+            <div class="form-group full-width">
+              <label>提醒文案</label>
+              <input v-model="bulkMessageTemplate" type="text" class="input-field" />
+            </div>
+          </div>
+
+          <button type="button" class="bulk-apply-btn" @click="addRemindersForAllMedications">
+            <Plus class="icon" />
+            <span>为所有药物生成提醒</span>
+          </button>
+        </div>
+
+        <div v-if="planForm.reminders.length === 0" class="empty-state">
+          <Pill class="empty-icon" />
+          <p>暂无提醒，请先生成或手动添加</p>
+        </div>
+
         <div class="reminders-list">
           <div 
             v-for="(reminder, index) in planForm.reminders" 
@@ -213,6 +255,14 @@
                   type="time" 
                   class="input-field small"
                 />
+              </div>
+              <div class="form-group">
+                <label>提醒日期</label>
+                <select v-model="reminder.reminder_days" class="select-field">
+                  <option value="everyday">每天</option>
+                  <option value="weekdays">工作日</option>
+                  <option value="weekends">周末</option>
+                </select>
               </div>
               <div class="form-group full-width">
                 <label>提醒消息</label>
@@ -323,6 +373,7 @@ import { aaService } from '@/service/accountAbstraction';
 import { memberInfoService, type MemberInfo } from '@/service/memberInfo';
 import { relationService } from '@/service/relation';
 import { secureExchangeService } from '@/service/secureExchange';
+import { uiService } from '@/service/ui';
 import { 
   ArrowLeft, 
   User, 
@@ -352,6 +403,20 @@ const patients = ref<MemberInfo[]>([]);
 const searchKeyword = ref('');
 const searchResults = ref<Medication[]>([]);
 
+const bulkReminderTime = ref('08:00');
+const bulkReminderDays = ref<'everyday' | 'weekdays' | 'weekends'>('everyday');
+const bulkMessageTemplate = ref('请按时服用{medication}');
+
+function formatLocalDateOnly(date: Date): string {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function buildReminderMessage(medicationName: string): string {
+  const name = medicationName || '';
+  return String(bulkMessageTemplate.value || '').replace('{medication}', name);
+}
+
 // 计划表单
 const planForm = ref<{
   plan_name: string;
@@ -364,8 +429,8 @@ const planForm = ref<{
 }>({
   plan_name: '',
   diagnosis: '',
-  start_date: new Date().toISOString().split('T')[0],
-  end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 默认90天
+  start_date: formatLocalDateOnly(new Date()),
+  end_date: formatLocalDateOnly(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)),
   medications: [],
   reminders: [],
   notes: '',
@@ -447,6 +512,10 @@ async function loadPatients() {
     }
     
     patients.value = allPatients;
+
+    if (!selectedPatient.value && patients.value.length === 1) {
+      selectedPatient.value = patients.value[0];
+    }
     console.log('✅ 最终患者列表:', patients.value.length, '个');
     console.log('  患者详情:', patients.value.map(p => ({ 
       name: p.username, 
@@ -461,7 +530,7 @@ async function loadPatients() {
     }
   } catch (error: any) {
     console.error('❌ 加载患者列表失败:', error);
-    alert('加载患者列表失败: ' + error.message);
+    uiService.toast('加载患者列表失败: ' + error.message, { type: 'error' });
   } finally {
     loadingPatients.value = false;
   }
@@ -486,7 +555,7 @@ async function checkMessagesAndRefresh() {
     // 获取钱包
     const wallet = await aaService.getEOAWallet();
     if (!wallet) {
-      alert('无法获取钱包');
+      uiService.toast('无法获取钱包', { type: 'error' });
       return;
     }
     
@@ -503,13 +572,13 @@ async function checkMessagesAndRefresh() {
     await loadPatients();
     
     if (patients.value.length > 0) {
-      alert(`✅ 成功获取到 ${patients.value.length} 个患者！`);
+      uiService.toast(`✅ 成功获取到 ${patients.value.length} 个患者！`, { type: 'success', durationMs: 2600 });
     } else {
-      alert('暂未收到患者信息，请确认患者已接受邀请并发送信息');
+      await uiService.alert('暂未收到患者信息，请确认患者已接受邀请并发送信息', { title: '提示' });
     }
   } catch (error: any) {
     console.error('检查消息失败:', error);
-    alert('检查消息失败: ' + error.message);
+    uiService.toast('检查消息失败: ' + error.message, { type: 'error' });
   } finally {
     loadingPatients.value = false;
   }
@@ -552,7 +621,7 @@ async function searchMedications() {
 function addMedication(med: Medication) {
   // 检查是否已添加
   if (planForm.value.medications.some(m => m.medication_id === med.medication_id)) {
-    alert('该药物已添加');
+    uiService.toast('该药物已添加', { type: 'warning' });
     return;
   }
   
@@ -571,6 +640,16 @@ function addMedication(med: Medication) {
   };
   
   planForm.value.medications.push(medicationDetail);
+
+  if (!planForm.value.reminders.some(r => r.medication_code === medicationDetail.medication_code)) {
+    planForm.value.reminders.push({
+      medication_code: medicationDetail.medication_code,
+      medication_name: medicationDetail.medication_name,
+      reminder_time: bulkReminderTime.value,
+      reminder_days: bulkReminderDays.value,
+      reminder_message: buildReminderMessage(medicationDetail.medication_name),
+    });
+  }
   
   // 清空搜索
   searchKeyword.value = '';
@@ -583,7 +662,11 @@ function addMedication(med: Medication) {
  * 移除药物
  */
 function removeMedication(index: number) {
+  const removed = planForm.value.medications[index];
   planForm.value.medications.splice(index, 1);
+  if (removed?.medication_code) {
+    planForm.value.reminders = planForm.value.reminders.filter(r => r.medication_code !== removed.medication_code);
+  }
 }
 
 /**
@@ -592,17 +675,46 @@ function removeMedication(index: number) {
 function addReminder() {
   const firstMed = planForm.value.medications[0];
   if (!firstMed) {
-    alert('请先添加药物');
+    uiService.toast('请先添加药物', { type: 'warning' });
     return;
   }
   
   planForm.value.reminders.push({
     medication_code: firstMed.medication_code,
     medication_name: firstMed.medication_name,
-    reminder_time: '08:00',
-    reminder_days: 'everyday',
-    reminder_message: `请按时服用${firstMed.medication_name}`,
+    reminder_time: bulkReminderTime.value,
+    reminder_days: bulkReminderDays.value,
+    reminder_message: buildReminderMessage(firstMed.medication_name),
   });
+}
+
+function addRemindersForAllMedications() {
+  if (planForm.value.medications.length === 0) {
+    uiService.toast('请先添加药物', { type: 'warning' });
+    return;
+  }
+
+  let added = 0;
+  for (const med of planForm.value.medications) {
+    if (!med?.medication_code) continue;
+    const exists = planForm.value.reminders.some(r => r.medication_code === med.medication_code && r.reminder_time === bulkReminderTime.value);
+    if (exists) continue;
+
+    planForm.value.reminders.push({
+      medication_code: med.medication_code,
+      medication_name: med.medication_name,
+      reminder_time: bulkReminderTime.value,
+      reminder_days: bulkReminderDays.value,
+      reminder_message: buildReminderMessage(med.medication_name),
+    });
+    added += 1;
+  }
+
+  if (added === 0) {
+    uiService.toast('没有需要新增的提醒', { type: 'info' });
+    return;
+  }
+  uiService.toast(`已添加 ${added} 条提醒`, { type: 'success' });
 }
 
 /**
@@ -617,21 +729,45 @@ function removeReminder(index: number) {
  */
 async function savePlan() {
   if (!canSave.value) {
-    alert('请填写必填项');
+    uiService.toast('请填写必填项', { type: 'warning' });
     return;
   }
+
+  if (!planForm.value.start_date || !planForm.value.end_date) {
+    uiService.toast('请设置开始和结束日期', { type: 'warning' });
+    return;
+  }
+
+  if (planForm.value.start_date > planForm.value.end_date) {
+    uiService.toast('开始日期不能晚于结束日期', { type: 'warning' });
+    return;
+  }
+
   if (planForm.value.reminders.length === 0) {
-    alert('请至少添加一个用药提醒');
+    uiService.toast('请至少添加一个用药提醒', { type: 'warning' });
     return;
   }
+
+  const validReminders = planForm.value.reminders.filter(r => !!r.medication_code && !!r.reminder_time);
   const medsWithoutReminders = planForm.value.medications.filter(med => 
-    !planForm.value.reminders.some(rem => rem.medication_code === med.medication_code)
+    !validReminders.some(rem => rem.medication_code === med.medication_code)
   );
   if (medsWithoutReminders.length > 0) {
     const names = medsWithoutReminders.map(m => m.medication_name || m.medication_code).join('、');
-    alert(`以下药物尚未设置提醒，请先补充：${names}`);
+    await uiService.alert(`以下药物尚未设置提醒，请先补充：${names}`, { title: '请完善提醒' });
     return;
   }
+
+  const reminders = validReminders.map(r => {
+    const med = planForm.value.medications.find(m => m.medication_code === r.medication_code);
+    const medicationName = med?.medication_name || r.medication_name || r.medication_code;
+    return {
+      ...r,
+      medication_name: medicationName,
+      reminder_days: (r.reminder_days as any) || 'everyday',
+      reminder_message: r.reminder_message || buildReminderMessage(medicationName),
+    } as MedicationReminder;
+  });
   
   try {
     isSaving.value = true;
@@ -659,7 +795,7 @@ async function savePlan() {
       start_date: planForm.value.start_date,
       end_date: planForm.value.end_date,
       medications: planForm.value.medications,
-      reminders: planForm.value.reminders,
+      reminders,
       notes: planForm.value.notes || '',
     };
     
@@ -685,16 +821,16 @@ async function savePlan() {
       console.log('✅ 通知患者成功！');
     } catch (error) {
       console.error('❌ 通知患者失败:', error);
-      alert('用药计划已创建，但通知患者失败: ' + error);
+      uiService.toast('用药计划已创建，但通知患者失败', { type: 'warning', durationMs: 3000 });
       // 继续执行，因为计划已经创建成功
     }
     
     // 6. 跳转到计划列表
-    alert('用药计划创建成功！');
+    uiService.toast('用药计划创建成功！', { type: 'success', durationMs: 2200 });
     router.push('/doctor/medication-plans');
   } catch (error: any) {
     console.error('❌ 创建用药计划失败:', error);
-    alert('创建用药计划失败: ' + error.message);
+    uiService.toast('创建用药计划失败: ' + error.message, { type: 'error' });
   } finally {
     isSaving.value = false;
   }
@@ -1099,6 +1235,86 @@ function goBack() {
 }
 
 /* 提醒列表 */
+.reminder-bulk {
+  background: #f0f4ff;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.bulk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bulk-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+  white-space: nowrap;
+}
+
+.bulk-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.bulk-time-btn {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #c7d2fe;
+  background: white;
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bulk-time-btn:hover {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.bulk-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bulk-form .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.bulk-apply-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  background: #667eea;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.3s;
+}
+
+.bulk-apply-btn:hover {
+  background: #5a67d8;
+}
+
 .reminders-list {
   margin-bottom: 16px;
 }
@@ -1126,7 +1342,7 @@ function goBack() {
 
 .reminder-form {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
 }
 
@@ -1465,6 +1681,19 @@ function goBack() {
   }
 
   .reminder-form {
+    grid-template-columns: 1fr;
+  }
+
+  .bulk-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .bulk-times {
+    justify-content: flex-start;
+  }
+
+  .bulk-form {
     grid-template-columns: 1fr;
   }
 

@@ -58,6 +58,24 @@
           </div>
           <ArrowRight class="card-arrow" />
         </div>
+
+        <div class="option-card" @click="recoverAccount">
+          <div class="card-icon-wrapper">
+            <RefreshCcw class="card-icon" />
+          </div>
+          <div class="card-content">
+            <h3 class="card-title">恢复账号</h3>
+            <p class="card-description">
+              通过身份信息找回账号并发起守护人恢复流程
+            </p>
+            <div class="card-features">
+              <span class="feature">• 身份验证</span>
+              <span class="feature">• 生成新密钥</span>
+              <span class="feature">• 等待守护人确认</span>
+            </div>
+          </div>
+          <ArrowRight class="card-arrow" />
+        </div>
       </div>
       
       <!-- 底部提示 -->
@@ -79,7 +97,8 @@ import {
   Sparkles, 
   Smartphone, 
   ArrowRight, 
-  Lock 
+  Lock,
+  RefreshCcw
 } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -96,6 +115,10 @@ const createNewAccount = () => {
 // 导入已有账户
 const importExistingAccount = () => {
   router.push('/import-account');
+};
+
+const recoverAccount = () => {
+  router.push('/recover-account');
 };
 </script>
 

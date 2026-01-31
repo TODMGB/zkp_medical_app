@@ -69,7 +69,7 @@ const router = useRouter()
 
 const handleSetup = () => {
   // 跳转到家庭圈页面开始添加守护人
-  router.push('/family-circle')
+  router.push('/guardian-setup')
 }
 
 const handleLater = () => {

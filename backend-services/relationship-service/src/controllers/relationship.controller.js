@@ -60,6 +60,227 @@ async function createAccessGroup(req, res) {
   }
 }
 
+async function createFriendRequest(req, res) {
+  try {
+    console.log('🔄 [Relationship Controller] 收到创建好友申请请求');
+    console.log('📤 [Request Body]', JSON.stringify(req.body, null, 2));
+
+    const requesterAddress = req.headers['x-user-smart-account'];
+    const recipient = req.body.recipient_address || req.body.recipientAddress;
+    const message = req.body.message || null;
+
+    if (!requesterAddress || !recipient) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数',
+        code: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+
+    const result = await relationshipService.createFriendRequest(requesterAddress, recipient, message);
+
+    return res.status(201).json({
+      success: true,
+      message: result.existing ? '好友申请已存在' : '好友申请已发送',
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ [Error] 创建好友申请失败:', error);
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || '创建好友申请失败',
+      code: 'CREATE_FRIEND_REQUEST_FAILED'
+    });
+  }
+}
+
+async function getIncomingFriendRequests(req, res) {
+  try {
+    console.log('🔄 [Relationship Controller] 收到获取收到的好友申请请求');
+    const userAddress = req.headers['x-user-smart-account'];
+    const status = req.query.status || 'pending';
+
+    if (!userAddress) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少用户标识',
+        code: 'MISSING_USER_IDENTIFIER'
+      });
+    }
+
+    const requests = await relationshipService.getIncomingFriendRequests(userAddress, status);
+    return res.status(200).json({
+      success: true,
+      data: requests
+    });
+  } catch (error) {
+    console.error('❌ [Error] 获取收到的好友申请失败:', error);
+    return res.status(500).json({
+      success: false,
+      message: '获取收到的好友申请失败',
+      code: 'GET_INCOMING_FRIEND_REQUESTS_FAILED'
+    });
+  }
+}
+
+async function getOutgoingFriendRequests(req, res) {
+  try {
+    console.log('🔄 [Relationship Controller] 收到获取发出的好友申请请求');
+    const userAddress = req.headers['x-user-smart-account'];
+    const status = req.query.status || 'pending';
+
+    if (!userAddress) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少用户标识',
+        code: 'MISSING_USER_IDENTIFIER'
+      });
+    }
+
+    const requests = await relationshipService.getOutgoingFriendRequests(userAddress, status);
+    return res.status(200).json({
+      success: true,
+      data: requests
+    });
+  } catch (error) {
+    console.error('❌ [Error] 获取发出的好友申请失败:', error);
+    return res.status(500).json({
+      success: false,
+      message: '获取发出的好友申请失败',
+      code: 'GET_OUTGOING_FRIEND_REQUESTS_FAILED'
+    });
+  }
+}
+
+async function acceptFriendRequest(req, res) {
+  try {
+    console.log('🔄 [Relationship Controller] 收到同意好友申请请求');
+    console.log('📤 [Request Body]', JSON.stringify(req.body, null, 2));
+
+    const userAddress = req.headers['x-user-smart-account'];
+    const friendRequestId = req.body.id || req.body.friend_request_id;
+
+    if (!userAddress || !friendRequestId) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数',
+        code: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+
+    const result = await relationshipService.acceptFriendRequest(userAddress, friendRequestId);
+    return res.status(200).json({
+      success: true,
+      message: '好友申请已通过',
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ [Error] 同意好友申请失败:', error);
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || '同意好友申请失败',
+      code: 'ACCEPT_FRIEND_REQUEST_FAILED'
+    });
+  }
+}
+
+async function rejectFriendRequest(req, res) {
+  try {
+    console.log('🔄 [Relationship Controller] 收到拒绝好友申请请求');
+    console.log('📤 [Request Body]', JSON.stringify(req.body, null, 2));
+
+    const userAddress = req.headers['x-user-smart-account'];
+    const friendRequestId = req.body.id || req.body.friend_request_id;
+
+    if (!userAddress || !friendRequestId) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数',
+        code: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+
+    const result = await relationshipService.rejectFriendRequest(userAddress, friendRequestId);
+    return res.status(200).json({
+      success: true,
+      message: '好友申请已拒绝',
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ [Error] 拒绝好友申请失败:', error);
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || '拒绝好友申请失败',
+      code: 'REJECT_FRIEND_REQUEST_FAILED'
+    });
+  }
+}
+
+async function cancelFriendRequest(req, res) {
+  try {
+    console.log('🔄 [Relationship Controller] 收到撤回好友申请请求');
+    console.log('📤 [Request Body]', JSON.stringify(req.body, null, 2));
+
+    const userAddress = req.headers['x-user-smart-account'];
+    const friendRequestId = req.body.id || req.body.friend_request_id;
+
+    if (!userAddress || !friendRequestId) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数',
+        code: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+
+    const result = await relationshipService.cancelFriendRequest(userAddress, friendRequestId);
+    return res.status(200).json({
+      success: true,
+      message: '好友申请已撤回',
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ [Error] 撤回好友申请失败:', error);
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || '撤回好友申请失败',
+      code: 'CANCEL_FRIEND_REQUEST_FAILED'
+    });
+  }
+}
+
+async function addMemberToAccessGroup(req, res) {
+  try {
+    console.log('🔄 [Relationship Controller] 收到群主添加成员请求');
+    console.log('📤 [Request Body]', JSON.stringify(req.body, null, 2));
+
+    const ownerAddress = req.headers['x-user-smart-account'];
+    const { accessGroupId } = req.params;
+    const memberAddress = req.body.member_address || req.body.memberAddress;
+
+    if (!ownerAddress || !accessGroupId || !memberAddress) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数',
+        code: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+
+    const result = await relationshipService.addMemberToAccessGroup(ownerAddress, accessGroupId, memberAddress);
+    return res.status(200).json({
+      success: true,
+      message: '成员已添加',
+      data: result
+    });
+  } catch (error) {
+    console.error('❌ [Error] 群主添加成员失败:', error);
+    return res.status(error.status || 500).json({
+      success: false,
+      message: error.message || '群主添加成员失败',
+      code: 'ADD_MEMBER_TO_ACCESS_GROUP_FAILED'
+    });
+  }
+}
+
 /**
  * 获取访问组列表
  */
@@ -555,5 +776,14 @@ module.exports = {
   getMyRelationships,
   suspendRelationship,
   resumeRelationship,
-  revokeRelationship
+  revokeRelationship,
+
+  createFriendRequest,
+  getIncomingFriendRequests,
+  getOutgoingFriendRequests,
+  acceptFriendRequest,
+  rejectFriendRequest,
+  cancelFriendRequest,
+
+  addMemberToAccessGroup
 };

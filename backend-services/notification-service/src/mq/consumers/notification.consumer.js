@@ -12,33 +12,45 @@ const { sendToUser } = require('../../websocket/server');
  */
 async function handleNotification(notification, wss) {
   try {
-    console.log(`[Notification Consumer] Processing notification: ${notification.type}`);
+    const recipient_address = notification?.recipient_address || notification?.userId || notification?.recipient;
+    const type = notification?.type;
+    let priority = (notification?.priority || 'NORMAL').toString().toUpperCase();
+    if (priority === 'URGENT') priority = 'HIGH';
+    if (!['HIGH', 'NORMAL', 'LOW'].includes(priority)) priority = 'NORMAL';
+    const title = notification?.title || type || 'Notification';
+    const body = notification?.body || notification?.message || '您有一条新通知';
+    const data = notification?.data || null;
+    const channels = Array.isArray(notification?.channels)
+      ? notification.channels
+      : ['push', 'websocket'];
+
+    console.log(`[Notification Consumer] Processing notification: ${type}`);
     
     // 1. 存储到数据库
     const savedNotif = await notificationService.create({
-      recipient_address: notification.recipient_address,
-      type: notification.type,
-      priority: notification.priority || 'NORMAL',
-      title: notification.title,
-      body: notification.body,
-      data: notification.data || null,
-      channels: notification.channels || ['push', 'websocket']
+      recipient_address,
+      type,
+      priority,
+      title,
+      body,
+      data,
+      channels,
     });
     
     console.log(`[Notification Consumer] ✅ Notification saved: ${savedNotif.notification_id}`);
     
     // 2. WebSocket推送（如果用户在线）
-    if (notification.channels.includes('websocket') || notification.channels.includes('push')) {
-      const sent = await sendToUser(notification.recipient_address, {
+    if (channels.includes('websocket') || channels.includes('push')) {
+      const sent = await sendToUser(recipient_address, {
         type: 'notification',
         data: savedNotif
       });
       
       if (sent) {
         await notificationService.markAsSent(savedNotif.notification_id, 'websocket');
-        console.log(`[Notification Consumer] ✅ Notification sent via WebSocket to ${notification.recipient_address}`);
+        console.log(`[Notification Consumer] ✅ Notification sent via WebSocket to ${recipient_address}`);
       } else {
-        console.log(`[Notification Consumer] ⚠️ User ${notification.recipient_address} is offline`);
+        console.log(`[Notification Consumer] ⚠️ User ${recipient_address} is offline`);
       }
     }
     

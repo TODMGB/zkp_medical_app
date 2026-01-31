@@ -4,6 +4,7 @@
 // =======================================================
 const { Router } = require('express');
 const authController = require('../controllers/auth.controller');
+const recoveryController = require('../controllers/recovery.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 
 const router = Router();
@@ -21,6 +22,10 @@ router.post('/register', authController.register);
  * Body: { eoa_address, signature, message }
  */
 router.post('/login', authController.login);
+
+router.post('/resolve-smart-account', authController.resolveSmartAccount);
+
+router.post('/start-recovery', recoveryController.startRecovery);
 
 /**
  * 更新加密公钥

@@ -175,7 +175,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Preferences } from '@capacitor/preferences'
-import { ArrowLeft, RefreshCw, Trash2, Copy, ChevronDown } from 'lucide-vue-next'
+import { uiService } from '@/service/ui'
+import {
+  ArrowLeft,
+  RefreshCw,
+  Trash2,
+  Copy,
+  ChevronDown
+} from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -316,9 +323,12 @@ const deleteItem = async (key: string) => {
 }
 
 const clearAllCache = async () => {
-  if (!confirm('确定要清除所有缓存吗？此操作无法撤销。')) {
-    return
-  }
+  const ok = await uiService.confirm('确定要清除所有缓存吗？此操作无法撤销。', {
+    title: '确认清除',
+    confirmText: '清除',
+    cancelText: '取消',
+  })
+  if (!ok) return
 
   try {
     await Preferences.clear()

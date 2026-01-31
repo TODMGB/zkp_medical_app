@@ -11,9 +11,12 @@ import SignUp from '../views/onboarding/SignUp.vue'
 import Login from '../views/onboarding/Login.vue'
 import SetProtectionPin from '../views/onboarding/SetProtectionPin.vue'
 import ImportAccount from '../views/onboarding/ImportAccount.vue'
+import RecoverAccount from '../views/onboarding/RecoverAccount.vue'
+import RecoverSetPassword from '../views/onboarding/RecoverSetPassword.vue'
 import GuardianSetupGuide from '../views/onboarding/GuardianSetupGuide.vue'
 import AddFamily from '../views/onboarding/AddFamily.vue'
 import QRScanner from '../views/onboarding/QRScanner.vue'
+import RecoveryProgress from '../views/onboarding/RecoveryProgress.vue'
 
 // 核心日常使用页面
 import Home from '../views/core/Home.vue'
@@ -25,6 +28,8 @@ import ProofDetail from '../views/core/ProofDetail.vue'
 import CreateMedicationPlan from '../views/doctor/CreateMedicationPlan.vue'
 import MedicationPlans from '../views/doctor/MedicationPlans.vue'
 import PlanDetail from '../views/medication/PlanDetail.vue'
+import PlanShare from '../views/medication/PlanShare.vue'
+import SharedMedicationPlanDetail from '../views/medication/SharedMedicationPlanDetail.vue'
 
 // 医药服务页面（老人端）
 import MyMedicationPlans from '../views/elderly/MyMedicationPlans.vue'
@@ -40,6 +45,7 @@ import GroupDetail from '../views/management/GroupDetail.vue'
 import Invitation from '../views/management/Invitation.vue'
 import MyPatients from '../views/management/MyPatients.vue'
 import AccountSecurity from '../views/management/AccountSecurity.vue'
+import RecoveryRequest from '../views/management/RecoveryRequest.vue'
 import Settings from '../views/management/Settings.vue'
 import Notifications from '../views/management/Notifications.vue'
 import GuardianSetup from '../views/management/GuardianSetup.vue'
@@ -90,6 +96,21 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login
+  },
+  {
+    path: '/recover-account',
+    name: 'RecoverAccount',
+    component: RecoverAccount
+  },
+  {
+    path: '/recover-set-password',
+    name: 'RecoverSetPassword',
+    component: RecoverSetPassword
+  },
+  {
+    path: '/recovery-progress',
+    name: 'RecoveryProgress',
+    component: RecoveryProgress
   },
   {
     path: '/set-pin',
@@ -156,6 +177,16 @@ const routes = [
     name: 'PlanDetail',
     component: PlanDetail
   },
+  {
+    path: '/medication/plan/:planId/share',
+    name: 'PlanShare',
+    component: PlanShare
+  },
+  {
+    path: '/shared-plan/:groupId/:planId',
+    name: 'SharedMedicationPlanDetail',
+    component: SharedMedicationPlanDetail
+  },
 
   // 医药服务（老人端）
   {
@@ -215,6 +246,12 @@ const routes = [
     path: '/account-security',
     name: 'AccountSecurity',
     component: AccountSecurity
+  },
+  {
+    path: '/recovery-request',
+    name: 'RecoveryRequest',
+    component: RecoveryRequest,
+    meta: { requiresAuth: true }
   },
   {
     path: '/settings',

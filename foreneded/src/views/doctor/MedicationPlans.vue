@@ -117,6 +117,7 @@ import { useRouter } from 'vue-router';
 import { medicationService, type MedicationPlan } from '@/service/medication';
 import { authService } from '@/service/auth';
 import { memberInfoService } from '@/service/memberInfo';
+import { uiService } from '@/service/ui';
 import BottomNav from '@/components/BottomNav.vue';
 import { 
   ArrowLeft, 
@@ -177,7 +178,7 @@ async function loadPlans() {
     console.log('用药计划列表:', plans.value);
   } catch (error: any) {
     console.error('加载用药计划失败:', error);
-    alert('加载用药计划失败: ' + error.message);
+    uiService.toast('加载用药计划失败: ' + error.message, { type: 'error' });
   } finally {
     loading.value = false;
   }
@@ -267,7 +268,7 @@ function viewDetails(plan: MedicationPlan) {
  */
 function editPlan(plan: MedicationPlan) {
   // TODO: 实现编辑功能
-  alert('编辑功能即将推出');
+  uiService.toast('编辑功能即将推出', { type: 'info' });
 }
 
 /**

@@ -81,6 +81,16 @@ async function getDoctorPlans(doctorAddress, requestUserAddress, status = null) 
     return plans;
 }
 
+async function getPatientPlans(patientAddress, requestUserAddress, status = null) {
+    // 权限检查：仅允许患者本人查看（地址统一转小写比较）
+    if (patientAddress.toLowerCase() !== requestUserAddress.toLowerCase()) {
+        throw new Error('Access denied: You can only view your own plans');
+    }
+
+    const plans = await medicationEntity.getMedicationPlansByPatient(patientAddress, status);
+    return plans;
+}
+
 /**
  * 更新用药计划（医生专用）
  */
@@ -109,13 +119,10 @@ async function updateMedicationPlan(planId, updateData, userAddress) {
     }
 
     // 5. 发送更新通知
-    await mqProducer.publishNotification({
-        type: 'medication_plan_updated',
-        recipient: plan.patient_address,
-        data: {
-            plan_id: planId,
-            plan_name: updatedPlan.plan_name
-        }
+    await mqProducer.publishMedicationPlanUpdated({
+        patient_address: plan.patient_address,
+        plan_id: planId,
+        plan_name: updatedPlan.plan_name
     });
 
     return updatedPlan;
@@ -144,6 +151,45 @@ async function deleteMedicationPlan(planId, userAddress) {
     if (redisClient.isOpen) {
         const cacheKey = `${PLAN_CACHE_KEY_PREFIX}${planId}`;
         await redisClient.del(cacheKey);
+    }
+
+    try {
+        const deleter = (userAddress || '').toLowerCase();
+        const patient = (plan.patient_address || '').toLowerCase();
+        const doctor = (plan.doctor_address || '').toLowerCase();
+
+        let sharedRecipients = [];
+        try {
+            const resp = await secureExchangeClient.getPlanShareRecipients(planId, {
+                senderAddress: ''
+            });
+            sharedRecipients = Array.isArray(resp?.recipient_addresses) ? resp.recipient_addresses : [];
+        } catch (shareLookupError) {
+            console.warn('⚠️ 获取计划分享收件人失败（将只通知医患双方）:', shareLookupError.message);
+        }
+
+        const targets = new Set([
+            patient,
+            doctor,
+            ...sharedRecipients.map(a => String(a || '').toLowerCase()).filter(Boolean),
+        ].filter(Boolean));
+        targets.delete(deleter);
+
+        for (const recipient_address of targets) {
+            await mqProducer.publishMedicationPlanCancelled({
+                recipient_address,
+                plan_id: planId,
+                patient_address: patient,
+                doctor_address: doctor,
+                cancelled_by: deleter,
+                status: 'cancelled',
+                start_date: plan.start_date,
+                end_date: plan.end_date,
+                cancelled_at: new Date().toISOString(),
+            });
+        }
+    } catch (mqError) {
+        console.warn('⚠️ 发送用药计划取消通知失败（不影响删除结果）:', mqError.message);
     }
 
     return deletedPlan;
@@ -300,6 +346,7 @@ module.exports = {
     createEncryptedPlanFromFrontend,  // 前端加密模式（生产模式）
     getMedicationPlanById,
     getDoctorPlans,
+    getPatientPlans,
     updateMedicationPlan,
     deleteMedicationPlan,
     searchCommonMedications,

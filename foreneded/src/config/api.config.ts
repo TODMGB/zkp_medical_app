@@ -4,7 +4,7 @@
  */
 
 // 后端服务器配置
-const BACKEND_IP = '192.168.211.192'; // 可以修改为实际后端IP
+const BACKEND_IP = '192.168.0.104'; // 可以修改为实际后端IP
 const API_GATEWAY_PORT = 3000;
 
 // API Gateway 基础地址
@@ -30,6 +30,8 @@ export const AUTH_CONFIG = {
   endpoints: {
     register: '/auth/register',
     login: '/auth/login',
+    resolveSmartAccount: '/auth/resolve-smart-account',
+    startRecovery: '/auth/start-recovery',
   },
 };
 
@@ -52,6 +54,7 @@ export const ERC4337_CONFIG = {
     buildAddGuardian: '/chain/guardian/build',
     addGuardian: '/chain/guardian',
     getGuardians: '/chain/guardian/:accountAddress',
+    buildRemoveGuardian: '/chain/guardian/remove/build',
     buildSetThreshold: '/chain/guardian/threshold/build',
     setThreshold: '/chain/guardian/threshold',
     submitUserOp: '/chain/guardian/submit',
@@ -78,11 +81,20 @@ export const RELATION_CONFIG = {
     groupsStats: '/relation/access-groups/stats',
     getGroupMembers: '/relation/access-groups/:accessGroupId/members',
 
+    addGroupMember: '/relation/access-groups/:accessGroupId/members',
+
     // 邀请管理
     createInvitation: '/relation/invitations',
     createHospitalInvitation: '/relation/invitations/hospital',
     getMyInvitations: '/relation/invitations/my',
     cancelInvitation: '/relation/invitations/cancel',
+
+    createFriendRequest: '/relation/friend-requests',
+    getIncomingFriendRequests: '/relation/friend-requests/incoming',
+    getOutgoingFriendRequests: '/relation/friend-requests/outgoing',
+    acceptFriendRequest: '/relation/friend-requests/accept',
+    rejectFriendRequest: '/relation/friend-requests/reject',
+    cancelFriendRequest: '/relation/friend-requests/cancel',
 
     // 关系管理
     acceptInvitation: '/relation/relationships/accept',
@@ -132,6 +144,7 @@ export const MEDICATION_CONFIG = {
     getMedicationDetail: '/medication/medications/:medicationId',
     createPlan: '/medication/plans',
     getPlan: '/medication/plans/:planId',
+    getPatientPlans: '/medication/plans/patient/:patientAddress',
     getDoctorPlans: '/medication/plans/doctor/:doctorAddress',
     updatePlan: '/medication/plans/:planId',
     deletePlan: '/medication/plans/:planId',

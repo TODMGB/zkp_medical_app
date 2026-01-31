@@ -23,7 +23,7 @@ module.exports = {
     },
     mq: {
         url: process.env.MQ_URL,
-        exchangeName: process.env.MQ_EXCHANGE_NAME || 'app_events',
+        exchangeName: process.env.MQ_EXCHANGE_NAME || 'exchange.notifications',
     },
     services: {
         USER_INFO_SERVICE_URL: process.env.USER_INFO_SERVICE_URL,

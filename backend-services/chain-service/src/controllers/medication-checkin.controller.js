@@ -4,7 +4,7 @@
 // 处理周度证明的上链请求
 // =======================================================
 
-const { uploadJSONToIPFS } = require('../services/ipfs.service');
+const { uploadJSONToIPFS, retrieveFileFromIPFS } = require('../services/ipfs.service');
 const { submitMedicationCheckIn } = require('../services/medication-checkin.service');
 
 /**
@@ -83,6 +83,64 @@ async function submitProofToChain(req, res) {
     return res.status(500).json({
       success: false,
       message: '提交失败',
+      error: error.message
+    });
+  }
+}
+
+async function getWeeklyCheckinFromIpfs(req, res) {
+  try {
+    const { cid } = req.params;
+    const smartAccountAddress = req.user?.smart_account || req.user?.address;
+
+    if (!smartAccountAddress) {
+      return res.status(401).json({
+        success: false,
+        message: '未授权'
+      });
+    }
+
+    if (!cid) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少 CID 参数'
+      });
+    }
+
+    console.log(`[MedicationCheckIn] IPFS 代理检索，CID: ${cid}, address: ${smartAccountAddress}`);
+
+    const { getAllCheckInCids } = require('../services/medication-checkin.service');
+    const cids = await getAllCheckInCids(smartAccountAddress);
+    const owned = Array.isArray(cids) && cids.includes(cid);
+    if (!owned) {
+      return res.status(403).json({
+        success: false,
+        message: '禁止访问：该 CID 不属于当前账户'
+      });
+    }
+
+    const data = await retrieveFileFromIPFS(cid);
+
+    let json;
+    if (Buffer.isBuffer(data)) {
+      json = JSON.parse(data.toString('utf8'));
+    } else if (typeof data === 'string') {
+      json = JSON.parse(data);
+    } else if (data && typeof data === 'object') {
+      json = data;
+    } else {
+      throw new Error('Unsupported IPFS response type');
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: json
+    });
+  } catch (error) {
+    console.error('[MedicationCheckIn] IPFS 代理检索失败:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'IPFS 检索失败',
       error: error.message
     });
   }
@@ -213,5 +271,6 @@ module.exports = {
   submitProofToChain,
   getMedicationCheckInCount,
   getAllCheckInCids,
-  getCheckInTimestamp
+  getCheckInTimestamp,
+  getWeeklyCheckinFromIpfs
 };

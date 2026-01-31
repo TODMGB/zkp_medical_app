@@ -134,6 +134,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { authService } from '@/service/auth';
+import { uiService } from '@/service/ui';
 import { 
   ArrowLeft, 
   Loader2, 
@@ -177,10 +178,10 @@ const copyToClipboard = async (data: any) => {
   try {
     const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     await navigator.clipboard.writeText(text);
-    alert('✅ 已复制到剪贴板');
+    uiService.toast('✅ 已复制到剪贴板', { type: 'success' });
   } catch (error) {
     console.error('复制失败:', error);
-    alert('❌ 复制失败');
+    uiService.toast('❌ 复制失败', { type: 'error' });
   }
 };
 
@@ -392,7 +393,7 @@ onMounted(async () => {
     // 从路由参数获取证明数据
     const proofJson = route.query.proof as string;
     if (!proofJson) {
-      alert('❌ 缺少证明数据');
+      await uiService.alert('❌ 缺少证明数据', { title: '提示', confirmText: '我知道了' });
       goBack();
       return;
     }
@@ -400,11 +401,11 @@ onMounted(async () => {
     proofData.value = JSON.parse(decodeURIComponent(proofJson));
 
     if (!proofData.value) {
-      alert('❌ 证明数据格式错误');
+      await uiService.alert('❌ 证明数据格式错误', { title: '提示', confirmText: '我知道了' });
     }
   } catch (error) {
     console.error('加载证明详情失败:', error);
-    alert('❌ 加载失败');
+    await uiService.alert('❌ 加载失败', { title: '提示', confirmText: '我知道了' });
   } finally {
     loading.value = false;
   }

@@ -38,13 +38,14 @@
       <!-- 计划列表 -->
       <div v-else class="plans-list">
         <!-- 今日用药提示 -->
-        <div v-if="todayTasks > 0" class="today-reminder">
+        <div v-if="todayTotalTasks > 0" class="today-reminder">
           <div class="reminder-icon">
             <AlarmClock class="icon-large" />
           </div>
           <div class="reminder-content">
-            <div class="reminder-title">今日待服药</div>
+            <div class="reminder-title">{{ todayPendingTasks > 0 ? '今日待服药' : '今日任务已完成' }}</div>
             <div class="reminder-count">{{ todayTasks }} 次</div>
+            <div class="reminder-sub">已完成 {{ todayCompletedTasks }}/{{ todayTotalTasks }}</div>
           </div>
           <button @click="goToCheckIn" class="check-in-btn">去打卡</button>
         </div>
@@ -92,6 +93,14 @@
                   {{ formatDate(plan.start_date) }} - {{ formatDate(plan.end_date) }}
                 </span>
               </div>
+              <div class="plan-progress">
+                <div class="progress-text">
+                  进度 {{ getPlanProgress(plan).percent }}% · 剩余 {{ getPlanProgress(plan).daysLeft }} 天
+                </div>
+                <div class="progress-bar">
+                  <div class="progress-fill" :style="{ width: `${getPlanProgress(plan).percent}%` }"></div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -99,7 +108,11 @@
             <button @click.stop="viewDetails(plan)" class="action-btn primary">
               查看详情
             </button>
-            <button @click.stop="goToCheckInWithPlan(plan)" class="action-btn success">
+            <button
+              v-if="plan.status === 'active'"
+              @click.stop="goToCheckInWithPlan(plan)"
+              class="action-btn success"
+            >
               立即打卡
             </button>
           </div>
@@ -113,25 +126,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import BottomNav from '@/components/BottomNav.vue';
 import { medicationService, type MedicationPlan } from '@/service/medication';
-import { authService } from '@/service/auth';
-import { memberInfoService } from '@/service/memberInfo';
 import { medicationPlanStorageService } from '@/service/medicationPlanStorage';
 import { secureExchangeService } from '@/service/secureExchange';
+import { authService } from '@/service/auth';
 import { aaService } from '@/service/accountAbstraction';
-import BottomNav from '@/components/BottomNav.vue';
-import { 
-  ArrowLeft, 
-  RefreshCw, 
-  Loader2, 
-  AlertTriangle, 
-  Pill, 
-  AlarmClock, 
-  Stethoscope, 
-  Lock, 
-  Calendar 
+import { checkinStorageService } from '@/service/checkinStorage';
+import { memberInfoService, type MemberInfo } from '@/service/memberInfo';
+import { uiService } from '@/service/ui';
+import {
+  ArrowLeft,
+  RefreshCw,
+  Loader2,
+  AlertTriangle,
+  Pill,
+  AlarmClock,
+  Stethoscope,
+  Lock,
+  Calendar,
 } from 'lucide-vue-next';
 
 const router = useRouter();
@@ -143,11 +158,14 @@ const plans = ref<MedicationPlan[]>([]);
 const doctorNames = ref<Map<string, string>>(new Map());
 const syncError = ref('');
 
+const todayTotalTasks = ref(0);
+const todayCompletedTasks = ref(0);
+const todayPendingTasks = ref(0);
+
 // ==================== 计算属性 ====================
 
 const todayTasks = computed(() => {
-  // TODO: 从实际的提醒数据计算今日待服药次数
-  return 3; // 临时数据
+  return todayPendingTasks.value;
 });
 
 // ==================== 生命周期 ====================
@@ -155,6 +173,11 @@ const todayTasks = computed(() => {
 onMounted(async () => {
   await loadPlans();
   await loadDoctorNames();
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 
 // ==================== 方法 ====================
@@ -202,6 +225,9 @@ async function loadPlans() {
       console.log('🔓 开始解密计划并缓存公钥...');
       await decryptAllPlans();
     }
+
+    // 4.1 计算今日待服药次数（基于提醒 + 本地打卡记录）
+    await updateTodayTaskStats();
     
     // 5. 显示统计信息
     const stats = await medicationPlanStorageService.getStatistics();
@@ -215,6 +241,127 @@ async function loadPlans() {
     }
   } finally {
     loading.value = false;
+  }
+}
+
+function formatLocalDateOnly(date: Date): string {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function parseDateOnly(dateStr: string): Date {
+  if (!dateStr) return new Date(NaN);
+  if (dateStr.includes('T')) return new Date(dateStr);
+  return new Date(`${dateStr}T00:00:00`);
+}
+
+function isDateInRange(dateStr: string, startDate: string, endDate: string): boolean {
+  const d = parseDateOnly(dateStr);
+  const start = parseDateOnly(startDate);
+  const end = parseDateOnly(endDate);
+  d.setHours(0, 0, 0, 0);
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+  return d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
+}
+
+async function handleVisibilityChange() {
+  if (document.visibilityState !== 'visible') return;
+  await updateTodayTaskStats();
+}
+
+function isReminderActiveToday(reminderDays: string | undefined, date: Date = new Date()): boolean {
+  if (!reminderDays || reminderDays === 'everyday') return true;
+  const day = date.getDay(); // 0=Sun ... 6=Sat
+  if (reminderDays === 'weekdays') return day >= 1 && day <= 5;
+  if (reminderDays === 'weekends') return day === 0 || day === 6;
+  return true;
+}
+
+async function updateTodayTaskStats(): Promise<void> {
+  todayTotalTasks.value = 0;
+  todayCompletedTasks.value = 0;
+  todayPendingTasks.value = 0;
+
+  try {
+    const todayKey = formatLocalDateOnly(new Date());
+
+    const activePlans = plans.value.filter(p => p.status === 'active');
+    if (activePlans.length === 0) return;
+
+    const wallet = await aaService.getEOAWallet();
+    if (!wallet) return;
+
+    const allRecords = await checkinStorageService.getAllRecords();
+    const todayRecords = allRecords.filter(r => formatLocalDateOnly(new Date(r.timestamp)) === todayKey);
+    const checkinCountByCode = new Map<string, number>();
+    for (const r of todayRecords) {
+      if (!r?.medication_code) continue;
+      checkinCountByCode.set(r.medication_code, (checkinCountByCode.get(r.medication_code) || 0) + 1);
+    }
+    const expectedCountByCode = new Map<string, number>();
+    for (const plan of activePlans) {
+      if (!plan.start_date || !plan.end_date) continue;
+      if (!isDateInRange(todayKey, plan.start_date, plan.end_date)) continue;
+
+      try {
+        const doctorPublicKey = await secureExchangeService.getRecipientPublicKey(plan.doctor_address);
+        const planData = await medicationService.decryptPlanData(
+          plan.encrypted_plan_data,
+          wallet.privateKey,
+          doctorPublicKey
+        );
+
+        const reminders = planData?.reminders || [];
+        for (const reminder of reminders) {
+          if (!isReminderActiveToday(reminder?.reminder_days, new Date())) continue;
+          const code = reminder?.medication_code;
+          if (!code) continue;
+          expectedCountByCode.set(code, (expectedCountByCode.get(code) || 0) + 1);
+        }
+      } catch (error: any) {
+        console.warn(`⚠️ 统计提醒失败（计划 ${plan.plan_id}）:`, error?.message || error);
+      }
+    }
+
+    let total = 0;
+    let completed = 0;
+    expectedCountByCode.forEach((expected, code) => {
+      total += expected;
+      completed += Math.min(expected, checkinCountByCode.get(code) || 0);
+    });
+
+    todayTotalTasks.value = total;
+    todayCompletedTasks.value = completed;
+    todayPendingTasks.value = Math.max(0, total - completed);
+  } catch (error: any) {
+    console.warn('⚠️ 计算今日待服药统计失败:', error?.message || error);
+  }
+}
+
+function getPlanProgress(plan: MedicationPlan): { percent: number; daysLeft: number; daysTotal: number } {
+  try {
+    if (!plan.start_date || !plan.end_date) return { percent: 0, daysLeft: 0, daysTotal: 0 };
+
+    if (plan.status === 'completed') {
+      const daysTotal = Math.max(1, Math.floor((parseDateOnly(plan.end_date).getTime() - parseDateOnly(plan.start_date).getTime()) / 86400000) + 1);
+      return { percent: 100, daysLeft: 0, daysTotal };
+    }
+
+    const start = parseDateOnly(plan.start_date);
+    const end = parseDateOnly(plan.end_date);
+    const today = new Date();
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    const daysTotal = Math.max(1, Math.floor((end.getTime() - start.getTime()) / 86400000) + 1);
+    const elapsed = Math.max(0, Math.min(daysTotal, Math.floor((today.getTime() - start.getTime()) / 86400000) + 1));
+    const percent = Math.max(0, Math.min(100, Math.round((elapsed / daysTotal) * 100)));
+    const daysLeft = Math.max(0, daysTotal - elapsed);
+    return { percent, daysLeft, daysTotal };
+  } catch {
+    return { percent: 0, daysLeft: 0, daysTotal: 0 };
   }
 }
 
@@ -398,7 +545,7 @@ async function retrySync() {
 async function loadDoctorNames() {
   try {
     const members = await memberInfoService.getAllMemberInfo();
-    members.forEach(member => {
+    members.forEach((member: MemberInfo) => {
       doctorNames.value.set(member.smart_account, member.username);
     });
   } catch (error) {
@@ -467,6 +614,10 @@ function goToCheckIn() {
  * 带计划去打卡
  */
 function goToCheckInWithPlan(plan: MedicationPlan) {
+  if (plan.status !== 'active') {
+    uiService.toast('该用药计划已结束，无法继续打卡', { type: 'warning' });
+    return;
+  }
   router.push({
     path: '/elderly/medication-checkin',
     query: { planId: plan.plan_id }
@@ -712,4 +863,33 @@ function goBack() {
   opacity: 0.9;
   transform: translateY(-1px);
 }
+
+ .reminder-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+ }
+
+ .plan-progress {
+  margin-top: 10px;
+ }
+
+ .progress-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 6px;
+ }
+
+ .progress-bar {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  overflow: hidden;
+ }
+
+ .progress-fill {
+  height: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+ }
 </style>

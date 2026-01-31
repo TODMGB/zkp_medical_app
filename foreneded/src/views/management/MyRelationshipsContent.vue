@@ -1,7 +1,7 @@
 <template>
   <div class="my-relationships-content">
     <!-- 加载状态 -->
-    <div v-if="isLoading && allRelationships.length === 0" class="loading-container">
+    <div v-if="isLoading && friendRelationships.length === 0 && !hasFriendRequests" class="loading-container">
       <div class="spinner"></div>
       <p>加载中...</p>
     </div>
@@ -13,117 +13,217 @@
     </div>
     
     <!-- 空状态 -->
-    <div v-if="!isLoading && allRelationships.length === 0 && !errorMessage" class="empty-state">
+    <div v-if="!isLoading && friendRelationships.length === 0 && !hasFriendRequests && !errorMessage" class="empty-state">
       <div class="empty-icon">📭</div>
-      <h3 class="empty-title">暂无关系</h3>
+      <h3 class="empty-title">暂无好友</h3>
       <p class="empty-desc">{{ emptyMessage }}</p>
     </div>
     
-    <!-- 关系列表 -->
-    <div v-if="allRelationships.length > 0" class="relationships-container">
-      <!-- 统计信息 -->
-      <div class="stats-section">
-        <div class="stat-card">
-          <div class="stat-value">{{ totalCount }}</div>
-          <div class="stat-label">总数</div>
+    <!-- 关系列表 / 好友申请 -->
+    <div v-if="friendRelationships.length > 0 || hasFriendRequests" class="relationships-container">
+      <!-- 好友申请 -->
+      <div class="friend-requests-section">
+        <div class="friend-requests-header">
+          <h3 class="friend-requests-title">好友申请</h3>
+          <button class="friend-requests-refresh" @click="loadFriendRequests" :disabled="friendRequestsLoading || isLoading || isHandlingFriendRequest">
+            {{ friendRequestsLoading ? '加载中...' : '刷新' }}
+          </button>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ activeCount }}</div>
-          <div class="stat-label">活跃</div>
+
+        <div class="friend-requests-tabs">
+          <button
+            class="friend-requests-tab"
+            :class="{ active: friendRequestTab === 'incoming' }"
+            @click="friendRequestTab = 'incoming'"
+          >
+            收到 ({{ incomingFriendRequests.length }})
+          </button>
+          <button
+            class="friend-requests-tab"
+            :class="{ active: friendRequestTab === 'outgoing' }"
+            @click="friendRequestTab = 'outgoing'"
+          >
+            发出 ({{ outgoingFriendRequests.length }})
+          </button>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ suspendedCount }}</div>
-          <div class="stat-label">暂停</div>
+
+        <div v-if="friendRequestsError" class="friend-requests-error">
+          {{ friendRequestsError }}
+        </div>
+
+        <div v-if="friendRequestsLoading" class="friend-requests-loading">
+          加载好友申请中...
+        </div>
+
+        <div v-else-if="displayedFriendRequests.length === 0" class="friend-requests-empty">
+          暂无{{ friendRequestTab === 'incoming' ? '收到的' : '发出的' }}好友申请
+        </div>
+
+        <div v-else class="friend-requests-list">
+          <div v-for="fr in displayedFriendRequests" :key="fr.id" class="friend-request-card">
+            <div class="friend-request-avatar">
+              {{ getMemberRoleIcon(getFriendRequestOtherAddress(fr)) }}
+            </div>
+            <div class="friend-request-main">
+              <div class="friend-request-title-row">
+                <div class="friend-request-name">
+                  {{ getMemberDisplayName(getFriendRequestOtherAddress(fr)) }}
+                </div>
+                <div class="friend-request-time">{{ formatDate(fr.created_at) }}</div>
+              </div>
+              <div class="friend-request-address">
+                {{ formatAddress(getFriendRequestOtherAddress(fr)) }}
+              </div>
+              <div v-if="getMemberRoleLabels(getFriendRequestOtherAddress(fr)).length > 0" class="friend-request-tags">
+                <span
+                  v-for="roleLabel in getMemberRoleLabels(getFriendRequestOtherAddress(fr))"
+                  :key="roleLabel"
+                  class="friend-request-tag"
+                >
+                  {{ roleLabel }}
+                </span>
+              </div>
+              <div v-if="fr.message" class="friend-request-message">
+                {{ fr.message }}
+              </div>
+            </div>
+
+            <div class="friend-request-actions">
+              <template v-if="friendRequestTab === 'incoming'">
+                <button
+                  class="friend-request-btn primary"
+                  @click="acceptFriendRequestLocal(fr.id)"
+                  :disabled="isHandlingFriendRequest"
+                >
+                  同意
+                </button>
+                <button
+                  class="friend-request-btn danger"
+                  @click="rejectFriendRequestLocal(fr.id)"
+                  :disabled="isHandlingFriendRequest"
+                >
+                  拒绝
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  class="friend-request-btn"
+                  @click="cancelFriendRequestLocal(fr.id)"
+                  :disabled="isHandlingFriendRequest"
+                >
+                  撤回
+                </button>
+              </template>
+            </div>
+          </div>
         </div>
       </div>
-      
-      <!-- 筛选器 -->
-      <div class="filter-section">
-        <select v-model="filterStatus" class="filter-select">
-          <option value="all">全部状态</option>
-          <option value="active">活跃</option>
-          <option value="suspended">已暂停</option>
-          <option value="revoked">已撤销</option>
-        </select>
+
+      <template v-if="friendRelationships.length > 0">
+        <!-- 统计信息 -->
+        <div class="stats-section">
+          <div class="stat-card">
+            <div class="stat-value">{{ totalCount }}</div>
+            <div class="stat-label">总数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ activeCount }}</div>
+            <div class="stat-label">活跃</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ suspendedCount }}</div>
+            <div class="stat-label">暂停</div>
+          </div>
+        </div>
         
-        <select v-model="filterGroupType" class="filter-select">
-          <option value="all">全部类型</option>
-          <option value="FAMILY_PRIMARY">家人</option>
-          <option value="PRIMARY_DOCTOR">主治医生</option>
-          <option value="HEALTHCARE_TEAM">医护团队</option>
-          <option value="EMERGENCY_CONTACT">紧急联系人</option>
-          <option value="THERAPIST">康复师</option>
-          <option value="CUSTOM">自定义</option>
-        </select>
-      </div>
-      
-      <!-- 关系卡片列表 -->
-      <div class="relationships-list">
-        <div
-          v-for="relationship in filteredRelationships"
-          :key="relationship.id"
-          class="relationship-card"
-          :class="{ 'inactive': relationship.status !== 'active' }"
-          @click="viewRelationshipDetail(relationship)"
-        >
-          <!-- 左侧图标 -->
-          <div class="card-icon">
-            {{ getGroupIcon(relationship.group_type) }}
-          </div>
+        <!-- 筛选器 -->
+        <div class="filter-section">
+          <select v-model="filterStatus" class="filter-select">
+            <option value="all">全部状态</option>
+            <option value="active">活跃</option>
+            <option value="suspended">已暂停</option>
+            <option value="revoked">已撤销</option>
+          </select>
           
-          <!-- 中间信息 -->
-          <div class="card-content">
-            <div class="card-header">
-              <!-- 显示对方的姓名（如果有）或地址 -->
-              <h3 class="member-name">{{ getMemberDisplayName(getOtherPartyAddress(relationship)) }}</h3>
-              <span v-if="remarks[getOtherPartyAddress(relationship)]" class="remark-badge">
-                📝 {{ remarks[getOtherPartyAddress(relationship)] }}
-              </span>
-            </div>
-            <div class="member-address-sub">
-              {{ formatAddress(getOtherPartyAddress(relationship)) }}
-            </div>
-            
-            <div class="card-meta">
-              <span class="group-badge" :class="`type-${relationship.group_type}`">
-                {{ relationship.access_group_name }}
-              </span>
-              <span class="status-badge" :class="`status-${relationship.status}`">
-                {{ getStatusText(relationship.status) }}
-              </span>
-              <span class="role-badge" :class="isAsViewer(relationship) ? 'role-viewer' : 'role-owner'">
-                {{ isAsViewer(relationship) ? '我是访问者' : '我是数据拥有者' }}
-              </span>
-            </div>
-            
-            <div class="card-footer">
-              <span class="date-info">
-                加入时间: {{ formatDate(relationship.joined_at) }}
-              </span>
-              <span v-if="relationship.last_accessed_at" class="date-info">
-                最后访问: {{ formatDate(relationship.last_accessed_at) }}
-              </span>
+          <select v-model="filterGroupType" class="filter-select">
+            <option value="all">全部类型</option>
+            <option value="FAMILY_PRIMARY">家人</option>
+            <option value="PRIMARY_DOCTOR">主治医生</option>
+            <option value="HEALTHCARE_TEAM">医护团队</option>
+            <option value="EMERGENCY_CONTACT">紧急联系人</option>
+            <option value="THERAPIST">康复师</option>
+            <option value="CUSTOM">自定义</option>
+          </select>
+        </div>
+        
+        <!-- 关系卡片列表 -->
+        <div class="relationships-list">
+          <div
+            v-for="relationship in filteredRelationships"
+            :key="relationship.id"
+            class="relationship-card"
+            :class="{ 'inactive': relationship.status !== 'active' }"
+            @click="viewRelationshipDetail(relationship)"
+          >
+            <!-- 左侧图标 -->
+            <div class="card-icon">
+              {{ getMemberRoleIcon(getOtherPartyAddress(relationship)) }}
             </div>
             
-            <!-- 权限标签 -->
-            <div v-if="relationship.permissions" class="permissions-tags">
-              <span 
-                v-for="(value, key) in relationship.permissions" 
-                :key="key"
-                v-show="value"
-                class="permission-tag"
-              >
-                {{ getPermissionLabel(key) }}
-              </span>
+            <!-- 中间信息 -->
+            <div class="card-content">
+              <div class="card-header">
+                <!-- 显示对方的姓名（如果有）或地址 -->
+                <h3 class="member-name">{{ getMemberDisplayName(getOtherPartyAddress(relationship)) }}</h3>
+                <span v-if="remarks[getOtherPartyAddress(relationship)]" class="remark-badge">
+                  📝 {{ remarks[getOtherPartyAddress(relationship)] }}
+                </span>
+              </div>
+              <div class="member-address-sub">
+                {{ formatAddress(getOtherPartyAddress(relationship)) }}
+              </div>
+              
+              <div class="card-meta">
+                <span class="group-badge" :class="`type-${relationship.group_type}`">
+                  {{ relationship.access_group_name }}
+                </span>
+                <span class="status-badge" :class="`status-${relationship.status}`">
+                  {{ getStatusText(relationship.status) }}
+                </span>
+                <span class="role-badge" :class="isAsViewer(relationship) ? 'role-viewer' : 'role-owner'">
+                  {{ isAsViewer(relationship) ? '我是访问者' : '我是数据拥有者' }}
+                </span>
+              </div>
+              
+              <div class="card-footer">
+                <span class="date-info">
+                  加入时间: {{ formatDate(relationship.joined_at) }}
+                </span>
+                <span v-if="relationship.last_accessed_at" class="date-info">
+                  最后访问: {{ formatDate(relationship.last_accessed_at) }}
+                </span>
+              </div>
+              
+              <!-- 权限标签 -->
+              <div v-if="relationship.permissions" class="permissions-tags">
+                <span 
+                  v-for="(value, key) in relationship.permissions" 
+                  :key="key"
+                  v-show="value"
+                  class="permission-tag"
+                >
+                  {{ getPermissionLabel(key) }}
+                </span>
+              </div>
             </div>
-          </div>
-          
-          <!-- 右侧箭头 -->
-          <div class="card-arrow">
-            →
+            
+            <!-- 右侧箭头 -->
+            <div class="card-arrow">
+              →
+            </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -134,11 +234,14 @@ import {
   relationService, 
   type MyRelationshipsResponse,
   type RelationshipAsViewer,
-  type RelationshipAsOwner 
+  type RelationshipAsOwner,
+  type FriendRequest
 } from '@/service/relation'
 import { authService } from '@/service/auth'
 import { memberRemarkService } from '@/service/memberRemark'
 import { memberInfoService, type MemberInfo } from '@/service/memberInfo'
+import { uiService } from '@/service/ui'
+import { UserRoleUtils } from '@/utils/userRoles'
 
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -147,12 +250,19 @@ const remarks = ref<Record<string, string>>({})
 const memberInfos = ref<Record<string, MemberInfo>>({})
 const currentUserAddress = ref('')
 
+const friendRequestsLoading = ref(false)
+const friendRequestsError = ref('')
+const incomingFriendRequests = ref<FriendRequest[]>([])
+const outgoingFriendRequests = ref<FriendRequest[]>([])
+const friendRequestTab = ref<'incoming' | 'outgoing'>('incoming')
+const isHandlingFriendRequest = ref(false)
+
 // 筛选条件
 const filterStatus = ref('all')
 const filterGroupType = ref('all')
 
 // 空状态提示
-const emptyMessage = ref('暂无关系记录')
+const emptyMessage = ref('还没有好友，点击右上角扫码添加')
 
 // 合并所有关系用于显示
 const allRelationships = computed(() => {
@@ -161,6 +271,37 @@ const allRelationships = computed(() => {
     ...(relationshipsData.value.asViewer || []),
     ...(relationshipsData.value.asOwner || [])
   ]
+})
+
+const friendRelationships = computed(() => {
+  const list = allRelationships.value
+    .filter((r: any) => String(r?.access_group_name || '') === '好友')
+    .filter((r: any) => {
+      const status = String(r?.status || '')
+      return status === 'active' || status === 'accepted'
+    })
+
+  const seen = new Set<string>()
+  const uniq: any[] = []
+  for (const r of list) {
+    const other = getOtherPartyAddress(r)
+    const key = String(other || '').toLowerCase()
+    if (!key) continue
+    if (seen.has(key)) continue
+    seen.add(key)
+    uniq.push(r)
+  }
+  return uniq
+})
+
+const hasFriendRequests = computed(() => {
+  return incomingFriendRequests.value.length > 0 || outgoingFriendRequests.value.length > 0
+})
+
+const displayedFriendRequests = computed(() => {
+  return friendRequestTab.value === 'incoming'
+    ? incomingFriendRequests.value
+    : outgoingFriendRequests.value
 })
 
 // 统计信息
@@ -174,11 +315,7 @@ const suspendedCount = computed(() => {
 
 // 筛选后的关系列表
 const filteredRelationships = computed(() => {
-  return allRelationships.value.filter(r => {
-    const statusMatch = filterStatus.value === 'all' || r.status === filterStatus.value
-    const typeMatch = filterGroupType.value === 'all' || r.group_type === filterGroupType.value
-    return statusMatch && typeMatch
-  })
+  return friendRelationships.value
 })
 
 // 获取对方的地址（根据relationship_type判断）
@@ -195,6 +332,124 @@ const getOtherPartyAddress = (relationship: RelationshipAsViewer | RelationshipA
 // 判断关系类型
 const isAsViewer = (relationship: RelationshipAsViewer | RelationshipAsOwner) => {
   return relationship.relationship_type === 'as_viewer'
+}
+
+const getFriendRequestOtherAddress = (fr: FriendRequest) => {
+  return friendRequestTab.value === 'incoming'
+    ? fr.requester_address
+    : fr.recipient_address
+}
+
+const getMemberRoleIcon = (address: string) => {
+  const info = memberInfos.value[address]
+  const role = info?.roles?.[0] || ''
+  return UserRoleUtils.getRoleIcon(role)
+}
+
+const getMemberRoleLabels = (address: string) => {
+  const info = memberInfos.value[address]
+  const roles = info?.roles || []
+  return roles.slice(0, 3).map(r => UserRoleUtils.getRoleDisplayName(r))
+}
+
+const loadFriendRequests = async () => {
+  try {
+    friendRequestsLoading.value = true
+    friendRequestsError.value = ''
+
+    const [incoming, outgoing] = await Promise.all([
+      relationService.getIncomingFriendRequests('pending').catch(() => []),
+      relationService.getOutgoingFriendRequests('pending').catch(() => []),
+    ])
+
+    incomingFriendRequests.value = incoming || []
+    outgoingFriendRequests.value = outgoing || []
+
+    const addrs = Array.from(
+      new Set(
+        [...incomingFriendRequests.value.map(r => r.requester_address), ...outgoingFriendRequests.value.map(r => r.recipient_address)]
+          .filter(Boolean)
+          .map(a => String(a))
+      )
+    )
+
+    if (addrs.length > 0) {
+      try {
+        const remarkMap = await memberRemarkService.getBatchRemarks(addrs)
+        remarks.value = { ...remarks.value, ...(remarkMap || {}) }
+      } catch (e) {
+        console.warn('加载好友申请备注失败（不影响显示）:', e)
+      }
+
+      for (const addr of addrs) {
+        if (memberInfos.value[addr]) continue
+        try {
+          const info = await memberInfoService.getMemberInfo(addr)
+          if (info) {
+            memberInfos.value[info.smart_account] = info
+            memberInfos.value[addr] = info
+            if (info.eoa_address) memberInfos.value[info.eoa_address] = info
+          }
+        } catch (e) {
+          console.warn('加载好友申请成员信息失败（不影响显示）:', e)
+        }
+      }
+    }
+  } catch (error: any) {
+    console.error('加载好友申请失败:', error)
+    friendRequestsError.value = error.message || '加载好友申请失败'
+  } finally {
+    friendRequestsLoading.value = false
+  }
+}
+
+const acceptFriendRequestLocal = async (friendRequestId: number | string) => {
+  try {
+    isHandlingFriendRequest.value = true
+    await relationService.acceptFriendRequest(friendRequestId)
+    uiService.toast('已同意好友申请', { type: 'success' })
+    await loadRelationships()
+  } catch (error: any) {
+    console.error('同意好友申请失败:', error)
+    uiService.toast(error.message || '同意失败', { type: 'error' })
+  } finally {
+    isHandlingFriendRequest.value = false
+  }
+}
+
+const rejectFriendRequestLocal = async (friendRequestId: number | string) => {
+  try {
+    isHandlingFriendRequest.value = true
+    await relationService.rejectFriendRequest(friendRequestId)
+    uiService.toast('已拒绝好友申请', { type: 'success' })
+    await loadFriendRequests()
+  } catch (error: any) {
+    console.error('拒绝好友申请失败:', error)
+    uiService.toast(error.message || '拒绝失败', { type: 'error' })
+  } finally {
+    isHandlingFriendRequest.value = false
+  }
+}
+
+const cancelFriendRequestLocal = async (friendRequestId: number | string) => {
+  const ok = await uiService.confirm('确定要撤回该好友申请吗？', {
+    title: '撤回好友申请',
+    confirmText: '撤回',
+    cancelText: '取消',
+  })
+  if (!ok) return
+
+  try {
+    isHandlingFriendRequest.value = true
+    await relationService.cancelFriendRequest(friendRequestId)
+    uiService.toast('已撤回好友申请', { type: 'success' })
+    await loadFriendRequests()
+  } catch (error: any) {
+    console.error('撤回好友申请失败:', error)
+    uiService.toast(error.message || '撤回失败', { type: 'error' })
+  } finally {
+    isHandlingFriendRequest.value = false
+  }
 }
 
 // 加载关系列表
@@ -215,6 +470,8 @@ const loadRelationships = async () => {
     }
     currentUserAddress.value = userInfo.smart_account
     console.log('当前用户地址:', currentUserAddress.value)
+
+    await loadFriendRequests()
     
     // 3. 获取关系列表（新版结构化数据）
     const data = await relationService.getMyRelationships()
@@ -334,12 +591,15 @@ const loadRelationships = async () => {
 }
 
 // 查看关系详情
-const viewRelationshipDetail = (relationship: RelationshipAsViewer | RelationshipAsOwner) => {
+const viewRelationshipDetail = async (relationship: RelationshipAsViewer | RelationshipAsOwner) => {
   const otherParty = getOtherPartyAddress(relationship)
   const role = isAsViewer(relationship) ? '数据拥有者' : '访问者'
   const memberName = getMemberDisplayName(otherParty)
   console.log('查看关系详情:', relationship)
-  alert(`${role}: ${memberName}\n地址: ${formatAddress(otherParty)}\n访问组: ${relationship.access_group_name}\n状态: ${getStatusText(relationship.status)}\n描述: ${relationship.description || '无'}`)
+  await uiService.alert(
+    `${role}: ${memberName}\n地址: ${formatAddress(otherParty)}\n访问组: ${relationship.access_group_name}\n状态: ${getStatusText(relationship.status)}\n描述: ${relationship.description || '无'}`,
+    { title: '详情', confirmText: '我知道了' }
+  )
 }
 
 // 获取群组图标
@@ -372,7 +632,7 @@ const getStatusText = (status: string) => {
 }
 
 // 获取权限标签
-const getPermissionLabel = (key: string) => {
+const getPermissionLabel = (key: string | number) => {
   const labels: Record<string, string> = {
     'canView': '查看',
     'canViewMedication': '用药',
@@ -391,7 +651,8 @@ const getPermissionLabel = (key: string) => {
     'receiveAlerts': '接收提醒',
     'receiveEmergencyAlerts': '紧急通知'
   }
-  return labels[key] || key
+  const k = String(key)
+  return labels[k] || k
 }
 
 // 格式化地址
@@ -537,6 +798,236 @@ onActivated(async () => {
 .relationships-container {
   padding: 20px;
 }
+
+.stats-section,
+.filter-section,
+.card-meta,
+.card-footer,
+.permissions-tags,
+.card-arrow {
+  display: none;
+}
+
+.card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #eef2ff;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.relationship-card {
+  align-items: center;
+}
+
+.member-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.member-address-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+ .friend-requests-section {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 20px;
+ }
+
+ .friend-requests-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+ }
+
+ .friend-requests-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #2d3748;
+ }
+
+ .friend-requests-refresh {
+  border: none;
+  background: #667eea;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+ }
+
+ .friend-requests-refresh:disabled {
+  opacity: 0.6;
+ }
+
+ .friend-requests-tabs {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+ }
+
+ .friend-requests-tab {
+  flex: 1;
+  border: 2px solid #e2e8f0;
+  background: #f7fafc;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #4a5568;
+ }
+
+ .friend-requests-tab.active {
+  border-color: #667eea;
+  background: #eef2ff;
+  color: #4c51bf;
+ }
+
+ .friend-requests-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #fff5f5;
+  border-left: 4px solid #e53e3e;
+  border-radius: 8px;
+  color: #c53030;
+  font-size: 0.9rem;
+ }
+
+ .friend-requests-loading,
+ .friend-requests-empty {
+  margin-top: 12px;
+  color: #718096;
+  font-size: 0.95rem;
+  text-align: center;
+  padding: 18px 0;
+ }
+
+ .friend-requests-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+ }
+
+ .friend-request-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f7fafc;
+ }
+
+ .friend-request-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+ }
+
+ .friend-request-main {
+  flex: 1;
+  min-width: 0;
+ }
+
+ .friend-request-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+ }
+
+ .friend-request-name {
+  font-weight: 700;
+  color: #2d3748;
+  font-size: 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+ }
+
+ .friend-request-time {
+  font-size: 0.8rem;
+  color: #a0aec0;
+  flex-shrink: 0;
+ }
+
+ .friend-request-address {
+  margin-top: 2px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #718096;
+ }
+
+ .friend-request-tags {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+ }
+
+ .friend-request-tag {
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: #e6fffa;
+  border: 1px solid #a7f3d0;
+  color: #047857;
+  font-size: 0.75rem;
+  font-weight: 600;
+ }
+
+ .friend-request-message {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #4a5568;
+  word-break: break-word;
+ }
+
+ .friend-request-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+ }
+
+ .friend-request-btn {
+  border: none;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #edf2f7;
+  color: #4a5568;
+ }
+
+ .friend-request-btn.primary {
+  background: #48bb78;
+  color: white;
+ }
+
+ .friend-request-btn.danger {
+  background: #f56565;
+  color: white;
+ }
+
+ .friend-request-btn:disabled {
+  opacity: 0.6;
+ }
 
 .stats-section {
   display: grid;

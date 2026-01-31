@@ -156,6 +156,13 @@
         </div>
 
         <!-- 操作按钮 -->
+        <div v-if="isPlanOwner" class="action-buttons">
+          <button @click="goToShare" class="action-btn secondary">
+            <Share2 class="icon" />
+            <span>分享给访问组</span>
+          </button>
+        </div>
+
         <div v-if="isDoctor" class="action-buttons">
           <button @click="editPlan" class="action-btn secondary">
             <Edit class="icon" />
@@ -179,13 +186,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { medicationService, type MedicationPlan, type MedicationPlanData } from '@/service/medication';
 import { authService } from '@/service/auth';
 import { aaService } from '@/service/accountAbstraction';
 import { secureExchangeService } from '@/service/secureExchange';
 import { medicationPlanStorageService } from '@/service/medicationPlanStorage';
+import { uiService } from '@/service/ui';
 import { UserRole, UserRoleUtils } from '@/utils/userRoles';
 import { 
   ArrowLeft, 
@@ -199,6 +207,7 @@ import {
   AlertCircle, 
   Bell, 
   Lock, 
+  Share2,
   Edit, 
   Trash2, 
   XCircle 
@@ -215,6 +224,7 @@ const plan = ref<MedicationPlan | null>(null);
 const planData = ref<MedicationPlanData | null>(null);
 const decryptError = ref('');
 const isDoctor = ref(false);
+const isPlanOwner = ref(false);
 
 // ==================== 生命周期 ====================
 
@@ -309,12 +319,14 @@ async function decryptPlan() {
     const doctorEOA = plan.value.doctor_eoa?.toLowerCase();
     
     const isPatient = currentSmart === patientSmart || currentEOA === patientEOA;
-    const isDoctor = currentSmart === doctorSmart || currentEOA === doctorEOA;
+    const isDoctorForPlan = currentSmart === doctorSmart || currentEOA === doctorEOA;
+
+    isPlanOwner.value = isPatient;
     
     let peerAddress: string | undefined;
     if (isPatient) {
       peerAddress = plan.value.doctor_address || plan.value.doctor_eoa;
-    } else if (isDoctor) {
+    } else if (isDoctorForPlan) {
       peerAddress = plan.value.patient_address || plan.value.patient_eoa;
     } else {
       throw new Error('您无权查看此计划');
@@ -363,6 +375,14 @@ async function retryDecrypt() {
   await decryptPlan();
 }
 
+function goToShare() {
+  if (!plan.value) return;
+  router.push({
+    name: 'PlanShare',
+    params: { planId: plan.value.plan_id },
+  });
+}
+
 /**
  * 获取状态文本
  */
@@ -389,7 +409,7 @@ function formatDate(dateStr: string): string {
  */
 function editPlan() {
   // TODO: 实现编辑功能
-  alert('编辑功能即将推出');
+  uiService.toast('编辑功能即将推出', { type: 'info' });
 }
 
 /**
@@ -398,17 +418,51 @@ function editPlan() {
 async function deletePlan() {
   if (!plan.value) return;
   
-  if (!confirm('确定要删除此用药计划吗？')) {
+  const ok = await uiService.confirm('确定要删除此用药计划吗？', {
+    title: '确认删除',
+    confirmText: '删除',
+    cancelText: '取消',
+  });
+  if (!ok) {
     return;
   }
   
   try {
     await medicationService.deletePlan(plan.value.plan_id);
-    alert('用药计划已删除');
+
+    try {
+      const wallet = aaService.getEOAWallet();
+      const userInfo = await authService.getUserInfo();
+
+      if (wallet && userInfo?.smart_account && plan.value?.patient_address) {
+        const statusPayload = {
+          plan_id: plan.value.plan_id,
+          doctor_address: userInfo.smart_account,
+          patient_address: plan.value.patient_address,
+          start_date: plan.value.start_date,
+          end_date: plan.value.end_date,
+          status: 'cancelled',
+          updated_at: new Date().toISOString(),
+          message: '用药计划已取消',
+        };
+
+        await secureExchangeService.sendEncryptedData(
+          wallet,
+          plan.value.patient_address,
+          statusPayload,
+          'medication_plan',
+          statusPayload
+        );
+      }
+    } catch (notifyError) {
+      console.warn('取消计划通知患者失败（不影响删除结果）:', notifyError);
+    }
+
+    uiService.toast('用药计划已删除', { type: 'success' });
     router.back();
   } catch (error: any) {
     console.error('删除计划失败:', error);
-    alert('删除计划失败: ' + error.message);
+    uiService.toast('删除计划失败: ' + (error.message || ''), { type: 'error' });
   }
 }
 

@@ -5,6 +5,7 @@
 
 import { buildRelationUrl } from '../config/api.config';
 import { authService } from './auth';
+import { Preferences } from '@capacitor/preferences';
 
 // 访问组接口
 export interface AccessGroup {
@@ -36,6 +37,16 @@ export interface Invitation {
   status: string;
   expires_at: string;
   created_at: string;
+}
+
+export interface FriendRequest {
+  id: number;
+  requester_address: string;
+  recipient_address: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  message?: string | null;
+  created_at: string;
+  responded_at?: string | null;
 }
 
 // 关系接口
@@ -110,6 +121,33 @@ export interface MyRelationship {
 }
 
 class RelationService {
+  private readonly USER_INFO_AUTO_SEND_TTL_MS = 24 * 60 * 60 * 1000;
+
+  private getAutoUserInfoSentKey(myAccount: string, peerAddress: string): string {
+    return `auto_user_info_sent_${String(myAccount).toLowerCase()}_${String(peerAddress).toLowerCase()}`;
+  }
+
+  private async canAutoSendUserInfo(myAccount: string, peerAddress: string): Promise<boolean> {
+    const key = this.getAutoUserInfoSentKey(myAccount, peerAddress);
+    try {
+      const { value } = await Preferences.get({ key });
+      if (!value) return true;
+      const lastSentAt = Number(value);
+      if (!Number.isFinite(lastSentAt) || lastSentAt <= 0) return true;
+      return Date.now() - lastSentAt > this.USER_INFO_AUTO_SEND_TTL_MS;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  private async markAutoUserInfoSent(myAccount: string, peerAddress: string): Promise<void> {
+    const key = this.getAutoUserInfoSentKey(myAccount, peerAddress);
+    try {
+      await Preferences.set({ key, value: String(Date.now()) });
+    } catch (e) {
+    }
+  }
+
   /**
    * 获取访问组列表
    */
@@ -127,7 +165,7 @@ class RelationService {
         console.error('❌ 缺少用户标识 (getAccessGroups)');
         throw new Error('缺少用户标识 - 请确保已登录并获取用户信息');
       }
-      
+
       // 添加 user_smart_account 查询参数
       const baseUrl = buildRelationUrl('listGroups');
       const url = `${baseUrl}?user_smart_account=${encodeURIComponent(userInfo.smart_account)}`;
@@ -492,6 +530,238 @@ class RelationService {
     }
   }
 
+  public async createFriendRequest(recipientAddress: string, message?: string | null): Promise<any> {
+    try {
+      const headers = await authService.getAuthHeader();
+
+      const response = await fetch(buildRelationUrl('createFriendRequest'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          recipient_address: recipientAddress,
+          message: message || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '发送好友申请失败');
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error: any) {
+      console.error('发送好友申请失败:', error);
+      throw error;
+    }
+  }
+
+  public async getIncomingFriendRequests(status: string = 'pending'): Promise<FriendRequest[]> {
+    try {
+      const headers = await authService.getAuthHeader();
+      const baseUrl = buildRelationUrl('getIncomingFriendRequests');
+      const url = `${baseUrl}?status=${encodeURIComponent(status)}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '获取收到的好友申请失败');
+      }
+
+      const result = await response.json();
+      return result.data || result || [];
+    } catch (error: any) {
+      console.error('获取收到的好友申请失败:', error);
+      throw error;
+    }
+  }
+
+  public async getOutgoingFriendRequests(status: string = 'pending'): Promise<FriendRequest[]> {
+    try {
+      const headers = await authService.getAuthHeader();
+      const baseUrl = buildRelationUrl('getOutgoingFriendRequests');
+      const url = `${baseUrl}?status=${encodeURIComponent(status)}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '获取发出的好友申请失败');
+      }
+
+      const result = await response.json();
+      return result.data || result || [];
+    } catch (error: any) {
+      console.error('获取发出的好友申请失败:', error);
+      throw error;
+    }
+  }
+
+  public async acceptFriendRequest(friendRequestId: number | string): Promise<any> {
+    try {
+      const headers = await authService.getAuthHeader();
+
+      const response = await fetch(buildRelationUrl('acceptFriendRequest'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          id: friendRequestId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '同意好友申请失败');
+      }
+
+      const result = await response.json();
+      const friendRequestData = result.data || result;
+
+      // 同意好友后，自动尝试交换用户信息（加密消息）
+      try {
+        const userInfo = await authService.getUserInfo();
+        const myAccount = String(userInfo?.smart_account || '').toLowerCase();
+        const requester = String(friendRequestData?.requester_address || '').toLowerCase();
+        const recipient = String(friendRequestData?.recipient_address || '').toLowerCase();
+
+        let peerAddress = '';
+        if (myAccount && requester && recipient) {
+          peerAddress = myAccount === requester ? recipient : requester;
+        }
+
+        let wallet = null;
+        try {
+          const { aaService } = await import('./accountAbstraction');
+          wallet = aaService.getEOAWallet();
+        } catch (e) {
+        }
+
+        if (wallet && peerAddress) {
+          await this.sendUserInfoToPeer(wallet, peerAddress);
+          try {
+            const { messageListenerService } = await import('./messageListener');
+            await messageListenerService.checkMessagesNow(wallet);
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      }
+
+      return friendRequestData;
+    } catch (error: any) {
+      console.error('同意好友申请失败:', error);
+      throw error;
+    }
+  }
+
+  private async sendUserInfoToPeer(wallet: any, peerAddress: string): Promise<void> {
+    await this.sendUserInfoToOwner(wallet, peerAddress);
+  }
+
+  public async rejectFriendRequest(friendRequestId: number | string): Promise<any> {
+    try {
+      const headers = await authService.getAuthHeader();
+
+      const response = await fetch(buildRelationUrl('rejectFriendRequest'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          id: friendRequestId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '拒绝好友申请失败');
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error: any) {
+      console.error('拒绝好友申请失败:', error);
+      throw error;
+    }
+  }
+
+  public async cancelFriendRequest(friendRequestId: number | string): Promise<any> {
+    try {
+      const headers = await authService.getAuthHeader();
+
+      const response = await fetch(buildRelationUrl('cancelFriendRequest'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          id: friendRequestId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '撤回好友申请失败');
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error: any) {
+      console.error('撤回好友申请失败:', error);
+      throw error;
+    }
+  }
+
+  public async addGroupMember(accessGroupId: number | string, memberAddress: string): Promise<any> {
+    try {
+      const headers = await authService.getAuthHeader();
+      const url = buildRelationUrl('addGroupMember').replace(':accessGroupId', String(accessGroupId));
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+        body: JSON.stringify({
+          member_address: memberAddress,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '添加成员失败');
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error: any) {
+      console.error('添加成员失败:', error);
+      throw error;
+    }
+  }
+
   /**
    * 发送用户信息给关系的所有者（邀请者）
    * 在接受邀请后自动调用
@@ -507,6 +777,15 @@ class RelationService {
       const userInfo = await authService.getUserInfo();
       if (!userInfo) {
         throw new Error('无法获取当前用户信息');
+      }
+
+      const myAccount = userInfo?.smart_account ? String(userInfo.smart_account) : '';
+      if (myAccount) {
+        const canSend = await this.canAutoSendUserInfo(myAccount, ownerAddress);
+        if (!canSend) {
+          console.log('ℹ️ [自动信息交换] 已发送过用户信息，跳过自动发送:', ownerAddress);
+          return;
+        }
       }
       console.log('  ✅ 用户信息获取成功:', JSON.stringify({
         username: userInfo.username,
@@ -535,6 +814,10 @@ class RelationService {
         ownerAddress,
         userInfoData
       );
+
+      if (myAccount) {
+        await this.markAutoUserInfoSent(myAccount, ownerAddress);
+      }
       
       console.log('✅ [自动信息交换] 用户信息已成功发送给邀请者！');
       console.log('  消息ID:', messageId);

@@ -24,7 +24,7 @@
             <p class="setting-desc">调整App内的字体大小</p>
           </div>
           <div class="setting-control">
-            <select v-model="selectedFontSize" class="font-select" @change="updateFontSize">
+            <select v-model="selectedFontSize" class="font-select" :disabled="elderMode" @change="updateFontSize">
               <option value="small">小</option>
               <option value="medium">中</option>
               <option value="large">大</option>
@@ -44,6 +44,22 @@
           <div class="setting-control">
             <label class="switch">
               <input type="checkbox" v-model="darkMode" @change="toggleDarkMode">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-icon-wrapper teal">
+            <User class="setting-icon" />
+          </div>
+          <div class="setting-content">
+            <h3 class="setting-title">老人模式</h3>
+            <p class="setting-desc">放大字体和按钮</p>
+          </div>
+          <div class="setting-control">
+            <label class="switch">
+              <input type="checkbox" v-model="elderMode" @change="toggleElderMode">
               <span class="slider"></span>
             </label>
           </div>
@@ -208,9 +224,12 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Preferences } from '@capacitor/preferences'
 import { biometricService } from '@/service/biometric'
+import { authService } from '@/service/auth'
+import { uiService } from '@/service/ui'
 import { 
   ArrowLeft, 
   Type, 
+  User,
   Moon, 
   AlarmClock, 
   Heart, 
@@ -229,6 +248,7 @@ const router = useRouter()
 // 设置状态
 const selectedFontSize = ref('medium')
 const darkMode = ref(false)
+const elderMode = ref(false)
 const medicationReminder = ref(true)
 const familyReminder = ref(true)
 const systemNotification = ref(true)
@@ -247,71 +267,77 @@ const goToTestCenter = () => {
 
 const resetAllAccounts = async () => {
   // 二次确认
-  if (!confirm('⚠️ 警告：此操作将删除所有账户数据，包括：\n\n• 钱包私钥\n• 账户抽象数据\n• 指纹加密的密码\n• 交易历史\n\n此操作不可恢复！确定要继续吗？')) {
+  const ok1 = await uiService.confirm(
+    '⚠️ 警告：此操作将清空本机所有账户与业务数据，包括：\n\n• 钱包私钥/抽象账户地址\n• JWT Token 与用户信息\n• 用药计划与分享数据\n• 打卡记录、周统计与证明相关数据\n• 家庭圈/关系/群组等本地缓存\n• 指纹加密的密码\n\n此操作不可恢复！确定要继续吗？',
+    { title: '危险操作', confirmText: '继续', cancelText: '取消' }
+  )
+  if (!ok1) {
     return
   }
   
   // 三次确认
-  if (!confirm('请再次确认：您确定要删除所有账户数据吗？\n\n删除后将无法恢复！')) {
+  const ok2 = await uiService.confirm(
+    '请再次确认：您确定要删除所有账户数据吗？\n\n删除后将无法恢复！',
+    { title: '最终确认', confirmText: '删除', cancelText: '取消' }
+  )
+  if (!ok2) {
     return
   }
   
   try {
     console.log('开始重置所有账户...')
-    
-    // 1. 删除钱包数据（wallet.ts中使用的key）
-    await Preferences.remove({ key: 'my_secure_eth_wallet' })
-    console.log('✅ 钱包数据已删除')
-    
-    // 2. 删除账户抽象数据（accountAbstraction.ts中使用的key）
-    await Preferences.remove({ key: 'eoa_private_key' })
-    await Preferences.remove({ key: 'abstract_account_address' })
-    console.log('✅ 账户抽象数据已删除')
-    
-    // 3. 删除交易历史
-    await Preferences.remove({ key: 'transaction_history' })
-    console.log('✅ 交易历史已删除')
-    
-    // 4. 删除指纹加密的凭据
+
+    // 1. 清理内存中的认证状态
+    try {
+      await authService.logout()
+    } catch (error) {
+      console.log('⚠️ 登出失败（将继续清理）')
+    }
+
+    // 2. 删除指纹加密的凭据
     try {
       await biometricService.deleteCredentials()
       console.log('✅ 指纹加密凭据已删除')
     } catch (error) {
       console.log('⚠️ 没有指纹凭据需要删除')
     }
-    
-    // 5. 清除其他可能的存储数据
-    const allKeys = await Preferences.keys()
-    console.log('存储中的所有键:', allKeys.keys)
-    
-    alert('✅ 所有账户数据已成功删除！\n\n您现在可以重新创建账户。')
-    
-    // 可选：刷新页面或跳转到首页
-    if (confirm('是否返回首页？')) {
-      router.push('/')
+
+    // 3. 清理 AA 运行态（避免清库后仍残留内存钱包）
+    try {
+      const { aaService } = await import('@/service/accountAbstraction')
+      aaService.clearLocalSession()
+    } catch (error) {
+      console.log('⚠️ 清理本地AA会话失败（将继续清理）')
     }
+
+    // 4. 清空本地所有 Preferences（包含打卡/用药计划等业务数据）
+    await Preferences.clear()
+    console.log('✅ Preferences 已清空')
+
+    // 5. 清空 localStorage（包含主题/字体等设置与可能的业务缓存）
+    try {
+      localStorage.clear()
+    } catch (error) {
+      console.log('⚠️ localStorage 清理失败（可忽略）')
+    }
+
+    await uiService.alert('✅ 所有账户数据已成功删除！\n\n您现在可以重新创建账户。', {
+      title: '已完成',
+      confirmText: '我知道了',
+    })
+
+    router.replace('/splash')
     
   } catch (error: any) {
     console.error('重置账户失败:', error)
-    alert('❌ 重置失败: ' + error.message)
+    uiService.toast('❌ 重置失败: ' + error.message, { type: 'error' })
   }
 }
 
 const updateFontSize = () => {
-  // 更新字体大小
-  document.documentElement.style.setProperty('--font-size', getFontSizeValue(selectedFontSize.value))
+  document.documentElement.setAttribute('data-font-size', selectedFontSize.value)
   localStorage.setItem('fontSize', selectedFontSize.value)
   console.log('字体大小已更新:', selectedFontSize.value)
-}
-
-const getFontSizeValue = (size: string) => {
-  switch (size) {
-    case 'small': return '14px'
-    case 'medium': return '16px'
-    case 'large': return '18px'
-    case 'extra-large': return '20px'
-    default: return '16px'
-  }
 }
 
 const toggleDarkMode = () => {
@@ -319,6 +345,18 @@ const toggleDarkMode = () => {
   document.body.classList.toggle('dark-mode', darkMode.value)
   localStorage.setItem('darkMode', darkMode.value.toString())
   console.log('深色模式:', darkMode.value ? '开启' : '关闭')
+}
+
+const toggleElderMode = () => {
+  toggleElderModeInternal(true)
+}
+
+const toggleElderModeInternal = (persist: boolean) => {
+  document.documentElement.classList.toggle('elder-mode', elderMode.value)
+  if (persist) {
+    localStorage.setItem('elderMode', elderMode.value.toString())
+  }
+  console.log('老人模式:', elderMode.value ? '开启' : '关闭')
 }
 
 const updateMedicationReminder = () => {
@@ -339,26 +377,32 @@ const updateSystemNotification = () => {
 const clearCache = () => {
   // 清理缓存
   console.log('清理缓存')
-  alert('缓存清理完成')
+  uiService.toast('缓存清理完成', { type: 'success' })
 }
 
 const exportData = () => {
   // 导出数据
   console.log('导出数据')
-  alert('数据导出功能开发中')
+  uiService.toast('数据导出功能开发中', { type: 'info' })
 }
 
 const checkUpdate = () => {
   // 检查更新
   console.log('检查更新')
-  alert('已是最新版本')
+  uiService.toast('已是最新版本', { type: 'success' })
 }
 
-const resetSettings = () => {
+const resetSettings = async () => {
   // 重置设置
-  if (confirm('确定要恢复默认设置吗？')) {
+  const ok = await uiService.confirm('确定要恢复默认设置吗？', {
+    title: '恢复默认设置',
+    confirmText: '恢复',
+    cancelText: '取消',
+  })
+  if (ok) {
     selectedFontSize.value = 'medium'
     darkMode.value = false
+    elderMode.value = false
     medicationReminder.value = true
     familyReminder.value = true
     systemNotification.value = true
@@ -370,8 +414,17 @@ const resetSettings = () => {
     updateMedicationReminder()
     updateFamilyReminder()
     updateSystemNotification()
-    
-    alert('设置已恢复为默认值')
+
+    try {
+      const userInfo = await authService.getUserInfo()
+      const shouldEnableElder = (userInfo?.roles || []).includes('elderly')
+      elderMode.value = shouldEnableElder
+      document.documentElement.classList.toggle('elder-mode', shouldEnableElder)
+    } catch (e) {
+      document.documentElement.classList.remove('elder-mode')
+    }
+
+    uiService.toast('设置已恢复为默认值', { type: 'success' })
   }
 }
 
@@ -379,12 +432,18 @@ onMounted(() => {
   // 加载保存的设置
   const savedFontSize = localStorage.getItem('fontSize')
   const savedDarkMode = localStorage.getItem('darkMode')
+  const savedElderMode = localStorage.getItem('elderMode')
   const savedMedicationReminder = localStorage.getItem('medicationReminder')
   const savedFamilyReminder = localStorage.getItem('familyReminder')
   const savedSystemNotification = localStorage.getItem('systemNotification')
   
   if (savedFontSize) selectedFontSize.value = savedFontSize
   if (savedDarkMode) darkMode.value = savedDarkMode === 'true'
+  if (savedElderMode !== null) {
+    elderMode.value = savedElderMode === 'true'
+  } else {
+    elderMode.value = document.documentElement.classList.contains('elder-mode')
+  }
   if (savedMedicationReminder) medicationReminder.value = savedMedicationReminder === 'true'
   if (savedFamilyReminder) familyReminder.value = savedFamilyReminder === 'true'
   if (savedSystemNotification) systemNotification.value = savedSystemNotification === 'true'
@@ -392,6 +451,7 @@ onMounted(() => {
   // 应用设置
   updateFontSize()
   toggleDarkMode()
+  toggleElderModeInternal(false)
 })
 </script>
 

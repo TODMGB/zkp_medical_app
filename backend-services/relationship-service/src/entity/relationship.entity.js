@@ -51,6 +51,42 @@ async function createAccessGroup(params) {
 }
 
 /**
+ * 根据访问组ID获取访问组
+ * @param {number} accessGroupId - 访问组ID
+ * @returns {Promise<Object|null>} 返回访问组对象
+ */
+async function getAccessGroupById(accessGroupId) {
+    const { rows } = await pool.query('SELECT * FROM access_groups WHERE id = $1', [accessGroupId]);
+    return rows[0] || null;
+}
+
+/**
+ * 获取或创建好友默认访问组（用于好友关系显示，不用于数据授权）
+ * @param {string} ownerAddress - 用户智能账户地址
+ * @returns {Promise<Object>} 返回访问组
+ */
+async function getOrCreateFriendGroup(ownerAddress) {
+    const normalizedOwnerAddress = ownerAddress?.toLowerCase();
+    const { rows } = await pool.query(
+        `SELECT * FROM access_groups WHERE owner_address = $1 AND group_type = 'CUSTOM' AND group_name = '好友' ORDER BY created_at ASC LIMIT 1`,
+        [normalizedOwnerAddress]
+    );
+    if (rows[0]) return rows[0];
+
+    return await createAccessGroup({
+        ownerAddress: normalizedOwnerAddress,
+        groupName: '好友',
+        description: '好友列表',
+        groupType: 'CUSTOM',
+        isSystemDefault: true,
+        icon: '👥',
+        sortOrder: 50,
+        maxMembers: null,
+        permissions: { canView: false }
+    });
+}
+
+/**
  * 查找用户拥有的所有访问组
  * @param {string} ownerAddress - 所有者的智能账户地址
  * @returns {Promise<Array>} 返回访问组列表
@@ -546,14 +582,101 @@ async function getRelationshipsByViewer(userAddress) {
     };
 }
 
+async function ensureFriendRequestsTable() {
+    await pool.query(
+        `CREATE TABLE IF NOT EXISTS friend_requests (
+            id SERIAL PRIMARY KEY,
+            requester_address TEXT NOT NULL,
+            recipient_address TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            message TEXT,
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+            responded_at TIMESTAMP WITHOUT TIME ZONE
+        )`
+    );
+
+    await pool.query(
+        `CREATE INDEX IF NOT EXISTS idx_friend_requests_recipient_status ON friend_requests (recipient_address, status)`
+    );
+    await pool.query(
+        `CREATE INDEX IF NOT EXISTS idx_friend_requests_requester_status ON friend_requests (requester_address, status)`
+    );
+}
+
+async function createFriendRequest(requesterAddress, recipientAddress, message = null) {
+    const requester = requesterAddress?.toLowerCase();
+    const recipient = recipientAddress?.toLowerCase();
+
+    const { rows: existingRows } = await pool.query(
+        `SELECT * FROM friend_requests WHERE requester_address = $1 AND recipient_address = $2 AND status = 'pending' ORDER BY created_at DESC LIMIT 1`,
+        [requester, recipient]
+    );
+    if (existingRows[0]) {
+        return { existing: true, request: existingRows[0] };
+    }
+
+    const { rows } = await pool.query(
+        `INSERT INTO friend_requests (requester_address, recipient_address, status, message)
+         VALUES ($1, $2, 'pending', $3)
+         RETURNING *`,
+        [requester, recipient, message]
+    );
+    return { existing: false, request: rows[0] };
+}
+
+async function getFriendRequestById(id) {
+    const { rows } = await pool.query('SELECT * FROM friend_requests WHERE id = $1', [id]);
+    return rows[0] || null;
+}
+
+async function getIncomingFriendRequests(recipientAddress, status = 'pending') {
+    const recipient = recipientAddress?.toLowerCase();
+    const params = [recipient];
+    let query = `SELECT * FROM friend_requests WHERE recipient_address = $1`;
+    if (status) {
+        params.push(status);
+        query += ` AND status = $2`;
+    }
+    query += ` ORDER BY created_at DESC`;
+    const { rows } = await pool.query(query, params);
+    return rows;
+}
+
+async function getOutgoingFriendRequests(requesterAddress, status = 'pending') {
+    const requester = requesterAddress?.toLowerCase();
+    const params = [requester];
+    let query = `SELECT * FROM friend_requests WHERE requester_address = $1`;
+    if (status) {
+        params.push(status);
+        query += ` AND status = $2`;
+    }
+    query += ` ORDER BY created_at DESC`;
+    const { rows } = await pool.query(query, params);
+    return rows;
+}
+
+async function updateFriendRequestStatus(id, status) {
+    const { rows } = await pool.query(
+        `UPDATE friend_requests
+         SET status = $2,
+             responded_at = CASE WHEN $2 IN ('accepted', 'rejected', 'cancelled') THEN NOW() ELSE responded_at END
+         WHERE id = $1
+         RETURNING *`,
+        [id, status]
+    );
+    return rows[0] || null;
+}
+
 // 导出所有关系实体操作函数
 module.exports = { 
     // 访问组操作
     createAccessGroup, 
     findAccessGroupsByOwner,
+    getAccessGroupById,
     getAccessGroupsWithStats,
     initializeDefaultAccessGroups,
     getAccessGroupMembers,
+    getOrCreateFriendGroup,
     
     // 邀请操作
     createInvitation,
@@ -573,4 +696,12 @@ module.exports = {
     resumeRelationship,
     revokeRelationship,
     updateLastAccessed
+    ,
+    // 好友申请操作
+    ensureFriendRequestsTable,
+    createFriendRequest,
+    getFriendRequestById,
+    getIncomingFriendRequests,
+    getOutgoingFriendRequests,
+    updateFriendRequestStatus
 };

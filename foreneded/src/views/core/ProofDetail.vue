@@ -203,6 +203,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { weeklyCheckinService, type WeeklyVerificationRecord, type WeeklyOnchainRecord } from '@/service/weeklyCheckinService'
 import { buildZkpUrl } from '@/config/api.config'
+import { uiService } from '@/service/ui'
 import { 
   ArrowLeft, 
   Info, 
@@ -298,10 +299,10 @@ const copyToClipboard = async (data: any) => {
   try {
     const text = typeof data === 'string' ? data : JSON.stringify(data, null, 2)
     await navigator.clipboard.writeText(text)
-    alert('✅ 已复制到剪贴板')
+    uiService.toast('✅ 已复制到剪贴板', { type: 'success' })
   } catch (error) {
     console.error('复制失败:', error)
-    alert('❌ 复制失败')
+    uiService.toast('❌ 复制失败', { type: 'error' })
   }
 }
 
@@ -447,7 +448,7 @@ onMounted(async () => {
   try {
     const weekKey = route.params.weekKey as string
     if (!weekKey) {
-      alert('❌ 缺少周号参数')
+      await uiService.alert('❌ 缺少周号参数', { title: '提示', confirmText: '我知道了' })
       goBack()
       return
     }
@@ -455,7 +456,7 @@ onMounted(async () => {
     proofResult.value = await weeklyCheckinService.getWeeklyProofResult(weekKey)
 
     if (!proofResult.value) {
-      alert('❌ 未找到证明数据')
+      await uiService.alert('❌ 未找到证明数据', { title: '提示', confirmText: '我知道了' })
     } else {
       const record = await weeklyCheckinService.getVerificationStatus(weekKey)
       if (record) {
@@ -471,7 +472,7 @@ onMounted(async () => {
     loading.value = false
   } catch (error) {
     console.error('加载证明详情失败:', error)
-    alert('❌ 加载失败')
+    await uiService.alert('❌ 加载失败', { title: '提示', confirmText: '我知道了' })
   } finally {
     loading.value = false
   }

@@ -9,6 +9,7 @@ import type { Notification } from './notification'
 class LocalNotificationService {
   private notificationId = 1
   private hasPermission = false
+  private clickListenerRegistered = false
 
   /**
    * 请求通知权限
@@ -210,6 +211,10 @@ class LocalNotificationService {
    * 注册通知点击监听器
    */
   public registerClickListener(callback: (notification: any) => void): void {
+    if (this.clickListenerRegistered) {
+      return
+    }
+    this.clickListenerRegistered = true
     LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
       console.log('通知被点击:', action)
       const notification = action.notification
@@ -233,10 +238,18 @@ class LocalNotificationService {
    * 获取通知图标
    */
   private getNotificationIcon(type: string): string {
+    if (type?.startsWith('zkp.')) {
+      return '🧾'
+    }
+    if (type?.includes('medication_checkin')) {
+      return '✅'
+    }
     const typeMap: Record<string, string> = {
       'medication_reminder': '💊',
       'new_medication_plan': '📋',
       'medication_plan_updated': '📝',
+      'medication_plan_created': '📋',
+      'medication_plan_shared': '🤝',
       'relationship_invitation_accepted': '✅',
       'relationship_joined_group': '👋',
       'relationship_suspended': '⏸️',
@@ -245,7 +258,14 @@ class LocalNotificationService {
       'invitation_created': '📬',
       'migration_session_created': '🔐',
       'migration_completed': '✨',
-      'recovery_request_received': '🆘',
+      'guardian_added': '🛡️',
+      'threshold_changed': '⚙️',
+      'recovery_initiated': '🆘',
+      'recovery_supported': '👍',
+      'recovery_cancelled': '🚫',
+      'recovery_cancelled_guardian': '🚫',
+      'recovery_completed': '✅',
+      'recovery_completed_old_owner': '⚠️',
       'encrypted_message': '💬',
       'system_notification': '🔔'
     }
@@ -261,6 +281,8 @@ class LocalNotificationService {
         return 'urgent'
       case 'high':
         return 'high'
+      case 'low':
+        return 'normal'
       case 'normal':
       default:
         return 'normal'

@@ -315,6 +315,39 @@ class MedicationService {
   }
 
   /**
+   * 查询患者自己的所有计划（返回加密数据）
+   */
+  public async getPatientPlans(
+    patientAddress: string,
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{ plans: MedicationPlan[]; total: number; page: number; limit: number }> {
+    try {
+      const headers = await authService.getAuthHeader();
+      const url = `${buildMedicationUrl('getPatientPlans', { patientAddress })}?page=${page}&limit=${limit}`;
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.message || '获取患者计划列表失败');
+      }
+
+      const result = await response.json();
+      return result.data || result;
+    } catch (error: any) {
+      console.error('获取患者计划列表失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 更新用药计划
    */
   public async updatePlan(

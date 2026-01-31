@@ -135,6 +135,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { aaService } from '../../service/accountAbstraction';
 import { biometricService } from '../../service/biometric';
 import { authService } from '../../service/auth';
+import { uiService } from '../../service/ui';
 import { 
   ArrowLeft, 
   Key, 
@@ -158,7 +159,7 @@ const userRole = ref(route.params.userRole as string || 'elderly');
 const userInfo = ref<any>(null);
 
 // 角色显示文本
-const roleText = userRole.value === 'elderly' ? '老人' : '医生';
+const roleText = userRole.value === 'elderly' ? '老人' : (userRole.value === 'doctor' ? '医生' : '监护人');
 
 const formData = reactive({
   password: '',
@@ -291,6 +292,34 @@ const handleSubmit = async () => {
     // 自动登录获取token
     await authService.login(eoaWallet);
     console.log('登录成功');
+
+    try {
+      const role = String(userInfo.value?.role || '').toLowerCase();
+      let localUsername = String(userInfo.value?.name || '').trim();
+
+      if (role === 'guardian') {
+        const input = await uiService.prompt({
+          title: '设置用户名',
+          message: '请输入您的用户名（本地显示用）',
+          defaultValue: localUsername || `用户_${String(userInfo.value?.phone_number || '').slice(-4)}`,
+          placeholder: '例如：小明 / 张三 / 家属A',
+        });
+        if (input) {
+          localUsername = String(input).trim();
+        }
+      }
+
+      if (localUsername) {
+        const current = await authService.getUserInfo();
+        if (current && current.username !== localUsername) {
+          await authService.saveUserInfo({
+            ...current,
+            username: localUsername,
+          });
+        }
+      }
+    } catch (e) {
+    }
     
     console.log('步骤5: 部署抽象账户到区块链...');
     // 部署抽象账户
@@ -302,7 +331,7 @@ const handleSubmit = async () => {
     router.replace({
       name: 'AddFamily',
       params: {
-        userRole: userInfo.value.role || 'FAMILY'
+        userRole: userInfo.value.role || 'GUARDIAN'
       }
     });
     

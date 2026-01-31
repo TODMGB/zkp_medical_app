@@ -139,6 +139,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { checkinStorageService, type CheckInRecord } from '@/service/checkinStorage';
+import { uiService } from '@/service/ui';
 import { 
   ArrowLeft, 
   Loader2, 
@@ -192,7 +193,7 @@ async function loadRecord() {
     }
   } catch (error: any) {
     console.error('加载记录失败:', error);
-    alert('加载记录失败: ' + error.message);
+    uiService.toast('加载记录失败: ' + error.message, { type: 'error' });
   } finally {
     loading.value = false;
   }
@@ -227,10 +228,10 @@ function formatHash(hash: string): string {
 async function copyToClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text);
-    alert('已复制到剪贴板');
+    uiService.toast('已复制到剪贴板', { type: 'success' });
   } catch (error) {
     console.error('复制失败:', error);
-    alert('复制失败');
+    uiService.toast('复制失败', { type: 'error' });
   }
 }
 
@@ -246,13 +247,13 @@ async function syncRecord() {
     
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    alert('同步成功！');
+    uiService.toast('同步成功！', { type: 'success' });
     
     // 重新加载记录
     await loadRecord();
   } catch (error: any) {
     console.error('同步失败:', error);
-    alert('同步失败: ' + error.message);
+    uiService.toast('同步失败: ' + error.message, { type: 'error' });
   } finally {
     syncing.value = false;
   }

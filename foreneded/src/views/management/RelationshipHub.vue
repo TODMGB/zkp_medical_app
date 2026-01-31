@@ -1,38 +1,24 @@
 <template>
   <div class="relationship-hub">
     <!-- Tab切换 -->
-    <div class="tabs-container">
-      <div class="tabs">
-        <button 
-          class="tab-btn" 
-          :class="{ active: activeTab === 'circle' }"
-          @click="switchTab('circle')"
-        >
-          <span class="tab-icon">👨‍👩‍👧‍👦</span>
-          <span>我的家庭圈</span>
+    <div class="header">
+      <h1 class="page-title">{{ activeTab === 'relationships' ? '好友' : '群组' }}</h1>
+      <div class="header-actions">
+        <button v-if="activeTab === 'relationships'" class="icon-btn" @click="goToScan">
+          <QrCode class="icon" />
         </button>
-        <button 
-          class="tab-btn" 
-          :class="{ active: activeTab === 'relationships' }"
-          @click="switchTab('relationships')"
-        >
-          <span class="tab-icon">👥</span>
-          <span>{{ relationshipTabLabel }}</span>
+        <button class="toggle-btn" @click="toggleTab">
+          {{ activeTab === 'relationships' ? '群组' : '好友' }}
         </button>
       </div>
     </div>
 
     <!-- Tab内容 -->
-    <div class="tab-content">
+    <div class="content">
       <!-- 家庭圈Tab -->
-      <div v-show="activeTab === 'circle'" class="tab-pane">
-        <FamilyCircleContent />
-      </div>
-
+      <FamilyCircleContent v-if="activeTab === 'circle'" />
       <!-- 关系Tab -->
-      <div v-show="activeTab === 'relationships'" class="tab-pane">
-        <MyRelationshipsContent />
-      </div>
+      <MyRelationshipsContent v-else />
     </div>
     
     <!-- 底部导航栏 -->
@@ -41,22 +27,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { authService } from '@/service/auth'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import BottomNav from '@/components/BottomNav.vue'
 import FamilyCircleContent from './FamilyCircleContent.vue'
 import MyRelationshipsContent from './MyRelationshipsContent.vue'
+import { QrCode } from 'lucide-vue-next'
 
-const activeTab = ref<'circle' | 'relationships'>('circle')
+const router = useRouter()
 
-// 关系tab标签
-const relationshipTabLabel = computed(() => {
-  // 这里可以根据用户角色动态显示
-  return '我的关系'
-})
+const activeTab = ref<'circle' | 'relationships'>('relationships')
 
-const switchTab = (tab: 'circle' | 'relationships') => {
-  activeTab.value = tab
+const toggleTab = () => {
+  activeTab.value = activeTab.value === 'relationships' ? 'circle' : 'relationships'
+}
+
+const goToScan = () => {
+  router.push({
+    name: 'QRScanner',
+    query: { mode: 'friend' }
+  })
 }
 </script>
 
@@ -67,73 +57,63 @@ const switchTab = (tab: 'circle' | 'relationships') => {
   padding-bottom: 70px; /* 为底部导航栏留空间 */
 }
 
-.tabs-container {
+.header {
   position: sticky;
   top: 0;
   z-index: 100;
   background: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
-.tabs {
-  display: flex;
-  max-width: 100%;
+.page-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
 }
 
-.tab-btn {
-  flex: 1;
-  padding: 16px 20px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  color: #718096;
-  position: relative;
-  transition: all 0.3s;
+  cursor: pointer;
 }
 
-.tab-btn.active {
-  color: #667eea;
+.icon {
+  width: 20px;
+  height: 20px;
+  color: #334155;
 }
 
-
-.tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
+.toggle-btn {
+  height: 40px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: none;
   background: #667eea;
-  border-radius: 3px 3px 0 0;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.tab-icon {
-  font-size: 1.2rem;
-}
-
-.tab-content {
+.content {
   min-height: calc(100vh - 130px);
-}
-
-.tab-pane {
-  animation: fadeIn 0.3s;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 </style>
 

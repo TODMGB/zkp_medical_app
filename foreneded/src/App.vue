@@ -3,6 +3,9 @@
   <div id="app">
     <!-- 路由匹配的组件将在这里渲染 -->
     <router-view></router-view>
+
+    <UiDialogHost />
+    <UiToastHost />
     
     <!-- 退出提示 Toast -->
     <transition name="toast-fade">
@@ -18,6 +21,8 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { App as CapacitorApp } from '@capacitor/app'
 import { Capacitor } from '@capacitor/core'
+import UiDialogHost from '@/components/ui/UiDialogHost.vue'
+import UiToastHost from '@/components/ui/UiToastHost.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -60,6 +65,7 @@ onUnmounted(async () => {
 async function initLocalNotification() {
   try {
     const { localNotificationService } = await import('@/service/localNotification')
+    const { getNotificationRoute } = await import('@/service/notification')
     
     // 创建通知渠道（Android 8.0+）
     await localNotificationService.createChannels()
@@ -72,8 +78,9 @@ async function initLocalNotification() {
       // 注册通知点击监听器
       localNotificationService.registerClickListener((notification) => {
         console.log('通知被点击:', notification)
-        // 可以在这里跳转到对应页面
-        router.push('/notifications')
+        const type = notification?.extra?.type
+        const data = notification?.extra?.data
+        router.push(getNotificationRoute(String(type || ''), data))
       })
     } else {
       console.warn('⚠️ 通知权限未授予')
@@ -221,7 +228,7 @@ body {
 /* 响应式设计 */
 @media (max-width: 768px) {
   body {
-    font-size: 14px;
+    font-size: var(--font-size);
   }
 }
 

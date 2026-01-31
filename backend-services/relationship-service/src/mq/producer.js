@@ -184,6 +184,114 @@ async function publishInvitationCreated(recipientAddress, invitationInfo) {
   });
 }
 
+async function publishFriendRequestCreated(requesterAddress, recipientAddress, friendRequest) {
+  await publishNotification({
+    recipient_address: recipientAddress,
+    title: '新的好友申请',
+    body: `${requesterAddress} 向您发起了好友申请`,
+    type: 'friend_request_received',
+    data: {
+      friend_request_id: friendRequest?.id,
+      requester_address: requesterAddress,
+      recipient_address: recipientAddress,
+      message: friendRequest?.message || null,
+      created_at: friendRequest?.created_at || null
+    },
+    priority: 'normal',
+    channels: ['push', 'websocket']
+  });
+
+  await publishNotification({
+    recipient_address: requesterAddress,
+    title: '好友申请已发送',
+    body: `已向 ${recipientAddress} 发送好友申请`,
+    type: 'friend_request_sent',
+    data: {
+      friend_request_id: friendRequest?.id,
+      requester_address: requesterAddress,
+      recipient_address: recipientAddress
+    },
+    priority: 'normal',
+    channels: ['websocket']
+  });
+}
+
+async function publishFriendRequestAccepted(requesterAddress, recipientAddress, data = {}) {
+  await publishNotification({
+    recipient_address: requesterAddress,
+    title: '好友申请已通过',
+    body: `${recipientAddress} 已同意您的好友申请`,
+    type: 'friend_request_accepted',
+    data: {
+      ...data,
+      requester_address: requesterAddress,
+      recipient_address: recipientAddress
+    },
+    priority: 'normal',
+    channels: ['push', 'websocket']
+  });
+
+  await publishNotification({
+    recipient_address: recipientAddress,
+    title: '已添加好友',
+    body: `您已与 ${requesterAddress} 成为好友`,
+    type: 'friend_added',
+    data: {
+      ...data,
+      requester_address: requesterAddress,
+      recipient_address: recipientAddress
+    },
+    priority: 'normal',
+    channels: ['websocket']
+  });
+}
+
+async function publishFriendRequestRejected(requesterAddress, recipientAddress, data = {}) {
+  await publishNotification({
+    recipient_address: requesterAddress,
+    title: '好友申请被拒绝',
+    body: `${recipientAddress} 已拒绝您的好友申请`,
+    type: 'friend_request_rejected',
+    data: {
+      ...data,
+      requester_address: requesterAddress,
+      recipient_address: recipientAddress
+    },
+    priority: 'normal',
+    channels: ['websocket']
+  });
+}
+
+async function publishFriendRequestCancelled(requesterAddress, recipientAddress, data = {}) {
+  await publishNotification({
+    recipient_address: recipientAddress,
+    title: '好友申请已撤回',
+    body: `${requesterAddress} 已撤回好友申请`,
+    type: 'friend_request_cancelled',
+    data: {
+      ...data,
+      requester_address: requesterAddress,
+      recipient_address: recipientAddress
+    },
+    priority: 'normal',
+    channels: ['websocket']
+  });
+
+  await publishNotification({
+    recipient_address: requesterAddress,
+    title: '已撤回好友申请',
+    body: `您已撤回对 ${recipientAddress} 的好友申请`,
+    type: 'friend_request_cancelled',
+    data: {
+      ...data,
+      requester_address: requesterAddress,
+      recipient_address: recipientAddress
+    },
+    priority: 'normal',
+    channels: ['websocket']
+  });
+}
+
 // =======================================================
 // 账户迁移相关通知
 // =======================================================
@@ -263,6 +371,10 @@ module.exports = {
   publishRelationshipResumed,
   publishRelationshipRevoked,
   publishInvitationCreated,
+  publishFriendRequestCreated,
+  publishFriendRequestAccepted,
+  publishFriendRequestRejected,
+  publishFriendRequestCancelled,
   
   // 账户迁移通知
   publishMigrationSessionCreated,

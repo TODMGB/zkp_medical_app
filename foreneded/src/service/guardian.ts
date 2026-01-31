@@ -4,7 +4,7 @@
  */
 
 import { ethers } from 'ethers';
-import { buildERC4337Url, API_GATEWAY_URL } from '../config/api.config';
+import { buildERC4337Url } from '../config/api.config';
 
 // UserOp 接口
 interface UserOperation {
@@ -45,7 +45,7 @@ class GuardianService {
   ): Promise<{ userOp: UserOperation; userOpHash: string }> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/guardian/build`,
+        buildERC4337Url('buildAddGuardian'),
         {
           method: 'POST',
           headers: {
@@ -72,6 +72,38 @@ class GuardianService {
   }
 
   /**
+   * 移除守护者 - 构建 UserOp
+   */
+  public async buildRemoveGuardianUserOp(
+    accountAddress: string,
+    guardianAddress: string
+  ): Promise<{ userOp: UserOperation; userOpHash: string }> {
+    try {
+      const response = await fetch(buildERC4337Url('buildRemoveGuardian'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountAddress,
+          guardianAddress,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '构建移除守护者UserOp失败');
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error: any) {
+      console.error('构建移除守护者UserOp失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 提交已签名的 UserOp（添加守护者）
    */
   public async submitGuardianUserOp(
@@ -79,7 +111,7 @@ class GuardianService {
   ): Promise<{ txHash: string; blockNumber?: number }> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/guardian/submit`,
+        buildERC4337Url('submitUserOp'),
         {
           method: 'POST',
           headers: {
@@ -141,6 +173,37 @@ class GuardianService {
   }
 
   /**
+   * 移除守护者（完整流程）
+   */
+  public async removeGuardian(
+    accountAddress: string,
+    guardianAddress: string,
+    eoaWallet: ethers.Wallet | ethers.HDNodeWallet
+  ): Promise<{ txHash: string }> {
+    try {
+      console.log('开始移除守护者...');
+      console.log('账户地址:', accountAddress);
+      console.log('守护者地址:', guardianAddress);
+
+      const { userOp, userOpHash } = await this.buildRemoveGuardianUserOp(
+        accountAddress,
+        guardianAddress
+      );
+
+      const signature = await eoaWallet.signMessage(ethers.getBytes(userOpHash));
+      userOp.signature = signature;
+
+      const result = await this.submitGuardianUserOp(userOp);
+      console.log('✅ 守护者移除成功, 交易:', result.txHash);
+
+      return result;
+    } catch (error: any) {
+      console.error('移除守护者失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 设置恢复阈值 - 构建 UserOp
    */
   public async buildSetThresholdUserOp(
@@ -149,7 +212,7 @@ class GuardianService {
   ): Promise<{ userOp: UserOperation; userOpHash: string }> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/guardian/threshold/build`,
+        buildERC4337Url('buildSetThreshold'),
         {
           method: 'POST',
           headers: {
@@ -217,7 +280,7 @@ class GuardianService {
   public async getGuardians(accountAddress: string): Promise<GuardianInfo> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/guardian/${accountAddress}`,
+        buildERC4337Url('getGuardians').replace(':accountAddress', accountAddress),
         {
           method: 'GET',
           headers: {
@@ -249,7 +312,7 @@ class GuardianService {
   ): Promise<{ userOp: UserOperation; userOpHash: string }> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/recovery/initiate/build`,
+        buildERC4337Url('buildInitiateRecovery'),
         {
           method: 'POST',
           headers: {
@@ -286,7 +349,7 @@ class GuardianService {
   ): Promise<{ userOp: UserOperation; userOpHash: string }> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/recovery/support/build`,
+        buildERC4337Url('buildSupportRecovery'),
         {
           method: 'POST',
           headers: {
@@ -314,6 +377,36 @@ class GuardianService {
   }
 
   /**
+   * 取消恢复 - 构建 UserOp
+   */
+  public async buildCancelRecoveryUserOp(
+    accountAddress: string
+  ): Promise<{ userOp: UserOperation; userOpHash: string }> {
+    try {
+      const response = await fetch(buildERC4337Url('buildCancelRecovery'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accountAddress,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || '构建取消恢复UserOp失败');
+      }
+
+      const result = await response.json();
+      return result.data;
+    } catch (error: any) {
+      console.error('构建取消恢复UserOp失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 提交恢复 UserOp
    */
   public async submitRecoveryUserOp(
@@ -321,7 +414,7 @@ class GuardianService {
   ): Promise<{ txHash: string; blockNumber?: number }> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/recovery/submit`,
+        buildERC4337Url('submitRecoveryUserOp'),
         {
           method: 'POST',
           headers: {
@@ -352,7 +445,7 @@ class GuardianService {
   public async getRecoveryStatus(accountAddress: string): Promise<RecoveryStatus> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/recovery/status/${accountAddress}`,
+        buildERC4337Url('getRecoveryStatus').replace(':accountAddress', accountAddress),
         {
           method: 'GET',
           headers: {
@@ -380,7 +473,7 @@ class GuardianService {
   public async getAccountInfo(accountAddress: string): Promise<{ owner: string }> {
     try {
       const response = await fetch(
-        `${API_GATEWAY_URL}/erc4337/account/${accountAddress}`,
+        buildERC4337Url('getAccountInfo').replace(':accountAddress', accountAddress),
         {
           method: 'GET',
           headers: {
@@ -398,6 +491,66 @@ class GuardianService {
       return result.data;
     } catch (error: any) {
       console.error('查询账户信息失败:', error);
+      throw error;
+    }
+  }
+
+  public async initiateRecovery(
+    accountAddress: string,
+    guardianAccountAddress: string,
+    newOwnerAddress: string,
+    eoaWallet: ethers.Wallet | ethers.HDNodeWallet
+  ): Promise<{ txHash: string }> {
+    try {
+      const { userOp, userOpHash } = await this.buildInitiateRecoveryUserOp(
+        accountAddress,
+        guardianAccountAddress,
+        newOwnerAddress
+      );
+      const signature = await eoaWallet.signMessage(ethers.getBytes(userOpHash));
+      userOp.signature = signature;
+      const result = await this.submitRecoveryUserOp(userOp);
+      return result;
+    } catch (error: any) {
+      console.error('发起恢复失败:', error);
+      throw error;
+    }
+  }
+
+  public async supportRecovery(
+    accountAddress: string,
+    guardianAccountAddress: string,
+    newOwnerAddress: string,
+    eoaWallet: ethers.Wallet | ethers.HDNodeWallet
+  ): Promise<{ txHash: string }> {
+    try {
+      const { userOp, userOpHash } = await this.buildSupportRecoveryUserOp(
+        accountAddress,
+        guardianAccountAddress,
+        newOwnerAddress
+      );
+      const signature = await eoaWallet.signMessage(ethers.getBytes(userOpHash));
+      userOp.signature = signature;
+      const result = await this.submitRecoveryUserOp(userOp);
+      return result;
+    } catch (error: any) {
+      console.error('支持恢复失败:', error);
+      throw error;
+    }
+  }
+
+  public async cancelRecovery(
+    accountAddress: string,
+    eoaWallet: ethers.Wallet | ethers.HDNodeWallet
+  ): Promise<{ txHash: string }> {
+    try {
+      const { userOp, userOpHash } = await this.buildCancelRecoveryUserOp(accountAddress);
+      const signature = await eoaWallet.signMessage(ethers.getBytes(userOpHash));
+      userOp.signature = signature;
+      const result = await this.submitRecoveryUserOp(userOp);
+      return result;
+    } catch (error: any) {
+      console.error('取消恢复失败:', error);
       throw error;
     }
   }

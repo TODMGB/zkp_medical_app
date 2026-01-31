@@ -268,6 +268,7 @@ import { medicationPlanStorageService } from '@/service/medicationPlanStorage';
 import { medicationService } from '@/service/medication';
 import { authService } from '@/service/auth';
 import { secureExchangeService } from '@/service/secureExchange';
+import { uiService } from '@/service/ui';
 import { 
   ArrowLeft, 
   FlaskConical, 
@@ -333,7 +334,7 @@ const testMedicationDecryption = async () => {
     const allPlans = await medicationPlanStorageService.getAllPlans();
     
     if (allPlans.length === 0) {
-      alert('❌ 没有找到保存的用药计划，请先接收一个用药计划');
+      uiService.toast('❌ 没有找到保存的用药计划，请先接收一个用药计划', { type: 'warning' });
       return;
     }
     
@@ -343,7 +344,7 @@ const testMedicationDecryption = async () => {
     const fullPlan = allPlans[0];
     
     if (!fullPlan) {
-      alert('❌ 无法获取用药计划详情');
+      uiService.toast('❌ 无法获取用药计划详情', { type: 'error' });
       return;
     }
     
@@ -351,7 +352,7 @@ const testMedicationDecryption = async () => {
     
     // 3. 检查是否有加密数据
     if (!fullPlan.encrypted_plan_data) {
-      alert('❌ 计划中没有加密数据');
+      uiService.toast('❌ 计划中没有加密数据', { type: 'error' });
       return;
     }
     
@@ -360,13 +361,13 @@ const testMedicationDecryption = async () => {
     // 4. 获取用户钱包和医生公钥
     const userInfo = await authService.getUserInfo();
     if (!userInfo) {
-      alert('❌ 无法获取用户信息');
+      uiService.toast('❌ 无法获取用户信息', { type: 'error' });
       return;
     }
     
     const wallet = await aaService.getEOAWallet();
     if (!wallet) {
-      alert('❌ 无法获取钱包');
+      uiService.toast('❌ 无法获取钱包', { type: 'error' });
       return;
     }
     
@@ -409,7 +410,7 @@ const testMedicationDecryption = async () => {
 🔐 加密状态: 已成功解密
     `.trim();
     
-    alert(resultMessage);
+    await uiService.alert(resultMessage, { title: '解密结果', confirmText: '我知道了' });
     
     // 7. 打印详细信息到控制台
     console.log('=== 完整解密数据 ===');
@@ -421,7 +422,7 @@ const testMedicationDecryption = async () => {
     
   } catch (error) {
     console.error('❌ 解密失败:', error);
-    alert(`❌ 解密失败: ${error instanceof Error ? error.message : String(error)}`);
+    uiService.toast(`❌ 解密失败: ${error instanceof Error ? error.message : String(error)}`, { type: 'error' });
   }
 };
 
@@ -457,15 +458,18 @@ const goToRegistrationFlowTest = () => {
 
 // 开发工具
 const clearAllData = async () => {
-  if (!confirm('⚠️ 确定要清除所有数据吗？这将重置应用到初始状态，不可恢复！')) {
-    return;
-  }
+  const ok = await uiService.confirm('⚠️ 确定要清除所有数据吗？这将重置应用到初始状态，不可恢复！', {
+    title: '危险操作',
+    confirmText: '清除',
+    cancelText: '取消',
+  })
+  if (!ok) return;
 
   try {
     // 清除所有本地存储
     await Preferences.clear();
     
-    alert('✅ 所有数据已清除，应用已重置到初始状态');
+    uiService.toast('✅ 所有数据已清除，应用已重置到初始状态', { type: 'success' });
     
     // 刷新状态
     await checkStatus();
@@ -474,7 +478,7 @@ const clearAllData = async () => {
     router.push('/splash');
   } catch (error) {
     console.error('清除数据失败:', error);
-    alert('❌ 清除数据失败');
+    uiService.toast('❌ 清除数据失败', { type: 'error' });
   }
 };
 
@@ -489,7 +493,7 @@ const toggleRegistrationStatus = async () => {
       await Preferences.remove({ key: 'accountInfo' });
       await Preferences.remove({ key: 'userInfo' });
       await Preferences.remove({ key: 'biometric' });
-      alert('✅ 已切换到未注册状态');
+      uiService.toast('✅ 已切换到未注册状态', { type: 'success' });
     } else {
       // 设置为已注册状态
       await Preferences.set({
@@ -509,13 +513,13 @@ const toggleRegistrationStatus = async () => {
         })
       });
       
-      alert('✅ 已切换到已注册状态');
+      uiService.toast('✅ 已切换到已注册状态', { type: 'success' });
     }
     
     await checkStatus();
   } catch (error) {
     console.error('切换注册状态失败:', error);
-    alert('❌ 切换状态失败');
+    uiService.toast('❌ 切换状态失败', { type: 'error' });
   }
 };
 
@@ -539,10 +543,10 @@ const showSystemInfo = async () => {
 • 注册状态: ${isRegistered.value ? '已注册' : '未注册'}
     `.trim();
     
-    alert(info);
+    await uiService.alert(info, { title: '系统信息', confirmText: '我知道了' });
   } catch (error) {
     console.error('获取系统信息失败:', error);
-    alert('❌ 获取系统信息失败');
+    uiService.toast('❌ 获取系统信息失败', { type: 'error' });
   }
 };
 

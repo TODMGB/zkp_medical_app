@@ -17,8 +17,8 @@
       </div>
       
       <div class="invite-header">
-        <div class="invite-icon-wrapper" :class="getGroupColorClass(groupType)">
-          <component :is="getGroupIcon(groupType)" class="invite-icon" />
+        <div class="invite-icon-wrapper" :class="getGroupColorClass(resolvedGroupType)">
+          <component :is="getGroupIcon(resolvedGroupType)" class="invite-icon" />
         </div>
         <h2 class="invite-title">{{ inviteTitle }}</h2>
         <p class="invite-desc">{{ inviteDescription }}</p>
@@ -27,15 +27,36 @@
           <span>{{ groupName }}</span>
         </p>
       </div>
+
+      <div v-if="shouldSelectGroup" class="group-select-section">
+        <h3 class="group-select-title">选择访问组</h3>
+        <div class="group-select-card">
+          <div class="select-wrapper">
+            <select v-model="selectedGroupId" class="form-select">
+              <option value="" disabled>请选择要邀请加入的访问组</option>
+              <option
+                v-for="group in availableGroups"
+                :key="group.id"
+                :value="group.id"
+              >
+                {{ group.group_name }} ({{ group.group_type }})
+              </option>
+            </select>
+          </div>
+          <button class="confirm-group-btn" @click="confirmSelectedGroup" :disabled="!selectedGroupId || isLoading">
+            使用该访问组
+          </button>
+        </div>
+      </div>
       
       <!-- 二维码区域 -->
-      <div class="qr-section">
+      <div class="qr-section" :class="{ disabled: shouldSelectGroup }">
         <div class="qr-container">
           <div class="qr-code">
             <QRCode v-if="inviteToken" :value="inviteToken" :size="140" />
             <div v-else class="qr-placeholder">
               <Smartphone class="qr-icon" />
-              <p class="qr-text">生成中...</p>
+              <p class="qr-text">{{ shouldSelectGroup ? '请先选择访问组' : '生成中...' }}</p>
             </div>
           </div>
           <div class="qr-info">
@@ -45,7 +66,7 @@
         </div>
         
         <!-- 邀请码 -->
-        <div class="invite-code-section">
+        <div v-if="!shouldSelectGroup" class="invite-code-section">
           <h3 class="code-title">或者使用邀请码</h3>
           <div class="code-container">
             <div class="invite-code">{{ inviteCode }}</div>
@@ -109,7 +130,7 @@
       
       <!-- 操作按钮 -->
       <div class="actions">
-        <button class="refresh-btn" @click="refreshInvite">
+        <button class="refresh-btn" @click="refreshInvite" :disabled="shouldSelectGroup">
           <RefreshCw class="icon-small" :class="{ 'spin': isLoading }" />
           刷新邀请码
         </button>
@@ -126,7 +147,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { relationService } from '../../service/relation'
 import { authService } from '../../service/auth'
-import type { AccessGroup, AccessGroupStats, Invitation } from '../../service/relation'
+import type { AccessGroup, AccessGroupStats } from '../../service/relation'
+import { uiService } from '@/service/ui'
 import QRCode from '../../components/QRCode.vue'
 import { 
   ArrowLeft, 
@@ -143,14 +165,12 @@ import {
   Stethoscope,
   Hospital,
   Microscope,
-  Building2,
-  UserPlus
+  Building2
 } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
 
-const inviteType = computed(() => route.query.type || 'family')
 const groupId = computed(() => {
   const id = route.query.groupId
   if (!id) return null
@@ -158,8 +178,10 @@ const groupId = computed(() => {
   const numId = Number(id)
   return isNaN(numId) ? id as string : numId
 })
-const groupName = computed(() => route.query.groupName as string || '')
-const groupType = computed(() => route.query.groupType as string || '')
+const groupName = computed(() => {
+  return (route.query.groupName as string) || accessGroup.value?.group_name || ''
+})
+const groupType = computed(() => (route.query.groupType as string) || '')
 
 const inviteCode = ref('')
 const inviteToken = ref('')
@@ -171,22 +193,24 @@ const pendingInvites = ref<any[]>([])
 // 使用更灵活的类型，因为可能从 getAccessGroupsStats 或 createAccessGroup 获取
 const accessGroup = ref<AccessGroup | AccessGroupStats | null>(null)
 
+const availableGroups = ref<AccessGroupStats[]>([])
+const selectedGroupId = ref<number | string | ''>('')
+
+const shouldSelectGroup = computed(() => {
+  return !groupId.value && !accessGroup.value && availableGroups.value.length > 1
+})
+
+const resolvedGroupType = computed(() => {
+  return (accessGroup.value as any)?.group_type || groupType.value || 'CUSTOM'
+})
+
 // 动态计算页面标题
 const pageTitle = computed(() => {
   if (groupName.value) {
     return `邀请加入 - ${groupName.value}`
   }
-  
-  const typeMap: Record<string, string> = {
-    'FAMILY': '邀请家人',
-    'PRIMARY_DOCTOR': '邀请主治医生',
-    'FAMILY_DOCTOR': '邀请家庭医生',
-    'SPECIALIST': '邀请专科医生',
-    'HOSPITAL': '邀请医院',
-    'CUSTOM': '邀请成员'
-  }
-  
-  return typeMap[groupType.value] || (inviteType.value === 'family' ? '邀请家人' : '邀请医生')
+
+  return '生成邀请'
 })
 
 // 动态获取群组图标
@@ -204,7 +228,7 @@ const getGroupIcon = (type: string) => {
     return icons[type]
   }
   
-  return inviteType.value === 'family' ? Users : Stethoscope
+  return Users
 }
 
 // 获取群组颜色类
@@ -235,7 +259,7 @@ const inviteTitle = computed(() => {
     'CUSTOM': '邀请成员加入'
   }
   
-  return titleMap[groupType.value] || (inviteType.value === 'family' ? '邀请家人加入' : '邀请医生加入')
+  return titleMap[resolvedGroupType.value] || '邀请成员加入'
 })
 
 // 动态邀请描述
@@ -249,13 +273,11 @@ const inviteDescription = computed(() => {
     'CUSTOM': '让成员访问您指定的健康数据'
   }
   
-  if (groupType.value && descMap[groupType.value]) {
-    return descMap[groupType.value]
+  if (resolvedGroupType.value && descMap[resolvedGroupType.value]) {
+    return descMap[resolvedGroupType.value]
   }
-  
-  return inviteType.value === 'family' 
-    ? '让家人可以查看您的健康数据，给予及时关怀' 
-    : '让医生可以查看您的医疗数据，提供专业指导'
+
+  return '让成员访问您指定的健康数据'
 })
 
 const getStatusText = (status: string) => {
@@ -294,17 +316,30 @@ const shareSms = () => {
 }
 
 const shareCopy = async () => {
-  const shareText = `我邀请您加入健康守护App，邀请码：${inviteCode.value}`
+  const shareText = `我邀请您加入健康守护App${groupName.value ? `（${groupName.value}）` : ''}，邀请码：${inviteCode.value}`
   try {
     await navigator.clipboard.writeText(shareText)
     console.log('分享链接已复制')
-    alert('分享链接已复制')
+    uiService.toast('分享链接已复制', { type: 'success' })
   } catch (error) {
     console.error('复制失败:', error)
   }
 }
 
 const refreshInvite = async () => {
+  await createInvitation()
+}
+
+const confirmSelectedGroup = async () => {
+  if (!selectedGroupId.value) return
+
+  const selected = availableGroups.value.find(g => g.id == selectedGroupId.value) || null
+  if (!selected) {
+    errorMessage.value = '访问组不存在'
+    return
+  }
+
+  accessGroup.value = selected
   await createInvitation()
 }
 
@@ -336,8 +371,6 @@ const loadAccessGroup = async () => {
   try {
     // 1. 确保用户已登录后端（自动尝试指纹登录）
     console.log('检查后端登录状态...');
-    const { authService } = await import('@/service/auth');
-    
     try {
       await authService.ensureBackendLoginWithBiometric();
       console.log('✅ 后端登录状态正常');
@@ -349,13 +382,15 @@ const loadAccessGroup = async () => {
     }
     
     // 2. 加载访问组
+    const groups = await relationService.getAccessGroupsStats()
+    availableGroups.value = groups || []
+
     if (groupId.value) {
       // 如果有groupId，获取所有组然后查找
-      const groups = await relationService.getAccessGroupsStats()
       console.log('查找群组 - groupId:', groupId.value, '类型:', typeof groupId.value);
-      console.log('可用群组:', groups.map(g => ({ id: g.id, name: g.group_name, type: typeof g.id })));
+      console.log('可用群组:', availableGroups.value.map(g => ({ id: g.id, name: g.group_name, type: typeof g.id })));
       
-      accessGroup.value = groups.find(g => g.id == groupId.value) || null  // 使用 == 进行宽松比较
+      accessGroup.value = availableGroups.value.find(g => g.id == groupId.value) || null  // 使用 == 进行宽松比较
       
       if (!accessGroup.value) {
         console.error('未找到访问组 - groupId:', groupId.value);
@@ -363,24 +398,24 @@ const loadAccessGroup = async () => {
       }
       console.log('找到访问组:', accessGroup.value);
     } else {
-      // 如果没有groupId，使用第一个访问组
-      const groups = await relationService.getAccessGroupsStats()
-      if (groups.length > 0) {
-        accessGroup.value = groups[0]
-        console.log('使用第一个访问组:', accessGroup.value);
+      if (availableGroups.value.length === 1) {
+        accessGroup.value = availableGroups.value[0]
+        selectedGroupId.value = availableGroups.value[0].id
+        console.log('仅有一个访问组，自动选择:', accessGroup.value);
       } else {
-        // 没有访问组时自动创建默认访问组
-        console.log('没有访问组，自动创建默认访问组...')
-        const groupName = inviteType.value === 'family' ? '家庭成员组' : '医疗团队组'
-        const description = inviteType.value === 'family' ? '家庭成员访问组' : '医疗团队访问组'
-        
-        accessGroup.value = await relationService.createAccessGroup(groupName, description)
-        console.log('默认访问组创建成功:', accessGroup.value)
+        if (availableGroups.value.length === 0) {
+          console.log('没有访问组，自动创建默认访问组...')
+          accessGroup.value = await relationService.createAccessGroup('默认访问组', '默认访问组')
+          console.log('默认访问组创建成功:', accessGroup.value)
+          selectedGroupId.value = accessGroup.value.id
+        }
       }
     }
-    
-    // 3. 自动创建邀请
-    await createInvitation()
+
+    if (accessGroup.value) {
+      // 3. 自动创建邀请
+      await createInvitation()
+    }
   } catch (error: any) {
     console.error('加载访问组失败:', error)
     errorMessage.value = error.message || '加载失败'
@@ -389,7 +424,6 @@ const loadAccessGroup = async () => {
 
 onMounted(() => {
   console.log('===== Invitation 页面参数 =====')
-  console.log('邀请类型:', inviteType.value)
   console.log('群组ID:', groupId.value)
   console.log('群组名称:', groupName.value)
   console.log('群组类型:', groupType.value)
@@ -534,6 +568,60 @@ onMounted(() => {
 .badge-icon {
   width: 14px;
   height: 14px;
+}
+
+.group-select-section {
+  background-color: white;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.group-select-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0 0 12px 0;
+}
+
+.group-select-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: white;
+  font-size: 14px;
+  color: #2d3748;
+  outline: none;
+}
+
+.confirm-group-btn {
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 12px;
+  background: #4f46e5;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-group-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.qr-section.disabled {
+  opacity: 0.6;
+  pointer-events: none;
 }
 
 .qr-section {

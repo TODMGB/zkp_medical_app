@@ -22,6 +22,7 @@ router.get('/access-groups/stats', relationshipController.getAccessGroupsWithSta
 
 // 获取访问组成员
 router.get('/access-groups/:accessGroupId/members', relationshipController.getAccessGroupMembers);
+router.post('/access-groups/:accessGroupId/members', relationshipController.addMemberToAccessGroup);
 
 // =======================================================
 // Invitations Routes
@@ -42,6 +43,13 @@ router.delete('/invitations/cancel', relationshipController.cancelInvitation);
 // =======================================================
 // Relationships Routes
 // =======================================================
+
+router.post('/friend-requests', relationshipController.createFriendRequest);
+router.get('/friend-requests/incoming', relationshipController.getIncomingFriendRequests);
+router.get('/friend-requests/outgoing', relationshipController.getOutgoingFriendRequests);
+router.post('/friend-requests/accept', relationshipController.acceptFriendRequest);
+router.post('/friend-requests/reject', relationshipController.rejectFriendRequest);
+router.post('/friend-requests/cancel', relationshipController.cancelFriendRequest);
 
 // 获取我作为访问者的所有关系
 router.get('/relationships/my', relationshipController.getMyRelationships);

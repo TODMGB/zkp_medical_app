@@ -6,6 +6,16 @@
 const entity = require('../entity/relationship.entity');
 const mqProducer = require('../mq/producer');
 
+function normalizeAddress(address) {
+    return address?.toLowerCase();
+}
+
+function shortAddress(address) {
+    if (!address) return '';
+    if (address.length <= 14) return address;
+    return `${address.slice(0, 10)}...${address.slice(-4)}`;
+}
+
 /**
  * 接受邀请并创建关系（增强版，支持医院预授权）
  * @param {string} viewerAddress - 接受邀请的用户地址（查看者）
@@ -95,6 +105,9 @@ async function initializeDefaultGroups(ownerAddress) {
  */
 async function getAccessGroupsWithStats(ownerAddress) {
     return await entity.getAccessGroupsWithStats(ownerAddress);
+}
+async function listAccessGroups(ownerAddress) {
+    return await entity.findAccessGroupsByOwner(ownerAddress);
 }
 
 /**
@@ -291,11 +304,240 @@ async function getMyRelationships(userAddress) {
     };
 }
 
+async function createFriendRequest(requesterAddress, recipientAddress, message = null) {
+    const requester = normalizeAddress(requesterAddress);
+    const recipient = normalizeAddress(recipientAddress);
+
+    if (!requester || !recipient) {
+        throw { status: 400, message: '缺少必要参数。' };
+    }
+    if (requester === recipient) {
+        throw { status: 400, message: '不能添加自己为好友。' };
+    }
+
+    await entity.ensureFriendRequestsTable();
+    const result = await entity.createFriendRequest(requester, recipient, message);
+
+    try {
+        if (mqProducer.publishFriendRequestCreated) {
+            await mqProducer.publishFriendRequestCreated(requester, recipient, result.request);
+        }
+    } catch (mqError) {
+        console.error('❌ [MQ] 发送好友申请通知失败（不影响主流程）:', mqError);
+    }
+
+    return result;
+}
+
+async function getIncomingFriendRequests(recipientAddress, status = 'pending') {
+    await entity.ensureFriendRequestsTable();
+    return await entity.getIncomingFriendRequests(recipientAddress, status);
+}
+
+async function getOutgoingFriendRequests(requesterAddress, status = 'pending') {
+    await entity.ensureFriendRequestsTable();
+    return await entity.getOutgoingFriendRequests(requesterAddress, status);
+}
+
+async function acceptFriendRequest(recipientAddress, friendRequestId) {
+    const recipient = normalizeAddress(recipientAddress);
+    if (!recipient) {
+        throw { status: 400, message: '缺少用户标识。' };
+    }
+
+    await entity.ensureFriendRequestsTable();
+    const fr = await entity.getFriendRequestById(friendRequestId);
+    if (!fr) {
+        throw { status: 404, message: '好友申请不存在。' };
+    }
+    if (normalizeAddress(fr.recipient_address) !== recipient) {
+        throw { status: 403, message: '无权处理该好友申请。' };
+    }
+    if (fr.status !== 'pending') {
+        throw { status: 400, message: '该好友申请已处理。' };
+    }
+
+    const updated = await entity.updateFriendRequestStatus(friendRequestId, 'accepted');
+
+    const requester = normalizeAddress(fr.requester_address);
+    const recipientFriendGroup = await entity.getOrCreateFriendGroup(recipient);
+    const requesterFriendGroup = await entity.getOrCreateFriendGroup(requester);
+
+    await entity.createRelationship(recipient, requester, recipientFriendGroup.id);
+    await entity.createRelationship(requester, recipient, requesterFriendGroup.id);
+
+    try {
+        if (mqProducer.publishFriendRequestAccepted) {
+            await mqProducer.publishFriendRequestAccepted(requester, recipient, {
+                friend_request_id: friendRequestId
+            });
+        } else if (mqProducer.publishNotification) {
+            await mqProducer.publishNotification({
+                recipient_address: requester,
+                title: '好友申请已通过',
+                body: `${shortAddress(recipient)} 已同意您的好友申请`,
+                type: 'friend_request_accepted',
+                data: { requester_address: requester, recipient_address: recipient, friend_request_id: friendRequestId },
+                priority: 'normal',
+                channels: ['push', 'websocket']
+            });
+        }
+    } catch (mqError) {
+        console.error('❌ [MQ] 发送好友申请通过通知失败（不影响主流程）:', mqError);
+    }
+
+    return {
+        message: '好友申请已通过。',
+        friend_request: updated,
+        requester_address: requester,
+        recipient_address: recipient
+    };
+}
+
+async function rejectFriendRequest(recipientAddress, friendRequestId) {
+    const recipient = normalizeAddress(recipientAddress);
+    if (!recipient) {
+        throw { status: 400, message: '缺少用户标识。' };
+    }
+
+    await entity.ensureFriendRequestsTable();
+    const fr = await entity.getFriendRequestById(friendRequestId);
+    if (!fr) {
+        throw { status: 404, message: '好友申请不存在。' };
+    }
+    if (normalizeAddress(fr.recipient_address) !== recipient) {
+        throw { status: 403, message: '无权处理该好友申请。' };
+    }
+    if (fr.status !== 'pending') {
+        throw { status: 400, message: '该好友申请已处理。' };
+    }
+
+    const updated = await entity.updateFriendRequestStatus(friendRequestId, 'rejected');
+    const requester = normalizeAddress(fr.requester_address);
+
+    try {
+        if (mqProducer.publishFriendRequestRejected) {
+            await mqProducer.publishFriendRequestRejected(requester, recipient, {
+                friend_request_id: friendRequestId
+            });
+        } else if (mqProducer.publishNotification) {
+            await mqProducer.publishNotification({
+                recipient_address: requester,
+                title: '好友申请被拒绝',
+                body: `${shortAddress(recipient)} 已拒绝您的好友申请`,
+                type: 'friend_request_rejected',
+                data: { requester_address: requester, recipient_address: recipient, friend_request_id: friendRequestId },
+                priority: 'normal',
+                channels: ['push', 'websocket']
+            });
+        }
+    } catch (mqError) {
+        console.error('❌ [MQ] 发送好友申请拒绝通知失败（不影响主流程）:', mqError);
+    }
+
+    return {
+        message: '好友申请已拒绝。',
+        friend_request: updated,
+        requester_address: requester,
+        recipient_address: recipient
+    };
+}
+
+async function cancelFriendRequest(requesterAddress, friendRequestId) {
+    const requester = normalizeAddress(requesterAddress);
+    if (!requester) {
+        throw { status: 400, message: '缺少用户标识。' };
+    }
+
+    await entity.ensureFriendRequestsTable();
+    const fr = await entity.getFriendRequestById(friendRequestId);
+    if (!fr) {
+        throw { status: 404, message: '好友申请不存在。' };
+    }
+    if (normalizeAddress(fr.requester_address) !== requester) {
+        throw { status: 403, message: '无权撤回该好友申请。' };
+    }
+    if (fr.status !== 'pending') {
+        throw { status: 400, message: '该好友申请已处理。' };
+    }
+
+    const updated = await entity.updateFriendRequestStatus(friendRequestId, 'cancelled');
+    const recipient = normalizeAddress(fr.recipient_address);
+
+    try {
+        if (mqProducer.publishFriendRequestCancelled) {
+            await mqProducer.publishFriendRequestCancelled(requester, recipient, {
+                friend_request_id: friendRequestId
+            });
+        } else if (mqProducer.publishNotification) {
+            await mqProducer.publishNotification({
+                recipient_address: recipient,
+                title: '好友申请已撤回',
+                body: `${shortAddress(requester)} 已撤回好友申请`,
+                type: 'friend_request_cancelled',
+                data: { requester_address: requester, recipient_address: recipient, friend_request_id: friendRequestId },
+                priority: 'normal',
+                channels: ['websocket']
+            });
+
+            await mqProducer.publishNotification({
+                recipient_address: requester,
+                title: '已撤回好友申请',
+                body: `您已撤回对 ${shortAddress(recipient)} 的好友申请`,
+                type: 'friend_request_cancelled',
+                data: { requester_address: requester, recipient_address: recipient, friend_request_id: friendRequestId },
+                priority: 'normal',
+                channels: ['websocket']
+            });
+        }
+    } catch (mqError) {
+        console.error('❌ [MQ] 发送好友申请撤回通知失败（不影响主流程）:', mqError);
+    }
+
+    return {
+        message: '好友申请已撤回。',
+        friend_request: updated,
+        requester_address: requester,
+        recipient_address: recipient
+    };
+}
+
+async function addMemberToAccessGroup(ownerAddress, accessGroupId, memberAddress, permissionLevel = 1) {
+    const owner = normalizeAddress(ownerAddress);
+    const member = normalizeAddress(memberAddress);
+    if (!owner || !member || !accessGroupId) {
+        throw { status: 400, message: '缺少必要参数。' };
+    }
+
+    const group = await entity.getAccessGroupById(accessGroupId);
+    if (!group) {
+        throw { status: 404, message: '访问组不存在。' };
+    }
+    if (normalizeAddress(group.owner_address) !== owner) {
+        throw { status: 403, message: '只有群主可以添加成员。' };
+    }
+
+    await entity.createRelationship(owner, member, group.id, permissionLevel);
+
+    try {
+        await mqProducer.publishInvitationAccepted(owner, member, {
+            id: group.id,
+            name: group.group_name,
+            type: group.group_type
+        });
+    } catch (mqError) {
+        console.error('❌ [MQ] 发送群主添加成员通知失败（不影响主流程）:', mqError);
+    }
+
+    return { message: '成员已添加。' };
+}
+
 // 导出服务函数，直接透传部分实体层函数
 module.exports = {
     // 访问组管理
     createAccessGroup: entity.createAccessGroup,          // 创建访问组
     findAccessGroupsByOwner: entity.findAccessGroupsByOwner,  // 查找用户的访问组
+    listAccessGroups,
     getAccessGroupsWithStats,                             // 获取访问组详情（含统计）
     getAccessGroupMembers,                                // 获取访问组成员
     initializeDefaultGroups,                              // 初始化默认访问组
@@ -313,4 +555,13 @@ module.exports = {
     suspendRelationship,                                  // 暂停关系
     resumeRelationship,                                   // 恢复关系
     revokeRelationship,                                   // 撤销关系
+
+    createFriendRequest,
+    getIncomingFriendRequests,
+    getOutgoingFriendRequests,
+    acceptFriendRequest,
+    rejectFriendRequest,
+    cancelFriendRequest,
+
+    addMemberToAccessGroup,
 };

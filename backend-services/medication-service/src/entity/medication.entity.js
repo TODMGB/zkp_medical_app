@@ -95,6 +95,35 @@ async function getMedicationPlansByDoctor(doctorAddress, status = null) {
     return plans;
 }
 
+async function getMedicationPlansByPatient(patientAddress, status = null) {
+    let sql = `
+        SELECT * FROM medication_plans
+        WHERE patient_address = $1
+    `;
+    const values = [patientAddress.toLowerCase()];
+
+    if (status) {
+        sql += ' AND status = $2';
+        values.push(status);
+    }
+
+    sql += ' ORDER BY created_at DESC';
+
+    const result = await query(sql, values);
+
+    const plans = result.rows.map(plan => {
+        if (Buffer.isBuffer(plan.encrypted_plan_data)) {
+            return {
+                ...plan,
+                encrypted_plan_data: plan.encrypted_plan_data.toString('hex')
+            };
+        }
+        return plan;
+    });
+
+    return plans;
+}
+
 /**
  * 更新用药计划
  */
@@ -215,6 +244,7 @@ module.exports = {
     createMedicationPlan,
     getMedicationPlanById,
     getMedicationPlansByDoctor,
+    getMedicationPlansByPatient,
     updateMedicationPlan,
     deleteMedicationPlan,
     searchCommonMedications,

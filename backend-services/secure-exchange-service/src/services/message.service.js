@@ -135,6 +135,13 @@ class MessageService {
     });
   }
 
+  async getPlanShareRecipients(planId, senderAddress) {
+    if (!planId) {
+      throw new Error('planId is required');
+    }
+    return await messageEntity.findPlanShareRecipients(planId, senderAddress);
+  }
+
   /**
    * 标记消息为已读
    */

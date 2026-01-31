@@ -152,6 +152,7 @@ import {
 import { authService } from '@/service/auth'
 import { memberRemarkService } from '@/service/memberRemark'
 import { memberInfoService, type MemberInfo } from '@/service/memberInfo'
+import { uiService } from '@/service/ui'
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -293,11 +294,14 @@ const loadRelationships = async () => {
 }
 
 // 查看关系详情
-const viewRelationshipDetail = (relationship: RelationshipAsViewer) => {
+const viewRelationshipDetail = async (relationship: RelationshipAsViewer) => {
   // 可以导航到患者/老人的详细信息页面
   const memberName = getMemberDisplayName(relationship.data_owner_address)
   console.log('查看关系详情:', relationship)
-  alert(`查看 ${memberName} 的详细信息\n地址: ${formatAddress(relationship.data_owner_address)}\n访问组: ${relationship.access_group_name}\n状态: ${getStatusText(relationship.status)}\n描述: ${relationship.description || '无'}`)
+  await uiService.alert(
+    `查看 ${memberName} 的详细信息\n地址: ${formatAddress(relationship.data_owner_address)}\n访问组: ${relationship.access_group_name}\n状态: ${getStatusText(relationship.status)}\n描述: ${relationship.description || '无'}`,
+    { title: '详情', confirmText: '我知道了' }
+  )
 }
 
 // 获取群组图标

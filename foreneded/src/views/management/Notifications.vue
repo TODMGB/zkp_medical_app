@@ -145,12 +145,25 @@
         </div>
         
         <div class="modal-footer">
-          <button class="modal-action-btn primary" @click="handleDetailAction">
-            前往处理
-          </button>
-          <button class="modal-action-btn" @click="closeDetailModal">
-            关闭
-          </button>
+          <template v-if="selectedNotification?.type === 'friend_request_received'">
+            <button class="modal-action-btn primary" @click="acceptFriendRequest" :disabled="isHandlingFriendRequest">
+              同意
+            </button>
+            <button class="modal-action-btn danger" @click="rejectFriendRequest" :disabled="isHandlingFriendRequest">
+              拒绝
+            </button>
+            <button class="modal-action-btn" @click="closeDetailModal" :disabled="isHandlingFriendRequest">
+              关闭
+            </button>
+          </template>
+          <template v-else>
+            <button class="modal-action-btn primary" @click="handleDetailAction">
+              前往处理
+            </button>
+            <button class="modal-action-btn" @click="closeDetailModal">
+              关闭
+            </button>
+          </template>
         </div>
       </div>
     </div>
@@ -160,9 +173,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { notificationService, type Notification } from '@/service/notification'
+import { notificationService, type Notification, getNotificationRoute, getNotificationCategoryLabel, getNotificationMainCategory } from '@/service/notification'
 import { authService } from '@/service/auth'
 import { notificationBadgeService } from '@/service/notificationBadge'
+import { uiService } from '@/service/ui'
+import { relationService } from '@/service/relation'
 import { 
   ArrowLeft, 
   ClipboardList, 
@@ -201,71 +216,30 @@ const errorMessage = ref('')
 const showDetailModal = ref(false)
 const selectedNotification = ref<Notification | null>(null)
 
+const isHandlingFriendRequest = ref(false)
+
 const notifications = ref<Notification[]>([])
 
 // ==================== 通知分类 ====================
 
 // 获取通知类型的分类
-const getNotificationCategory = (type: string) => {
-  const categoryMap: Record<string, string> = {
-    // 用药相关
-    'medication_reminder': '用药提醒',
-    'new_medication_plan': '用药计划',
-    'medication_plan_updated': '用药计划',
-    'medication_plan_created': '用药计划',
-    'medication_plan_shared': '用药计划',
-    
-    // 关系管理
-    'relationship_invitation_accepted': '关系管理',
-    'relationship_joined_group': '关系管理',
-    'relationship_suspended': '关系管理',
-    'relationship_resumed': '关系管理',
-    'relationship_revoked': '关系管理',
-    'invitation_created': '关系邀请',
-    
-    // 系统通知
-    'migration_session_created': '账户迁移',
-    'migration_completed': '账户迁移',
-    'system_notification': '系统通知',
-    
-    // 安全相关
-    'recovery_request_received': '账户恢复',
-    'guardian_added': '守护者管理',
-    'threshold_changed': '守护者管理',
-    'recovery_initiated': '账户恢复',
-    'recovery_supported': '账户恢复',
-    'recovery_cancelled': '账户恢复',
-    'recovery_completed': '账户恢复',
-    
-    // 消息
-    'encrypted_message': '加密消息'
-  }
-  return categoryMap[type] || '其他通知'
-}
+const getNotificationCategory = (type: string) => getNotificationCategoryLabel(type)
 
 // 获取通知分类的主类别（用于筛选）
-const getNotificationMainCategory = (type: string) => {
-  const category = getNotificationCategory(type)
-  if (category.includes('用药')) return 'medication'
-  if (category.includes('关系') || category.includes('邀请')) return 'relationship'
-  if (category.includes('恢复') || category.includes('守护者')) return 'security'
-  if (category.includes('迁移') || category.includes('系统')) return 'system'
-  if (category.includes('消息')) return 'message'
-  return 'other'
-}
+const getNotificationMainCategoryLocal = (type: string) => getNotificationMainCategory(type)
 
 // 获取分类对应的CSS类名
 const getNotificationCategoryClass = (type: string) => {
-  const mainCategory = getNotificationMainCategory(type)
+  const mainCategory = getNotificationMainCategoryLocal(type)
   return `category-${mainCategory}`
 }
 
 const filters = computed(() => [
   { label: '全部', icon: ClipboardList, value: 'all', count: notifications.value.length },
-  { label: '用药', icon: Pill, value: 'medication', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'medication').length },
-  { label: '关系', icon: Users, value: 'relationship', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'relationship').length },
-  { label: '安全', icon: Lock, value: 'security', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'security').length },
-  { label: '系统', icon: Bell, value: 'system', count: notifications.value.filter(n => getNotificationMainCategory(n.type) === 'system').length }
+  { label: '用药', icon: Pill, value: 'medication', count: notifications.value.filter(n => getNotificationMainCategoryLocal(n.type) === 'medication').length },
+  { label: '关系', icon: Users, value: 'relationship', count: notifications.value.filter(n => getNotificationMainCategoryLocal(n.type) === 'relationship').length },
+  { label: '安全', icon: Lock, value: 'security', count: notifications.value.filter(n => getNotificationMainCategoryLocal(n.type) === 'security').length },
+  { label: '系统', icon: Bell, value: 'system', count: notifications.value.filter(n => getNotificationMainCategoryLocal(n.type) === 'system').length }
 ])
 
 const totalNotifications = computed(() => notifications.value.length)
@@ -276,7 +250,7 @@ const filteredNotifications = computed(() => {
   if (selectedFilter.value === 'all') {
     return notifications.value
   }
-  return notifications.value.filter(n => getNotificationMainCategory(n.type) === selectedFilter.value)
+  return notifications.value.filter(n => getNotificationMainCategoryLocal(n.type) === selectedFilter.value)
 })
 
 // 获取通知图标
@@ -288,6 +262,7 @@ const getNotificationIcon = (type: string) => {
     'medication_plan_updated': FileText,
     'medication_plan_created': ClipboardList,
     'medication_plan_shared': Share2,
+    'medication_plan_cancelled': Ban,
     
     // 关系
     'relationship_invitation_accepted': CheckCircle,
@@ -296,6 +271,12 @@ const getNotificationIcon = (type: string) => {
     'relationship_resumed': PlayCircle,
     'relationship_revoked': XCircle,
     'invitation_created': Mail,
+
+    'friend_request_received': Mail,
+    'friend_request_sent': Mail,
+    'friend_request_accepted': CheckCircle,
+    'friend_request_rejected': XCircle,
+    'friend_added': Users,
     
     // 系统
     'migration_session_created': Key,
@@ -304,17 +285,64 @@ const getNotificationIcon = (type: string) => {
     
     // 安全
     'recovery_request_received': AlertTriangle,
+    'recovery_requested': AlertTriangle,
     'guardian_added': Shield,
     'threshold_changed': Settings,
     'recovery_initiated': AlertCircle,
     'recovery_supported': ThumbsUp,
     'recovery_cancelled': Ban,
+    'recovery_cancelled_guardian': Ban,
     'recovery_completed': CheckCircle,
+    'recovery_completed_old_owner': CheckCircle,
     
     // 消息
     'encrypted_message': MessageSquare
   }
   return iconMap[type] || Megaphone
+}
+
+const acceptFriendRequest = async () => {
+  if (!selectedNotification.value) return
+  const friendRequestId = selectedNotification.value.data?.friend_request_id
+  if (!friendRequestId) {
+    uiService.toast('缺少好友申请ID', { type: 'error' })
+    return
+  }
+
+  try {
+    isHandlingFriendRequest.value = true
+    await relationService.acceptFriendRequest(friendRequestId)
+    uiService.toast('已同意好友申请', { type: 'success' })
+    closeDetailModal()
+    await loadNotifications()
+  } catch (error: any) {
+    console.error('同意好友申请失败:', error)
+    uiService.toast(error.message || '同意失败', { type: 'error' })
+  } finally {
+    isHandlingFriendRequest.value = false
+  }
+}
+
+const rejectFriendRequest = async () => {
+  if (!selectedNotification.value) return
+  const friendRequestId = selectedNotification.value.data?.friend_request_id
+  if (!friendRequestId) {
+    uiService.toast('缺少好友申请ID', { type: 'error' })
+    return
+  }
+
+  try {
+    isHandlingFriendRequest.value = true
+    await relationService.rejectFriendRequest(friendRequestId)
+    uiService.toast('已拒绝好友申请', { type: 'success' })
+    closeDetailModal()
+    await loadNotifications()
+  } catch (error: any) {
+    console.error('拒绝好友申请失败:', error)
+    uiService.toast(error.message || '拒绝失败', { type: 'error' })
+  } finally {
+    isHandlingFriendRequest.value = false
+  }
 }
 
 const getFilterName = () => {
@@ -328,7 +356,8 @@ const getPriorityText = (priority: string) => {
   const priorityMap: Record<string, string> = {
     'urgent': '🔴 紧急',
     'high': '🟠 重要',
-    'normal': '🟢 普通'
+    'normal': '🟢 普通',
+    'low': '🔵 低'
   }
   return priorityMap[priority] || '🟢 普通'
 }
@@ -422,35 +451,10 @@ const handleDetailAction = () => {
   if (!selectedNotification.value) return
   
   const notification = selectedNotification.value
-  const mainCategory = getNotificationMainCategory(notification.type)
   
   closeDetailModal()
-  
-  // 根据通知类型跳转到相应页面
-  switch (mainCategory) {
-    case 'medication':
-      router.push('/medication-history')
-      break
-    case 'relationship':
-      router.push('/relationships')
-      break
-    case 'security':
-      router.push('/guardian-setup')
-      break
-    case 'system':
-      if (notification.type.includes('migration')) {
-        router.push('/account-migration')
-      } else {
-        router.push('/settings')
-      }
-      break
-    case 'message':
-      // 跳转到加密消息页面（如果有的话）
-      router.push('/home')
-      break
-    default:
-      console.log('查看通知详情:', notification)
-  }
+
+  router.push(getNotificationRoute(notification.type, notification.data))
 }
 
 // 格式化数据键名
@@ -568,7 +572,7 @@ const markAllRead = async () => {
     notificationBadgeService.decreaseUnreadCount(count)
   } catch (error) {
     console.error('标记全部已读失败:', error)
-    alert('操作失败，请重试')
+    uiService.toast('操作失败，请重试', { type: 'error' })
   }
 }
 
@@ -1003,7 +1007,12 @@ onBeforeUnmount(() => {
   color: white;
 }
 
-.modal-action-btn:not(.primary) {
+ .modal-action-btn.danger {
+  background: #f56565;
+  color: white;
+ }
+
+.modal-action-btn:not(.primary):not(.danger) {
   background: #edf2f7;
   color: #4a5568;
 }

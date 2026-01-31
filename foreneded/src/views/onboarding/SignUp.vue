@@ -230,14 +230,14 @@ const handleSubmit = async () => {
       console.log('✅ 查询到用户信息:', person.name, `(${person.role})`);
       username = person.name;
       userId = person.id.toString();
-      userRole = person.role || 'elderly';
+      userRole = String(person.role || 'elderly').toLowerCase();
     } else {
       // 未找到用户信息 → 注册为家属
       console.log('ℹ️  未查询到用户信息，将注册为家属');
       // 从手机号提取姓名（简单处理，实际可让用户输入）
       username = `用户_${formData.phone.slice(-4)}`;
       userId = '0'; // 临时ID，后端会生成真实ID
-      userRole = 'family'; // 默认注册为家属
+      userRole = 'guardian'; // 默认注册为家属
     }
     
     // 跳转到设置密码页面（通过state传递完整信息）
@@ -411,7 +411,7 @@ const handleSubmit = async () => {
   gap: 8px;
   margin-bottom: 10px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
@@ -427,8 +427,12 @@ const handleSubmit = async () => {
   border-radius: 16px;
   font-size: 1rem;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  background: var(--bg-body);
+  background: #ffffff;
   color: var(--text-primary);
+}
+
+.input::placeholder {
+  color: var(--text-tertiary);
 }
 
 .input:focus {

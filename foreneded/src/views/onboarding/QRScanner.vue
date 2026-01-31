@@ -3,7 +3,7 @@
     <!-- 顶部导航 -->
     <div class="header">
       <button class="back-btn" @click="goBack">←</button>
-      <h1 class="page-title">扫描邀请码</h1>
+      <h1 class="page-title">{{ pageTitle }}</h1>
     </div>
     
     <!-- 扫描区域 -->
@@ -30,12 +30,12 @@
         前往设置开启权限
       </button>
       
-      <p class="scanner-hint">{{ scannerSupported ? '对准家人或医生的邀请二维码' : '请使用手动输入' }}</p>
+      <p class="scanner-hint">{{ scannerSupported ? scannerHint : '请使用手动输入' }}</p>
       
       <!-- 手动输入选项 -->
       <div class="manual-input-section">
         <button class="manual-input-btn" @click="showManualInput = true">
-          手动输入邀请码
+          手动输入
         </button>
       </div>
     </div>
@@ -44,14 +44,14 @@
     <div v-if="showManualInput" class="modal-overlay" @click="closeManualInput">
       <div class="manual-input-modal" @click.stop>
         <div class="modal-header">
-          <h3 class="modal-title">输入邀请码</h3>
+          <h3 class="modal-title">{{ manualTitle }}</h3>
           <button class="close-btn" @click="closeManualInput">×</button>
         </div>
         <div class="modal-content">
           <input
             v-model="manualCode"
             type="text"
-            placeholder="请输入邀请码"
+            :placeholder="manualPlaceholder"
             class="code-input"
             maxlength="50"
           />
@@ -75,10 +75,10 @@
     <div v-if="showSuccessModal" class="modal-overlay">
       <div class="success-modal" @click.stop>
         <div class="success-icon">✓</div>
-        <h3 class="success-title">加入成功！</h3>
-        <p class="success-message">您已成功加入群组</p>
+        <h3 class="success-title">{{ successTitle }}</h3>
+        <p class="success-message">{{ successMessage }}</p>
         <button class="success-btn" @click="goToHome">
-          前往首页
+          {{ scanMode === 'friend' ? '前往关系' : '前往首页' }}
         </button>
       </div>
     </div>
@@ -86,12 +86,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { relationService } from '../../service/relation';
 import { scannerService } from '../../service/scanner';
 
 const router = useRouter();
+const route = useRoute();
+
+const scanMode = ref<'group' | 'friend'>('group');
+
+const pageTitle = computed(() => (scanMode.value === 'friend' ? '扫码添加好友' : '扫码加入群组'))
+const scannerHint = computed(() => (scanMode.value === 'friend' ? '对准对方的二维码（抽象账户地址）' : '对准群组邀请码二维码'))
+const manualTitle = computed(() => (scanMode.value === 'friend' ? '输入好友地址' : '输入邀请码'))
+const manualPlaceholder = computed(() => (scanMode.value === 'friend' ? '请输入对方抽象账户地址 0x...' : '请输入邀请码'))
 
 const showManualInput = ref(false);
 const showSuccessModal = ref(false);
@@ -101,6 +109,9 @@ const isProcessing = ref(false);
 const permissionDenied = ref(false);
 const scannerSupported = ref(false);
 const errorMessage = ref('');
+
+const successTitle = ref('操作成功');
+const successMessage = ref('');
 
 const goBack = () => {
   router.back();
@@ -152,7 +163,7 @@ const handleScanSuccess = async (code: string) => {
 // 处理手动输入或扫描的邀请码
 const handleManualCode = async () => {
   if (!manualCode.value) {
-    errorMessage.value = '请输入邀请码';
+    errorMessage.value = '请输入内容';
     return;
   }
   
@@ -182,28 +193,112 @@ const handleManualCode = async () => {
       });
       return;
     }
-    
-    // 2. 获取EOA钱包（用于加密发送用户信息）
-    let wallet = null;
-    try {
-      wallet = aaService.getEOAWallet();
-      if (wallet) {
-        console.log('✅ 已获取EOA钱包，地址:', wallet.address);
-        console.log('   将自动发送用户信息给邀请者');
-      } else {
-        console.warn('⚠️ 钱包未初始化，可能用户未登录');
+
+    const extractAddressFromCode = (code: string): string | null => {
+      if (!code) return null;
+
+      const addressRegex = /(0x[a-fA-F0-9]{40})/;
+      const match = code.match(addressRegex);
+      if (match && match[1]) {
+        return match[1];
+      }
+
+      return null;
+    };
+
+    if (scanMode.value === 'friend') {
+      const recipientAddress = extractAddressFromCode(manualCode.value.trim());
+
+      if (!recipientAddress) {
+        throw new Error('未识别到有效的抽象账户地址')
+      }
+
+      const userInfo = await authService.getUserInfo();
+      const myAddress = userInfo?.smart_account;
+      if (myAddress && String(myAddress).toLowerCase() === String(recipientAddress).toLowerCase()) {
+        throw new Error('不能添加自己为好友')
+      }
+
+      try {
+        const rels = await relationService.getMyRelationships();
+        const all = [...(rels.asViewer || []), ...(rels.asOwner || [])];
+
+        const isFriend = all.some((r: any) => {
+          const other = (r.relationship_type === 'as_viewer') ? r.data_owner_address : r.visitor_address
+          const isOther = String(other || '').toLowerCase() === String(recipientAddress).toLowerCase()
+          const isFriendGroup = String(r.access_group_name || '') === '好友'
+          const isActive = String(r.status || '') === 'active' || String(r.status || '') === 'accepted'
+          return isOther && isFriendGroup && isActive
+        })
+
+        if (isFriend) {
+          successTitle.value = '已是好友'
+          successMessage.value = '你们已经是好友，无需重复添加'
+        } else {
+          const norm = (v: any) => String(v || '').toLowerCase()
+          try {
+            const [outgoing, incoming] = await Promise.all([
+              relationService.getOutgoingFriendRequests('pending'),
+              relationService.getIncomingFriendRequests('pending')
+            ])
+
+            const hasOutgoing = (outgoing || []).some((fr: any) => norm(fr?.recipient_address) === norm(recipientAddress))
+            if (hasOutgoing) {
+              successTitle.value = '好友申请已存在'
+              successMessage.value = '你已经发出过好友申请，请等待对方同意'
+            } else {
+              const hasIncoming = (incoming || []).some((fr: any) => norm(fr?.requester_address) === norm(recipientAddress))
+              if (hasIncoming) {
+                successTitle.value = '已收到对方申请'
+                successMessage.value = '对方已向你发送好友申请，请在“好友申请”里同意'
+              } else {
+                const result = await relationService.createFriendRequest(recipientAddress);
+                const existing = !!(result && (result.existing || result?.data?.existing))
+                successTitle.value = existing ? '好友申请已存在' : '好友申请已发送'
+                successMessage.value = '等待对方同意后将自动成为好友'
+              }
+            }
+          } catch (frError: any) {
+            console.warn('检查好友申请列表失败（将继续发送申请）:', frError)
+            const result = await relationService.createFriendRequest(recipientAddress);
+            const existing = !!(result && (result.existing || result?.data?.existing))
+            successTitle.value = existing ? '好友申请已存在' : '好友申请已发送'
+            successMessage.value = '等待对方同意后将自动成为好友'
+          }
+        }
+      } catch (checkError: any) {
+        console.warn('检查是否已是好友失败（将继续发送申请）:', checkError)
+        const result = await relationService.createFriendRequest(recipientAddress);
+        const existing = !!(result && (result.existing || result?.data?.existing))
+        successTitle.value = existing ? '好友申请已存在' : '好友申请已发送'
+        successMessage.value = '等待对方同意后将自动成为好友'
+      }
+    } else {
+      // 获取EOA钱包（用于加密发送用户信息）
+      let wallet = null;
+      try {
+        wallet = aaService.getEOAWallet();
+        if (wallet) {
+          console.log('✅ 已获取EOA钱包，地址:', wallet.address);
+          console.log('   将自动发送用户信息给邀请者');
+        } else {
+          console.warn('⚠️ 钱包未初始化，可能用户未登录');
+          console.warn('   用户信息将在消息监听服务启动后自动交换');
+        }
+      } catch (walletError: any) {
+        console.warn('⚠️ 获取钱包时出错:', walletError);
         console.warn('   用户信息将在消息监听服务启动后自动交换');
       }
-    } catch (walletError: any) {
-      console.warn('⚠️ 获取钱包时出错:', walletError);
-      console.warn('   用户信息将在消息监听服务启动后自动交换');
+
+      // 接受邀请（如果有wallet，会自动发送用户信息；否则会在消息监听服务中处理）
+      await relationService.acceptInvitation(manualCode.value, wallet);
+
+      console.log('成功加入家庭圈');
+
+      successTitle.value = '加入成功！';
+      successMessage.value = '您已成功加入群组';
     }
-    
-    // 3. 接受邀请（如果有wallet，会自动发送用户信息；否则会在消息监听服务中处理）
-    await relationService.acceptInvitation(manualCode.value, wallet);
-    
-    console.log('成功加入家庭圈');
-    
+
     // 显示成功提示
     errorMessage.value = '';
     showManualInput.value = false;
@@ -211,7 +306,7 @@ const handleManualCode = async () => {
     
   } catch (error: any) {
     console.error('接受邀请失败:', error);
-    errorMessage.value = error.message || '邀请码无效或已过期';
+    errorMessage.value = error.message || '处理失败';
   } finally {
     isProcessing.value = false;
   }
@@ -220,6 +315,10 @@ const handleManualCode = async () => {
 // 前往首页
 const goToHome = () => {
   showSuccessModal.value = false;
+  if (scanMode.value === 'friend') {
+    router.push({ name: 'RelationshipHub' })
+    return
+  }
   router.push({
     name: 'Home',
     state: { message: '成功加入群组！' }
@@ -235,6 +334,8 @@ const openSettings = async () => {
 };
 
 onMounted(async () => {
+  scanMode.value = route.query.mode === 'friend' ? 'friend' : 'group'
+
   // 检查是否支持扫码
   scannerSupported.value = await scannerService.isSupported();
   console.log('扫码功能支持:', scannerSupported.value);

@@ -9,7 +9,8 @@ const {
   submitProofToChain,
   getMedicationCheckInCount,
   getAllCheckInCids,
-  getCheckInTimestamp
+  getCheckInTimestamp,
+  getWeeklyCheckinFromIpfs
 } = require('../controllers/medication-checkin.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 
@@ -30,6 +31,7 @@ router.get('/count', authMiddleware, getMedicationCheckInCount);
  * 获取所有打卡的 CID 列表
  */
 router.get('/cids', authMiddleware, getAllCheckInCids);
+router.get('/ipfs/:cid', authMiddleware, getWeeklyCheckinFromIpfs);
 
 /**
  * GET /chain/medication-checkin/timestamp/:cid

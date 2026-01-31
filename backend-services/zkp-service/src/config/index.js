@@ -10,6 +10,7 @@ module.exports = {
         allowAll: process.env.CORS_ALLOW_ALL === 'true', // 是否允许任意跨域
         allowedOrigins: allowedOrigins.map(origin => origin.trim()), // 去除每个地址可能存在的多余空格
     },
+
     db: {
         user: process.env.DB_USER,
         host: process.env.DB_HOST,
@@ -22,6 +23,6 @@ module.exports = {
     },
     mq: {
         url: process.env.MQ_URL,
-        exchangeName: process.env.MQ_EXCHANGE_NAME || 'app_events',
+        exchangeName: process.env.MQ_EXCHANGE_NAME || 'exchange.notifications',
     },
 };

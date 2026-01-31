@@ -116,6 +116,28 @@ class MessageEntity {
     };
   }
 
+  async findPlanShareRecipients(planId, senderAddress) {
+    const normalizedSender = (senderAddress || '').toLowerCase();
+
+    let query = `
+      SELECT DISTINCT recipient_address
+      FROM encrypted_messages
+      WHERE data_type = 'plan_share'
+        AND (metadata::jsonb ->> 'plan_id') = $1
+    `;
+    const values = [String(planId)];
+
+    if (normalizedSender) {
+      values.push(normalizedSender);
+      query += ` AND sender_address = $${values.length}`;
+    }
+
+    query += ' ORDER BY recipient_address ASC';
+
+    const result = await pool.query(query, values);
+    return result.rows.map(r => r.recipient_address);
+  }
+
   /**
    * 标记消息为已读
    */

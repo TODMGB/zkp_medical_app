@@ -72,6 +72,13 @@ export const MEDICATION_PLAN_KEYS = {
   PLAN_PREFIX: 'medication_plans_',
 } as const;
 
+export const MEDICATION_SHARE_KEYS = {
+  SHARED_PLAN_LIST: 'medication_shared_plan_list',
+  SHARED_PLAN_PREFIX: 'medication_shared_plan_',
+  SHARED_PLAN_OUTBOX_LIST: 'medication_shared_plan_outbox_list',
+  SHARED_PLAN_OUTBOX_PREFIX: 'medication_shared_plan_outbox_',
+} as const;
+
 /**
  * 打卡记录相关键
  */
@@ -94,6 +101,11 @@ export const CHECKIN_KEYS = {
   WEEKLY_VERIFICATION_STATUS: 'checkin_weekly_verification_status',
 } as const;
 
+export const CHECKIN_SHARE_KEYS = {
+  SHARED_STATS_LIST: 'checkin_shared_stats_list',
+  SHARED_STATS_PREFIX: 'checkin_shared_stats_',
+} as const;
+
 /**
  * 成员信息相关键
  */
@@ -110,6 +122,14 @@ export const MEMBER_KEYS = {
 export const PUBLIC_KEY_KEYS = {
   /** 公钥缓存前缀（需要拼接 address） */
   CACHE_PREFIX: 'public_key_cache_',
+} as const;
+
+export const ACCESS_GROUP_KEYS = {
+  GROUP_KEY_PREFIX: 'access_group_key_',
+} as const;
+
+export const RECOVERY_KEYS = {
+  PENDING: 'recovery_pending',
 } as const;
 
 /**
@@ -142,9 +162,13 @@ export const ALL_STORAGE_KEYS = {
   ...HISTORY_KEYS,
   ...BIOMETRIC_KEYS,
   ...MEDICATION_PLAN_KEYS,
+  ...MEDICATION_SHARE_KEYS,
   ...CHECKIN_KEYS,
+  ...CHECKIN_SHARE_KEYS,
   ...MEMBER_KEYS,
   ...PUBLIC_KEY_KEYS,
+  ...ACCESS_GROUP_KEYS,
+  ...RECOVERY_KEYS,
   ...MIGRATION_KEYS,
   ...DEBUG_KEYS,
 } as const;
@@ -190,6 +214,8 @@ export const CLEAR_GROUPS = {
   MEDICATION: [
     MEDICATION_PLAN_KEYS.PLAN_LIST,
     MEDICATION_PLAN_KEYS.LAST_SYNC,
+    MEDICATION_SHARE_KEYS.SHARED_PLAN_LIST,
+    MEDICATION_SHARE_KEYS.SHARED_PLAN_OUTBOX_LIST,
     // 注意：PLAN_PREFIX 的键需要通过列表遍历删除
   ],
   
@@ -201,6 +227,7 @@ export const CLEAR_GROUPS = {
     CHECKIN_KEYS.WEEKLY_PROOF_STATUS,
     CHECKIN_KEYS.WEEKLY_ONCHAIN_STATUS,
     CHECKIN_KEYS.WEEKLY_VERIFICATION_STATUS,
+    CHECKIN_SHARE_KEYS.SHARED_STATS_LIST,
     // 注意：WEEKLY_PROOF_PREFIX 和 WEEKLY_ONCHAIN_PREFIX 的键需要通过列表遍历删除
   ],
   
@@ -290,6 +317,10 @@ export const STORAGE_KEY_METADATA: StorageKeyMetadata[] = [
   { key: MEDICATION_PLAN_KEYS.PLAN_LIST, category: 'MEDICATION_PLAN', description: '本地缓存的用药计划索引' },
   { key: MEDICATION_PLAN_KEYS.LAST_SYNC, category: 'MEDICATION_PLAN', description: '用药计划最近一次同步时间' },
   { key: MEDICATION_PLAN_KEYS.PLAN_PREFIX, category: 'MEDICATION_PLAN', description: '单个计划详情（按 planId 存储）', isPrefix: true },
+  { key: MEDICATION_SHARE_KEYS.SHARED_PLAN_LIST, category: 'MEDICATION_PLAN', description: '本地缓存的按组分发用药计划索引' },
+  { key: MEDICATION_SHARE_KEYS.SHARED_PLAN_PREFIX, category: 'MEDICATION_PLAN', description: '按组分发的单个用药计划详情（按 groupId + planId 存储）', isPrefix: true },
+  { key: MEDICATION_SHARE_KEYS.SHARED_PLAN_OUTBOX_LIST, category: 'MEDICATION_PLAN', description: '我方已对外分发的用药计划索引（用于重同步）' },
+  { key: MEDICATION_SHARE_KEYS.SHARED_PLAN_OUTBOX_PREFIX, category: 'MEDICATION_PLAN', description: '我方对外分发的单个计划分发记录（按 groupId + planId 存储）', isPrefix: true },
   { key: CHECKIN_KEYS.RECORDS, category: 'CHECKIN', description: '原始的本地打卡记录' },
   { key: CHECKIN_KEYS.STATS, category: 'CHECKIN', description: '打卡统计数据缓存' },
   { key: CHECKIN_KEYS.WEEKLY_GROUPED, category: 'CHECKIN', description: '按周聚合的打卡概要信息' },
@@ -298,9 +329,12 @@ export const STORAGE_KEY_METADATA: StorageKeyMetadata[] = [
   { key: CHECKIN_KEYS.WEEKLY_ONCHAIN_PREFIX, category: 'CHECKIN', description: '单周的上链记录详情', isPrefix: true },
   { key: CHECKIN_KEYS.WEEKLY_ONCHAIN_STATUS, category: 'CHECKIN', description: '所有周的上链记录映射' },
   { key: CHECKIN_KEYS.WEEKLY_VERIFICATION_STATUS, category: 'CHECKIN', description: '证明链下验证结果映射' },
+  { key: CHECKIN_SHARE_KEYS.SHARED_STATS_LIST, category: 'CHECKIN', description: '按组共享的打卡统计索引' },
+  { key: CHECKIN_SHARE_KEYS.SHARED_STATS_PREFIX, category: 'CHECKIN', description: '按组共享的单周打卡统计详情（按 groupId + weekKey 存储）', isPrefix: true },
   { key: MEMBER_KEYS.INFO_PREFIX, category: 'MEMBER', description: '单个成员的详细信息', isPrefix: true },
   { key: MEMBER_KEYS.REMARKS, category: 'MEMBER', description: '成员备注信息' },
   { key: PUBLIC_KEY_KEYS.CACHE_PREFIX, category: 'PUBLIC_KEY', description: '收/发信公钥缓存', isPrefix: true },
+  { key: ACCESS_GROUP_KEYS.GROUP_KEY_PREFIX, category: 'MEMBER', description: '访问组的组密钥（按 groupId 存储）', isPrefix: true },
   { key: MIGRATION_KEYS.BACKUP, category: 'MIGRATION', description: '迁移数据本地备份' },
   { key: MIGRATION_KEYS.ACCOUNT_CLEANED, category: 'MIGRATION', description: '标记迁移完成后是否清理' },
   { key: MIGRATION_KEYS.IMPORTED_FLAG, category: 'MIGRATION', description: '标记当前设备是否为迁移导入' },
@@ -338,9 +372,12 @@ export type WalletKey = typeof WALLET_KEYS[keyof typeof WALLET_KEYS];
 export type HistoryKey = typeof HISTORY_KEYS[keyof typeof HISTORY_KEYS];
 export type BiometricKey = typeof BIOMETRIC_KEYS[keyof typeof BIOMETRIC_KEYS];
 export type MedicationPlanKey = typeof MEDICATION_PLAN_KEYS[keyof typeof MEDICATION_PLAN_KEYS];
+export type MedicationShareKey = typeof MEDICATION_SHARE_KEYS[keyof typeof MEDICATION_SHARE_KEYS];
 export type CheckinKey = typeof CHECKIN_KEYS[keyof typeof CHECKIN_KEYS];
+export type CheckinShareKey = typeof CHECKIN_SHARE_KEYS[keyof typeof CHECKIN_SHARE_KEYS];
 export type MemberKey = typeof MEMBER_KEYS[keyof typeof MEMBER_KEYS];
 export type PublicKeyKey = typeof PUBLIC_KEY_KEYS[keyof typeof PUBLIC_KEY_KEYS];
+export type AccessGroupKey = typeof ACCESS_GROUP_KEYS[keyof typeof ACCESS_GROUP_KEYS];
 export type MigrationKey = typeof MIGRATION_KEYS[keyof typeof MIGRATION_KEYS];
 export type DebugKey = typeof DEBUG_KEYS[keyof typeof DEBUG_KEYS];
 export type StorageKey = typeof ALL_STORAGE_KEYS[keyof typeof ALL_STORAGE_KEYS];

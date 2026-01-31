@@ -52,6 +52,35 @@ async function initializeClient() {
     }
 }
 
+async function getPlanShareRecipients(planId, options = {}) {
+    try {
+        const stub = await initializeClient();
+        const { senderAddress = '' } = options;
+
+        return new Promise((resolve, reject) => {
+            stub.GetPlanShareRecipients(
+                {
+                    plan_id: String(planId),
+                    sender_address: senderAddress ? String(senderAddress) : ''
+                },
+                (error, response) => {
+                    if (error) {
+                        reject(new Error(`Failed to get plan share recipients: ${error.message}`));
+                    } else {
+                        resolve({
+                            recipient_addresses: response.recipient_addresses || [],
+                            total_count: response.total_count || 0
+                        });
+                    }
+                }
+            );
+        });
+    } catch (error) {
+        console.error('获取计划分享收件人失败:', error.message);
+        throw error;
+    }
+}
+
 /**
  * 发送加密数据给接收者
  * @param {Object} options
@@ -200,5 +229,6 @@ module.exports = {
     sendEncryptedData,
     getEncryptedMessages,
     markMessageAsRead,
-    revokeMessage
+    revokeMessage,
+    getPlanShareRecipients
 };

@@ -8,12 +8,16 @@ import {
   WALLET_KEYS,
   BIOMETRIC_KEYS,
   MEDICATION_PLAN_KEYS,
+  MEDICATION_SHARE_KEYS,
   CHECKIN_KEYS,
+  CHECKIN_SHARE_KEYS,
   MEMBER_KEYS,
   PUBLIC_KEY_KEYS,
+  ACCESS_GROUP_KEYS,
   CLEAR_GROUPS
 } from '@/config/storage.config';
 import { authService } from './auth';
+import { uiService } from './ui';
 
 // 迁移数据接口
 interface MigrationData {
@@ -24,7 +28,7 @@ interface MigrationData {
   ownerAddress: string; // EOA地址
   userInfo: any; // 用户信息（从user_info存储中获取）
   
-  // 本地存储数据 🆕
+  // 本地存储数据 
   localStorageData: {
     [key: string]: string; // 所有本地存储的键值对
   };
@@ -56,14 +60,14 @@ class MigrationService {
    */
   async generateMigrationQR(): Promise<{ qrCode: string; confirmCode: string }> {
     try {
-      console.log('📱 开始生成迁移二维码...');
+      console.log(' 开始生成迁移二维码...');
       
       // 1. 获取设备ID
       const deviceInfo = await Device.getId();
       const deviceId = deviceInfo.identifier;
 
       // 2. 获取本地账户数据（包含所有本地存储）
-      console.log('📦 收集本地数据...');
+      console.log(' 收集本地数据...');
       const accountData = await this.getLocalAccountData();
       if (!accountData) {
         throw new Error('未找到账户数据');
@@ -73,8 +77,8 @@ class MigrationService {
       const migrationId = this.generateMigrationId();
       const confirmCode = this.generateConfirmCode();
       
-      console.log('🔐 迁移ID:', migrationId);
-      console.log('🔑 确认码:', confirmCode);
+      console.log(' 迁移ID:', migrationId);
+      console.log(' 确认码:', confirmCode);
 
       // 4. 准备迁移数据
       const migrationData: MigrationData = {
@@ -84,12 +88,12 @@ class MigrationService {
       };
 
       // 5. 加密迁移数据
-      console.log('🔒 加密迁移数据...');
+      console.log(' 加密迁移数据...');
       const encryptedData = await this.encryptMigrationData(migrationData, confirmCode);
       console.log(`  数据大小: ${(encryptedData.length / 1024).toFixed(2)} KB`);
 
-      // 6. 先创建迁移会话 🆕
-      console.log('📝 创建迁移会话...');
+      // 6. 先创建迁移会话 
+      console.log(' 创建迁移会话...');
       const migrationSession: MigrationSession = {
         id: migrationId,
         status: 'pending',
@@ -99,14 +103,14 @@ class MigrationService {
         confirmCode
       };
       await this.createMigrationSession(migrationSession);
-      console.log('  ✅ 会话创建成功');
+      console.log('  会话创建成功');
 
-      // 7. 上传加密数据到服务器 🆕
-      console.log('☁️ 上传加密数据...');
+      // 7. 上传加密数据到服务器 
+      console.log(' 上传加密数据...');
       await this.uploadMigrationData(migrationId, encryptedData);
-      console.log('  ✅ 数据上传成功');
+      console.log('  数据上传成功');
 
-      // 8. 生成轻量级二维码（只包含迁移ID）🆕
+      // 8. 生成轻量级二维码（只包含迁移ID） 
       const qrData = {
         migrationId,
         expires: Date.now() + this.MIGRATION_TIMEOUT,
@@ -114,7 +118,7 @@ class MigrationService {
       };
 
       const qrCodeString = await QRCode.toDataURL(JSON.stringify(qrData));
-      console.log('📱 二维码生成成功');
+      console.log(' 二维码生成成功');
       
       // 9. 开始监听迁移完成
         this.startServerConfirmationListener(migrationId);
@@ -124,13 +128,13 @@ class MigrationService {
         confirmCode 
       };
     } catch (error) {
-      console.error('❌ 生成迁移二维码失败:', error);
+      console.error(' 生成迁移二维码失败:', error);
       throw error;
     }
   }
 
   /**
-   * 上传迁移数据到服务器 🆕
+   * 上传迁移数据到服务器 
    */
   private async uploadMigrationData(migrationId: string, encryptedData: string): Promise<void> {
     try {
@@ -174,7 +178,7 @@ class MigrationService {
     enableBiometric: boolean = false
   ): Promise<{ success: boolean; confirmCode?: string }> {
     try {
-      console.log('📱 开始处理迁移二维码...');
+      console.log(' 开始处理迁移二维码...');
       
       const parsedData = JSON.parse(qrData);
       const { migrationId, expires, version } = parsedData;
@@ -188,31 +192,37 @@ class MigrationService {
       }
 
       // 2. 获取确认码（用户输入）
-      const confirmCode = prompt('请输入旧设备显示的6位确认码:');
+      const confirmCode = await uiService.prompt({
+        title: '账户迁移',
+        message: '请输入旧设备显示的6位确认码',
+        placeholder: '6位确认码',
+        confirmText: '确定',
+        cancelText: '取消',
+      });
       if (!confirmCode || confirmCode.length !== 6) {
         throw new Error('请输入正确的6位确认码');
       }
 
-      console.log('🔑 确认码已输入');
+      console.log(' 确认码已输入');
 
-      // 3. 从服务器下载迁移数据 🆕
-      console.log('☁️ 从服务器下载迁移数据...');
+      // 3. 从服务器下载迁移数据 
+      console.log(' 从服务器下载迁移数据...');
       const encryptedData = await this.downloadMigrationData(migrationId);
       console.log(`  数据大小: ${(encryptedData.length / 1024).toFixed(2)} KB`);
 
       // 4. 解密迁移数据
-      console.log('🔓 解密迁移数据...');
+      console.log(' 解密迁移数据...');
       const migrationData: MigrationData = await this.decryptMigrationData(encryptedData, confirmCode);
-      console.log('  ✅ 解密成功');
+      console.log('  解密成功');
 
       // 5. 验证数据完整性
-      console.log('✅ 验证数据完整性...');
+      console.log(' 验证数据完整性...');
       if (!this.validateMigrationData(migrationData)) {
         throw new Error('迁移数据验证失败');
       }
 
       // 6. 先验证密码是否正确（不保存数据）
-      console.log('🔐 验证密码...');
+      console.log(' 验证密码...');
       console.log(`  输入的密码长度: ${password.length}`);
       console.log(`  加密钱包数据长度: ${migrationData.encryptedWallet.length}`);
       
@@ -227,12 +237,12 @@ class MigrationService {
         
         // 额外验证：检查解密后的钱包地址是否与迁移数据中的地址匹配
         if (!decryptedWallet) {
-          console.error('  ❌ 解密结果为空');
+          console.error('  解密结果为空');
           throw new Error('密码错误，无法解密钱包');
         }
         
         if (!decryptedWallet.address) {
-          console.error('  ❌ 解密后的钱包没有地址');
+          console.error('  解密后的钱包没有地址');
           throw new Error('密码错误，钱包数据无效');
         }
         
@@ -243,14 +253,14 @@ class MigrationService {
         console.log(`  期望的地址:     ${expectedAddress}`);
         
         if (decryptedAddress !== expectedAddress) {
-          console.error('  ❌ 地址不匹配！密码错误！');
+          console.error('  地址不匹配！密码错误！');
           throw new Error('密码错误，解密的钱包地址不匹配');
         }
         
-        console.log('  ✅ 密码正确，地址验证通过');
+        console.log('  密码正确，地址验证通过');
         
       } catch (error: any) {
-        console.error('  ❌ 密码验证失败！');
+        console.error('  密码验证失败！');
         console.error('  错误类型:', error.constructor.name);
         console.error('  错误消息:', error.message);
         
@@ -272,47 +282,47 @@ class MigrationService {
       }
 
       // 7. 导入账户数据（包含所有本地存储）
-      console.log('📥 导入账户数据...');
+      console.log(' 导入账户数据...');
       await this.importAccountData(migrationData);
 
       // 8. 初始化EOA钱包
-      console.log('🔓 初始化钱包...');
+      console.log(' 初始化钱包...');
       const { aaService } = await import('./accountAbstraction');
-      await aaService.login(password);
-      console.log('  ✅ 钱包解锁成功');
+      await aaService.loginWithDecryptedWallet(decryptedWallet);
+      console.log('  钱包解锁成功');
 
       // 9. 登录后端获取JWT token
-      console.log('🌐 登录后端...');
+      console.log(' 登录后端...');
       await aaService.loginToBackend();
-      console.log('  ✅ 后端登录成功');
+      console.log('  后端登录成功');
 
       // 10. 如果启用指纹，保存密码
       if (enableBiometric) {
         try {
           const { biometricService } = await import('./biometric');
           await biometricService.savePasswordWithBiometric(password);
-          console.log('  ✅ 已启用指纹登录');
+          console.log('  已启用指纹登录');
         } catch (error) {
-          console.warn('  ⚠️ 指纹登录设置失败（不影响迁移）');
+          console.warn('  指纹登录设置失败（不影响迁移）');
         }
       }
 
       // 11. 发送确认信号给旧设备
-      console.log('📤 发送确认信号...');
+      console.log(' 发送确认信号...');
       const deviceInfo = await Device.getId();
       const newDeviceId = deviceInfo.identifier;
       await this.sendMigrationConfirmation(migrationId, newDeviceId);
 
-      console.log('✅ 账户迁移完成！');
+      console.log(' 账户迁移完成！');
       return { success: true, confirmCode };
     } catch (error) {
-      console.error('❌ 处理迁移二维码失败:', error);
+      console.error(' 处理迁移二维码失败:', error);
       throw error;
     }
   }
 
   /**
-   * 从服务器下载迁移数据 🆕
+   * 从服务器下载迁移数据 
    */
   private async downloadMigrationData(migrationId: string): Promise<string> {
     try {
@@ -341,7 +351,7 @@ class MigrationService {
         throw new Error('服务器返回的数据格式错误');
       }
 
-      console.log('  ✅ 下载成功');
+      console.log('  下载成功');
       return result.encryptedData;
     } catch (error: any) {
       console.error('下载迁移数据失败:', error);
@@ -398,7 +408,7 @@ class MigrationService {
         throw new Error(error.message || '创建迁移会话失败');
       }
       
-      console.log('✅ 迁移会话创建成功（通知已发送）');
+      console.log(' 迁移会话创建成功（通知已发送）');
     } catch (error: any) {
       console.error('创建迁移会话失败:', error);
       throw new Error('创建迁移会话失败: ' + error.message);
@@ -451,7 +461,7 @@ class MigrationService {
       });
 
       if (response.ok) {
-        console.log('✅ 服务器确认成功（通知已发送）');
+        console.log(' 服务器确认成功（通知已发送）');
         return;
       } else {
         const error = await response.json();
@@ -470,7 +480,7 @@ class MigrationService {
         timestamp: Date.now()
       })
     });
-    console.log('✅ 本地存储确认已保存');
+    console.log(' 本地存储确认已保存');
   }
 
   /**
@@ -519,14 +529,17 @@ class MigrationService {
    * 手动确认迁移完成（旧设备）
    */
   async manualConfirmMigration(): Promise<void> {
-    const confirmed = confirm(
-      '确认账户已成功迁移到新设备？\n' +
-      '确认后将清理本设备上的账户数据。'
+    const confirmed = await uiService.confirm(
+      '确认账户已成功迁移到新设备？\n确认后将清理本设备上的账户数据。',
+      {
+        title: '确认迁移完成',
+        confirmText: '确认',
+        cancelText: '取消',
+      }
     );
-
-    if (confirmed) {
-      await this.handleMigrationConfirmed();
-    }
+    
+    if (!confirmed) return;
+    await this.handleMigrationConfirmed();
   }
 
   /**
@@ -543,17 +556,16 @@ class MigrationService {
       await this.cleanupOldDeviceData();
 
       // 3. 显示完成消息
-      alert(
-        '✅ 账户迁移完成！\n' +
-        '本设备数据已安全清理。\n' +
-        '感谢使用健康守护！'
+      await uiService.alert(
+        '✅ 账户迁移完成！\n本设备数据已安全清理。\n感谢使用健康守护！',
+        { title: '迁移完成', confirmText: '我知道了' }
       );
       
       // 4. 跳转到欢迎页
       window.location.href = '/splash';
     } catch (error) {
       console.error('处理迁移确认失败:', error);
-      alert('数据清理过程中出现错误，请手动检查设置。');
+      uiService.toast('数据清理过程中出现错误，请手动检查设置。', { type: 'error' });
     }
   }
 
@@ -593,6 +605,20 @@ class MigrationService {
       } catch (error) {
         console.warn(`    ⚠️ ${key} 删除失败`);
       }
+    }
+
+    // 清理所有带前缀的共享打卡统计数据
+    try {
+      const { keys } = await Preferences.keys();
+      const sharedStatsKeys = keys.filter(k => k.startsWith(CHECKIN_SHARE_KEYS.SHARED_STATS_PREFIX));
+      for (const key of sharedStatsKeys) {
+        await Preferences.remove({ key });
+        cleanedKeys.push(key);
+        totalCleaned++;
+        console.log(`    ✅ ${key}`);
+      }
+    } catch (error) {
+      console.warn('    ⚠️ 清理共享打卡统计失败');
     }
     
     // 2. 清理钱包数据
@@ -646,6 +672,34 @@ class MigrationService {
       }
     } catch (error) {
       console.warn('    ⚠️ 清理计划详情失败');
+    }
+
+    // 清理所有带前缀的共享计划数据
+    try {
+      const { keys } = await Preferences.keys();
+      const sharedPlanKeys = keys.filter(k => k.startsWith(MEDICATION_SHARE_KEYS.SHARED_PLAN_PREFIX));
+      for (const key of sharedPlanKeys) {
+        await Preferences.remove({ key });
+        cleanedKeys.push(key);
+        totalCleaned++;
+        console.log(`    ✅ ${key}`);
+      }
+    } catch (error) {
+      console.warn('    ⚠️ 清理共享计划详情失败');
+    }
+
+    // 清理所有带前缀的计划分发 outbox 数据
+    try {
+      const { keys } = await Preferences.keys();
+      const outboxKeys = keys.filter(k => k.startsWith(MEDICATION_SHARE_KEYS.SHARED_PLAN_OUTBOX_PREFIX));
+      for (const key of outboxKeys) {
+        await Preferences.remove({ key });
+        cleanedKeys.push(key);
+        totalCleaned++;
+        console.log(`    ✅ ${key}`);
+      }
+    } catch (error) {
+      console.warn('    ⚠️ 清理计划分发 outbox 失败');
     }
     
     // 5. 清理打卡数据
@@ -701,6 +755,21 @@ class MigrationService {
       }
     } catch (error) {
       console.warn('    ⚠️ 清理公钥缓存失败');
+    }
+
+    // 7.1 清理访问组密钥（组密钥）
+    console.log('  清理访问组密钥...');
+    try {
+      const { keys } = await Preferences.keys();
+      const groupKeyKeys = keys.filter(k => k.startsWith(ACCESS_GROUP_KEYS.GROUP_KEY_PREFIX));
+      for (const key of groupKeyKeys) {
+        await Preferences.remove({ key });
+        cleanedKeys.push(key);
+        totalCleaned++;
+        console.log(`    ✅ ${key}`);
+      }
+    } catch (error) {
+      console.warn('    ⚠️ 清理访问组密钥失败');
     }
     
     // 8. 清理其他数据
@@ -761,9 +830,9 @@ class MigrationService {
       return null;
     }
     
-    // 获取Smart Account地址
-    const { aaService } = await import('./accountAbstraction');
-    const smartAccountAddress = aaService.getAbstractAccountAddress();
+    // 获取Smart Account地址（优先从存储读取，避免依赖 aaService 内存状态）
+    const { value: storedAccountAddress } = await Preferences.get({ key: WALLET_KEYS.ACCOUNT_ADDRESS });
+    const smartAccountAddress = storedAccountAddress || null;
     
     if (!smartAccountAddress) {
       console.error('缺少Smart Account地址');
