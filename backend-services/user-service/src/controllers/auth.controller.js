@@ -199,7 +199,7 @@ async function login(req, res, next) {
     console.log('🔄 [Auth Controller] 收到登录请求');
     console.log('📤 [Request Body]', JSON.stringify(req.body, null, 2));
 
-    const { eoa_address, signature, login_time } = req.body;
+    const { eoa_address, signature, login_time, smart_account } = req.body;
     const message = `LOGIN_TIME:${login_time}`;
     // 基本输入验证
     if (!eoa_address || !signature || !login_time) {
@@ -211,12 +211,21 @@ async function login(req, res, next) {
       });
     }
 
+    if (!smart_account) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数 smart_account',
+        code: 'MISSING_SMART_ACCOUNT'
+      });
+    }
+
     // 调用认证服务
     console.log('🔄 [Service] 调用认证服务...');
     const result = await authService.login({
       eoa_address,
       signature,
-      message
+      message,
+      smart_account
     });
 
     console.log('✅ [Service] 登录成功');
@@ -244,6 +253,30 @@ async function login(req, res, next) {
         success: false,
         message: '签名验证失败',
         code: 'INVALID_SIGNATURE'
+      });
+    }
+
+    if (error.code === 'MISSING_SMART_ACCOUNT') {
+      return res.status(400).json({
+        success: false,
+        message: '缺少必要参数 smart_account',
+        code: 'MISSING_SMART_ACCOUNT'
+      });
+    }
+
+    if (error.code === 'EOA_NOT_OWNER') {
+      return res.status(401).json({
+        success: false,
+        message: '当前EOA不是该智能账户的owner',
+        code: 'EOA_NOT_OWNER'
+      });
+    }
+
+    if (error.code === 'CHAIN_OWNER_LOOKUP_FAILED') {
+      return res.status(503).json({
+        success: false,
+        message: '查询链上账户 owner 失败',
+        code: 'CHAIN_OWNER_LOOKUP_FAILED'
       });
     }
 

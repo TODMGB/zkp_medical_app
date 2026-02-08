@@ -54,6 +54,11 @@
       <div class="card" v-if="recoveryStatus">
         <div class="card-title">链上状态</div>
 
+        <div class="row" v-if="currentOwner">
+          <span class="label">当前Owner</span>
+          <span class="value mono">{{ currentOwner }}</span>
+        </div>
+
         <div class="row">
           <span class="label">当前新Owner</span>
           <span class="value mono">{{ recoveryStatus.newOwner }}</span>
@@ -80,7 +85,7 @@
         </span>
       </button>
 
-      <button class="secondary-btn" :disabled="isLoading" @click="support">支持恢复</button>
+      <button class="secondary-btn" :disabled="isLoading || !canSupport" @click="support">支持恢复</button>
 
       <button class="ghost-btn" :disabled="isLoading" @click="refresh">刷新链上状态</button>
     </div>
@@ -109,6 +114,24 @@ const expiresAtRaw = ref('')
 const guardians = ref<string[]>([])
 const threshold = ref<number | null>(null)
 const recoveryStatus = ref<RecoveryStatus | null>(null)
+const currentOwner = ref('')
+
+const isRecovered = computed(() => {
+  if (!currentOwner.value || !newOwnerAddress.value) return false
+  return String(currentOwner.value).toLowerCase() === String(newOwnerAddress.value).toLowerCase()
+})
+
+const hasActiveOnChainRecovery = computed(() => {
+  const newOwner = String(recoveryStatus.value?.newOwner || '').toLowerCase()
+  return Boolean(newOwner && newOwner !== '0x0000000000000000000000000000000000000000')
+})
+
+const canSupport = computed(() => {
+  if (isRecovered.value) return false
+  if (!hasActiveOnChainRecovery.value) return false
+  const onChainNewOwner = String(recoveryStatus.value?.newOwner || '').toLowerCase()
+  return onChainNewOwner === String(newOwnerAddress.value || '').toLowerCase()
+})
 
 const expiresAt = computed(() => {
   if (!expiresAtRaw.value) return ''
@@ -155,9 +178,10 @@ const refresh = async () => {
 
   isLoading.value = true
   try {
-    const [guardianInfo, status] = await Promise.all([
+    const [guardianInfo, status, accountInfo] = await Promise.all([
       guardianService.getGuardians(oldSmartAccount.value).catch(() => null),
       guardianService.getRecoveryStatus(oldSmartAccount.value).catch(() => null),
+      guardianService.getAccountInfo(oldSmartAccount.value).catch(() => null),
     ])
 
     if (guardianInfo) {
@@ -172,9 +196,15 @@ const refresh = async () => {
       recoveryStatus.value = status
     }
 
+    if (accountInfo?.owner) {
+      currentOwner.value = String(accountInfo.owner)
+    }
+
     if (recoveryStatus.value && threshold.value !== null) {
       if (recoveryStatus.value.executed) {
         uiService.toast('恢复已完成', { type: 'success' })
+      } else if (isRecovered.value) {
+        uiService.toast('恢复已完成（Owner 已更新）', { type: 'success' })
       } else if (recoveryStatus.value.approvalCount >= (threshold.value || 0) && (threshold.value || 0) > 0) {
         uiService.toast('已达成阈值，等待链上执行', { type: 'success' })
       }
@@ -191,6 +221,11 @@ const initiate = async () => {
 
   if (!oldSmartAccount.value || !newOwnerAddress.value) {
     globalError.value = '缺少必要信息'
+    return
+  }
+
+  if (isRecovered.value) {
+    uiService.toast('该恢复已完成，无需再次发起', { type: 'success' })
     return
   }
 
@@ -214,29 +249,54 @@ const initiate = async () => {
 }
 
 const support = async () => {
+  console.log('========================================');
+  console.log('[RecoveryRequest] support 函数被调用');
   globalError.value = ''
 
   if (!oldSmartAccount.value || !newOwnerAddress.value) {
     globalError.value = '缺少必要信息'
+    console.error('[RecoveryRequest] 缺少必要信息');
+    return
+  }
+
+  if (!canSupport.value) {
+    if (isRecovered.value) {
+      uiService.toast('恢复已完成，无需再次支持', { type: 'success' })
+      return
+    }
+    globalError.value = '链上尚未发起恢复，请先点击“发起恢复”'
     return
   }
 
   const guardianAccountAddress = aaService.getAbstractAccountAddress()
   const eoaWallet = aaService.getEOAWallet()
+  
+  console.log('[RecoveryRequest] 参数信息:');
+  console.log('  oldSmartAccount:', oldSmartAccount.value);
+  console.log('  newOwnerAddress:', newOwnerAddress.value);
+  console.log('  guardianAccountAddress:', guardianAccountAddress);
+  console.log('  eoaWallet:', eoaWallet ? '已获取' : '未获取');
+  
   if (!guardianAccountAddress || !eoaWallet) {
     globalError.value = '请先登录守护人账号'
+    console.error('[RecoveryRequest] 未登录守护人账号');
     return
   }
 
   isLoading.value = true
+  console.log('[RecoveryRequest] 开始调用 guardianService.supportRecovery...');
+  
   try {
     await guardianService.supportRecovery(oldSmartAccount.value, guardianAccountAddress, newOwnerAddress.value, eoaWallet)
+    console.log('[RecoveryRequest] ✅ supportRecovery 调用成功');
     await refresh()
     uiService.toast('已支持恢复', { type: 'success' })
   } catch (e: any) {
+    console.error('[RecoveryRequest] ❌ supportRecovery 调用失败:', e);
     globalError.value = e?.message || '支持失败'
   } finally {
     isLoading.value = false
+    console.log('========================================');
   }
 }
 

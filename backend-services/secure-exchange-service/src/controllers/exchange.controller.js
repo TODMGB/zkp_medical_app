@@ -74,6 +74,84 @@ class ExchangeController {
   }
 
   /**
+   * 请求对方同意后交换 user_info
+   * POST /api/secure-exchange/user-info/request
+   */
+  async requestUserInfo(req, res, next) {
+    try {
+      const { recipientAddress, encryptedData, signature, timestamp, nonce, metadata } = req.body;
+      const senderAddress = req.user?.smart_account || req.user?.address;
+      const signerAddress = req.user?.eoa_address || req.user?.address || req.user?.smart_account;
+
+      if (!recipientAddress || !encryptedData || !signature || !timestamp || !nonce) {
+        return res.status(400).json({
+          success: false,
+          error: '缺少必需参数: recipientAddress, encryptedData, signature, timestamp, nonce'
+        });
+      }
+
+      const result = await exchangeService.sendEncryptedData({
+        recipientAddress,
+        senderAddress,
+        signerAddress,
+        encryptedData,
+        signature,
+        timestamp,
+        nonce,
+        dataType: 'user_info_request',
+        metadata
+      });
+
+      res.status(200).json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      console.error('[ExchangeController] requestUserInfo error:', error);
+      next(error);
+    }
+  }
+
+  /**
+   * 同意并发送 user_info（由客户端加密后提交）
+   * POST /api/secure-exchange/user-info/approve
+   */
+  async approveUserInfo(req, res, next) {
+    try {
+      const { recipientAddress, encryptedData, signature, timestamp, nonce, metadata } = req.body;
+      const senderAddress = req.user?.smart_account || req.user?.address;
+      const signerAddress = req.user?.eoa_address || req.user?.address || req.user?.smart_account;
+
+      if (!recipientAddress || !encryptedData || !signature || !timestamp || !nonce) {
+        return res.status(400).json({
+          success: false,
+          error: '缺少必需参数: recipientAddress, encryptedData, signature, timestamp, nonce'
+        });
+      }
+
+      const result = await exchangeService.sendEncryptedData({
+        recipientAddress,
+        senderAddress,
+        signerAddress,
+        encryptedData,
+        signature,
+        timestamp,
+        nonce,
+        dataType: 'user_info',
+        metadata
+      });
+
+      res.status(200).json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      console.error('[ExchangeController] approveUserInfo error:', error);
+      next(error);
+    }
+  }
+
+  /**
    * 确认接收
    * POST /api/secure-exchange/acknowledge
    */

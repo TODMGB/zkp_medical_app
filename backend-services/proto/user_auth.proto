@@ -6,6 +6,10 @@ service UserAuthService {
   rpc Register(RegisterRequest) returns (UserReply);
   rpc Login(LoginRequest) returns (LoginReply);
   rpc GetUserPublicKey(GetPublicKeyRequest) returns (GetPublicKeyReply);
+  // 新增：通过智能账户地址查询EOA地址
+  rpc GetEOABySmartAccount(GetEOARequest) returns (GetEOAReply);
+  // 新增：批量查询EOA地址
+  rpc BatchGetEOABySmartAccounts(BatchGetEOARequest) returns (BatchGetEOAReply);
 }
 
 message RegisterRequest {
@@ -48,3 +52,33 @@ message GetPublicKeyReply {
   string encryption_key_updated_at = 3;
 }
 
+// 新增：通过智能账户地址查询EOA地址的请求
+message GetEOARequest {
+  string smart_account = 1;  // 智能账户地址
+}
+
+// 新增：通过智能账户地址查询EOA地址的响应
+message GetEOAReply {
+  string smart_account = 1;  // 智能账户地址
+  string eoa_address = 2;    // EOA地址
+  bool found = 3;            // 是否找到
+}
+
+// 新增：批量查询EOA地址的请求
+message BatchGetEOARequest {
+  repeated string smart_accounts = 1;  // 智能账户地址数组
+}
+
+// 新增：批量查询EOA地址的响应
+message BatchGetEOAReply {
+  repeated EOAMapping mappings = 1;  // EOA映射数组
+  int32 total = 2;                   // 总数
+  int32 found = 3;                   // 找到的数量
+}
+
+// 新增：EOA映射结构
+message EOAMapping {
+  string smart_account = 1;  // 智能账户地址
+  string eoa_address = 2;    // EOA地址
+  bool found = 3;            // 是否找到
+}

@@ -59,6 +59,20 @@ async function findActiveSessionByOldSmartAccount(oldSmartAccount) {
   return rows[0] || null;
 }
 
+async function findSessionById(sessionId) {
+  const { rows } = await pool.query(
+    `
+      SELECT *
+      FROM account_recovery_sessions
+      WHERE session_id = $1
+      LIMIT 1;
+    `,
+    [sessionId]
+  );
+
+  return rows[0] || null;
+}
+
 async function createRecoverySession({
   oldSmartAccount,
   newOwnerAddress,
@@ -106,8 +120,30 @@ async function createRecoverySession({
   return rows[0];
 }
 
+/**
+ * 查询包含指定守护者的恢复会话
+ * @param {string} guardianAddress - 守护者的智能账户地址
+ * @returns {Promise<Array>} 返回恢复会话列表
+ */
+async function findSessionsByGuardian(guardianAddress) {
+  const { rows } = await pool.query(
+    `
+      SELECT *
+      FROM account_recovery_sessions
+      WHERE guardians @> $1::jsonb
+      ORDER BY created_at DESC
+      LIMIT 50;
+    `,
+    [JSON.stringify([guardianAddress])]
+  );
+
+  return rows;
+}
+
 module.exports = {
   ensureRecoverySessionsTable,
   findActiveSessionByOldSmartAccount,
+  findSessionById,
   createRecoverySession,
+  findSessionsByGuardian,
 };

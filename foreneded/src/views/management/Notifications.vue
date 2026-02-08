@@ -364,9 +364,15 @@ const getPriorityText = (priority: string) => {
 
 // ==================== 时间格式化 ====================
 
+const addHours = (d: Date, hours: number) => {
+  const out = new Date(d.getTime())
+  out.setHours(out.getHours() + hours)
+  return out
+}
+
 const formatTime = (timeStr: string) => {
   // 将UTC时间转换为本地时间
-  const time = new Date(timeStr)
+  const time = addHours(new Date(timeStr), 8)
   const now = new Date()
   
   // 确保时间有效
@@ -398,7 +404,7 @@ const formatTime = (timeStr: string) => {
 }
 
 const formatFullTime = (timeStr: string) => {
-  const time = new Date(timeStr)
+  const time = addHours(new Date(timeStr), 8)
   if (isNaN(time.getTime())) return '时间未知'
   
   const year = time.getFullYear()

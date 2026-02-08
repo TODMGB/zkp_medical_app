@@ -27,6 +27,14 @@ router.post('/resolve-smart-account', authController.resolveSmartAccount);
 
 router.post('/start-recovery', recoveryController.startRecovery);
 
+router.post('/remind-recovery', recoveryController.remindRecovery);
+
+/**
+ * 查询守护者相关的恢复请求
+ * GET /auth/recovery/guardian/:guardianAddress
+ */
+router.get('/recovery/guardian/:guardianAddress', recoveryController.getGuardianRecoveryRequests);
+
 /**
  * 更新加密公钥
  * PUT /auth/encryption-key

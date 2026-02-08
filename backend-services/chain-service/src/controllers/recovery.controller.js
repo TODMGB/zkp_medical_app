@@ -7,6 +7,7 @@
 const recoveryService = require('../services/recovery.service');
 const bundlerService = require('../services/bundler.service');
 const mqProducer = require('../mq/producer');
+const authService = require('../services/auth.service'); // 🔧 新增：引入auth服务
 const { ethers } = require('ethers');
 const addresses = require('../../smart_contract/addresses.json');
 
@@ -142,15 +143,23 @@ async function initiateRecovery(req, res, next) {
  * Body: { accountAddress, guardianAccountAddress, newOwnerAddress }
  */
 async function buildSupportRecovery(req, res, next) {
+  console.log('========================================');
+  console.log('[Controller] buildSupportRecovery 被调用');
+  console.log('Request Body:', JSON.stringify(req.body, null, 2));
+  console.log('========================================');
+  
   try {
     const { accountAddress, guardianAccountAddress, newOwnerAddress } = req.body;
     
     if (!accountAddress || !guardianAccountAddress || !newOwnerAddress) {
+      console.log('[Controller] 参数验证失败');
       return res.status(400).json({ 
         success: false, 
         message: '所有字段为必填项：accountAddress, guardianAccountAddress, newOwnerAddress' 
       });
     }
+    
+    console.log('[Controller] 参数验证通过，调用 service...');
 
     const result = await recoveryService.buildSupportRecoveryUserOp(
       accountAddress,
@@ -158,12 +167,15 @@ async function buildSupportRecovery(req, res, next) {
       newOwnerAddress
     );
     
+    console.log('[Controller] Service 调用成功，返回结果');
+    
     res.status(200).json({ 
       success: true, 
       data: result,
       message: '请使用返回的 userOpHash 在客户端签名，然后调用 /recovery/submit 提交'
     });
   } catch (error) {
+    console.error('[Controller] buildSupportRecovery 错误:', error);
     next(error);
   }
 }
@@ -352,6 +364,15 @@ async function submitUserOp(req, res, next) {
     const parsed = parseRecoveryActionFromUserOp(userOp);
     const result = await bundlerService.handleSubmit(userOp);
 
+    if (result?.status === 1 && result?.userOpSuccess === false) {
+      return res.status(400).json({
+        success: false,
+        message: 'UserOperation 执行失败（交易已上链但未产生业务效果）',
+        code: 'USER_OP_FAILED',
+        data: result,
+      });
+    }
+
     if (result?.status === 1 && parsed?.accountAddress) {
       try {
         const accountAddress = parsed.accountAddress;
@@ -362,19 +383,32 @@ async function submitUserOp(req, res, next) {
         const requiredApprovals = parseInt(String(guardianInfo?.threshold || '0'), 10) || 0;
 
         const status = await recoveryService.getRecoveryStatus(accountAddress).catch(() => null);
-        const currentApprovals = status?.approvalCount != null
+        const accountInfo = await recoveryService.getAccountInfo(accountAddress).catch(() => null);
+
+        const ownerOnChain = accountInfo?.owner ? String(accountInfo.owner).toLowerCase() : '';
+        const desiredNewOwner = parsed?.newOwnerAddress ? String(parsed.newOwnerAddress).toLowerCase() : '';
+        const recovered = Boolean(ownerOnChain && desiredNewOwner && ownerOnChain === desiredNewOwner);
+
+        const executed = recovered;
+        const newOwnerOnChain = recovered
+          ? desiredNewOwner
+          : (status?.newOwner ? String(status.newOwner).toLowerCase() : '');
+
+        const approvalsFromStatus = status?.approvalCount != null
           ? parseInt(String(status.approvalCount), 10) || 0
           : 0;
-        const executed = Boolean(status?.executed);
-        const newOwnerOnChain = status?.newOwner ? String(status.newOwner).toLowerCase() : '';
+        const currentApprovals = recovered
+          ? requiredApprovals
+          : approvalsFromStatus;
 
-        const recipients = Array.from(new Set([accountAddress, ...guardians].filter(Boolean)));
+        const recipients = [accountAddress, ...guardians].filter(Boolean);
+
         const guardianAddress = userOp?.sender ? String(userOp.sender).toLowerCase() : '';
 
         if (parsed.action === 'initiateRecovery') {
           for (const recipient of recipients) {
             await mqProducer.publishNotification({
-              recipient_address: recipient,
+              recipient_address: recipient, // ✅ 现在是EOA地址
               title: '⚠️ 账户恢复已发起',
               body: `守护者 ${guardianAddress.substring(0, 10)}... 发起了账户恢复请求`,
               type: 'recovery_initiated',
@@ -392,12 +426,13 @@ async function submitUserOp(req, res, next) {
               channels: ['push', 'websocket']
             });
           }
+          console.log(`✅ [Recovery] 已向 ${recipients.length} 个用户发送"发起恢复"通知`);
         }
 
         if (parsed.action === 'supportRecovery') {
           for (const recipient of recipients) {
             await mqProducer.publishNotification({
-              recipient_address: recipient,
+              recipient_address: recipient, // ✅ 现在是EOA地址
               title: '⚠️ 账户恢复获得新支持',
               body: `守护者 ${guardianAddress.substring(0, 10)}... 支持了恢复请求 (${currentApprovals}/${requiredApprovals})`,
               type: 'recovery_supported',
@@ -415,13 +450,14 @@ async function submitUserOp(req, res, next) {
               channels: ['push', 'websocket']
             });
           }
+          console.log(`✅ [Recovery] 已向 ${recipients.length} 个用户发送"支持恢复"通知`);
         }
 
         if (parsed.action === 'cancelRecovery') {
           const cancelledBy = userOp?.sender ? String(userOp.sender).toLowerCase() : accountAddress;
           for (const recipient of recipients) {
             await mqProducer.publishNotification({
-              recipient_address: recipient,
+              recipient_address: recipient, // ✅ 现在是EOA地址
               title: '账户恢复已取消',
               body: `账户 ${accountAddress.substring(0, 10)}... 的恢复请求已被取消`,
               type: recipient === accountAddress ? 'recovery_cancelled' : 'recovery_cancelled_guardian',
@@ -435,12 +471,13 @@ async function submitUserOp(req, res, next) {
               channels: ['push', 'websocket']
             });
           }
+          console.log(`✅ [Recovery] 已向 ${recipients.length} 个用户发送"取消恢复"通知`);
         }
 
         if (executed) {
           for (const recipient of recipients) {
             await mqProducer.publishNotification({
-              recipient_address: recipient,
+              recipient_address: recipient, // ✅ 现在是EOA地址
               title: '✅ 账户恢复成功',
               body: `账户 ${accountAddress.substring(0, 10)}... 已完成恢复`,
               type: 'recovery_completed',
@@ -454,6 +491,7 @@ async function submitUserOp(req, res, next) {
               channels: ['push', 'websocket']
             });
           }
+          console.log(`✅ [Recovery] 已向 ${recipients.length} 个用户发送"恢复成功"通知`);
         }
       } catch (mqError) {
         console.error('❌ [MQ] 发送恢复通知失败（不影响主流程）:', mqError);

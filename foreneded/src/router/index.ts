@@ -48,7 +48,9 @@ import AccountSecurity from '../views/management/AccountSecurity.vue'
 import RecoveryRequest from '../views/management/RecoveryRequest.vue'
 import Settings from '../views/management/Settings.vue'
 import Notifications from '../views/management/Notifications.vue'
+import UserInfoRequests from '../views/management/UserInfoRequests.vue'
 import GuardianSetup from '../views/management/GuardianSetup.vue'
+import GuardianRecoveryList from '../views/management/GuardianRecoveryList.vue'
 import AccountMigration from '../views/management/AccountMigration.vue'
 import TestMigration from '../views/TestMigration.vue'
 import TestCenter from '../views/TestCenter.vue'
@@ -264,9 +266,20 @@ const routes = [
     component: Notifications
   },
   {
+    path: '/user-info-requests',
+    name: 'UserInfoRequests',
+    component: UserInfoRequests,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/guardian-setup',
     name: 'GuardianSetup',
     component: GuardianSetup
+  },
+  {
+    path: '/guardian-recovery-list',
+    name: 'GuardianRecoveryList',
+    component: GuardianRecoveryList
   },
   {
     path: '/account-migration',

@@ -9,6 +9,11 @@ require('dotenv').config();
 // 使用可选链操作符 ?. 确保在环境变量未设置时不会崩溃
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',') || [];
 
+const mqExchangeNameEnv = process.env.MQ_EXCHANGE_NAME;
+const mqExchangeName = (mqExchangeNameEnv && mqExchangeNameEnv.trim() === 'app_events')
+    ? 'exchange.notifications'
+    : (mqExchangeNameEnv || 'exchange.notifications');
+
 module.exports = {
     // 服务端口配置
     PORT: process.env.PORT || 3000,                    // HTTP 服务端口
@@ -34,7 +39,7 @@ module.exports = {
     // 消息队列配置
     mq: {
         url: process.env.MQ_URL,                      // 消息队列 URL
-        exchangeName: process.env.MQ_EXCHANGE_NAME || 'exchange.notifications', // 交换机名称
+        exchangeName: mqExchangeName, // 交换机名称
     },
     // 以太坊区块链配置
     ethconfig: {
@@ -51,4 +56,9 @@ module.exports = {
     },
     // JWT 配置
     JWT_SECRET: process.env.JWT_SECRET,               // 用于验证来自 Gateway/用户服务的 Token
+    // User Service gRPC 配置
+    userService: {
+        grpcHost: process.env.USER_SERVICE_GRPC_HOST || 'localhost',
+        grpcPort: parseInt(process.env.USER_SERVICE_GRPC_PORT, 10) || 50051,
+    },
 };

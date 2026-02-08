@@ -116,7 +116,7 @@
 
       <div v-else class="result">
         <div class="result-card">
-          <div class="result-title">恢复请求已提交</div>
+          <div class="result-title">{{ isRecovered ? '恢复成功' : '恢复请求已提交' }}</div>
           <div class="result-row">
             <span class="result-label">新Owner地址</span>
             <span class="result-value mono">{{ newOwnerAddress || '-' }}</span>
@@ -128,6 +128,10 @@
           <div v-if="recoverySessionId" class="result-row">
             <span class="result-label">会话ID</span>
             <span class="result-value mono">{{ recoverySessionId }}</span>
+          </div>
+          <div v-if="autoLoginMessage" class="result-row">
+            <span class="result-label">状态</span>
+            <span class="result-value">{{ autoLoginMessage }}</span>
           </div>
         </div>
 
@@ -143,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { onMounted, onUnmounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Preferences } from '@capacitor/preferences';
 import { ethers } from 'ethers';
@@ -152,6 +156,7 @@ import { biometricService } from '../../service/biometric';
 import { WALLET_KEYS } from '../../config/storage.config';
 import { authService, type ResolveSmartAccountResponse } from '../../service/auth';
 import { recoveryPendingService } from '@/service/recoveryPending';
+import { guardianService } from '@/service/guardian';
 import {
   ArrowLeft,
   Key,
@@ -193,6 +198,10 @@ const oldAccount = ref<ResolveSmartAccountResponse | null>(null);
 const newOwnerAddress = ref<string>('');
 const recoverySessionId = ref<string>('');
 
+const isRecovered = ref(false);
+const autoLoginMessage = ref('');
+let recoveryPollTimer: any = null;
+
 onMounted(async () => {
   const state = history.state as any;
   try {
@@ -229,6 +238,55 @@ onMounted(async () => {
     globalError.value = '缺少恢复信息，请重新开始恢复流程';
   }
 });
+
+const stopRecoveryPoll = () => {
+  if (recoveryPollTimer) {
+    clearInterval(recoveryPollTimer);
+    recoveryPollTimer = null;
+  }
+};
+
+const checkRecoveryAndAutoLogin = async () => {
+  if (step.value !== 'done') return;
+  if (isLoading.value) return;
+  if (!oldAccount.value?.smart_account) return;
+  if (!newOwnerAddress.value) return;
+
+  try {
+    const [statusRes, accountInfo] = await Promise.all([
+      guardianService.getRecoveryStatus(oldAccount.value.smart_account).catch(() => null),
+      guardianService.getAccountInfo(oldAccount.value.smart_account).catch(() => null),
+    ]);
+
+    const owner = accountInfo?.owner ? String(accountInfo.owner) : '';
+    const ownerRecovered = owner && String(owner).toLowerCase() === String(newOwnerAddress.value).toLowerCase();
+    const executedRecovered =
+      statusRes?.executed &&
+      String(statusRes?.newOwner || '').toLowerCase() === String(newOwnerAddress.value).toLowerCase();
+
+    if (ownerRecovered || executedRecovered) {
+      isRecovered.value = true;
+      stopRecoveryPoll();
+
+      autoLoginMessage.value = '恢复完成，正在登录...';
+      try {
+        await aaService.loginToBackend();
+      } catch (e) {
+      }
+
+      try {
+        await recoveryPendingService.clearPending();
+      } catch (e) {
+      }
+
+      autoLoginMessage.value = '登录成功，正在进入系统...';
+      router.replace('/home');
+    } else {
+      autoLoginMessage.value = '等待守护者确认与链上执行...';
+    }
+  } catch (e) {
+  }
+};
 
 const goBack = () => {
   router.back();
@@ -329,6 +387,12 @@ const handleSubmit = async () => {
     }
 
     step.value = 'done';
+
+    stopRecoveryPoll();
+    await checkRecoveryAndAutoLogin();
+    recoveryPollTimer = setInterval(() => {
+      checkRecoveryAndAutoLogin();
+    }, 5000);
   } catch (error: any) {
     globalError.value = error?.message || '操作失败，请重试';
 
@@ -362,6 +426,10 @@ const goToRecoveryProgress = () => {
 const goToLogin = () => {
   router.replace('/login');
 };
+
+onUnmounted(() => {
+  stopRecoveryPoll();
+});
 </script>
 
 <style scoped>

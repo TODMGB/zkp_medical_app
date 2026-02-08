@@ -1,5 +1,9 @@
 <template>
   <div class="my-relationships-content">
+    <div v-if="userInfoRequestCount > 0" class="user-info-requests-banner" @click="goToUserInfoRequests">
+      <span>有 {{ userInfoRequestCount }} 条信息交换请求</span>
+      <span class="user-info-requests-banner-action">去处理</span>
+    </div>
     <!-- 加载状态 -->
     <div v-if="isLoading && friendRelationships.length === 0 && !hasFriendRequests" class="loading-container">
       <div class="spinner"></div>
@@ -182,6 +186,12 @@
               <div class="member-address-sub">
                 {{ formatAddress(getOtherPartyAddress(relationship)) }}
               </div>
+
+              <div v-if="!memberInfos[getOtherPartyAddress(relationship)]" class="member-missing-info">
+                <button class="request-info-btn" @click.stop="requestPeerInfoLocal(getOtherPartyAddress(relationship))">
+                  询问信息
+                </button>
+              </div>
               
               <div class="card-meta">
                 <span class="group-badge" :class="`type-${relationship.group_type}`">
@@ -242,6 +252,7 @@ import { memberRemarkService } from '@/service/memberRemark'
 import { memberInfoService, type MemberInfo } from '@/service/memberInfo'
 import { uiService } from '@/service/ui'
 import { UserRoleUtils } from '@/utils/userRoles'
+import { Preferences } from '@capacitor/preferences'
 
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -350,6 +361,35 @@ const getMemberRoleLabels = (address: string) => {
   const info = memberInfos.value[address]
   const roles = info?.roles || []
   return roles.slice(0, 3).map(r => UserRoleUtils.getRoleDisplayName(r))
+}
+
+const USER_INFO_REQUESTS_KEY = 'user_info_requests'
+const userInfoRequestCount = ref(0)
+
+const refreshUserInfoRequestCount = async () => {
+  try {
+    const { value } = await Preferences.get({ key: USER_INFO_REQUESTS_KEY })
+    const parsed = value ? JSON.parse(value) : []
+    userInfoRequestCount.value = Array.isArray(parsed) ? parsed.length : 0
+  } catch (e) {
+    userInfoRequestCount.value = 0
+  }
+}
+
+const goToUserInfoRequests = () => {
+  router.push({ name: 'UserInfoRequests' })
+}
+
+const requestPeerInfoLocal = async (peerAddress: string) => {
+  try {
+    const peer = String(peerAddress || '').trim()
+    if (!peer) return
+    await relationService.requestPeerInfo(peer)
+    uiService.toast('已发送信息请求', { type: 'success' })
+  } catch (error: any) {
+    console.error('请求对方信息失败:', error)
+    uiService.toast(error.message || '请求失败', { type: 'error' })
+  }
 }
 
 const loadFriendRequests = async () => {
@@ -713,8 +753,17 @@ const formatDate = (dateStr: string) => {
   }
 }
 
+import { useRouter } from 'vue-router'
+const router = useRouter()
+
 onMounted(async () => {
-  await loadRelationships()
+  loadRelationships()
+  loadFriendRequests()
+  refreshUserInfoRequestCount()
+  try {
+    window.addEventListener('user_info_request', refreshUserInfoRequestCount as any)
+  } catch (e) {
+  }
 })
 
 // 页面激活时重新加载（从其他页面返回时）
@@ -1141,10 +1190,51 @@ onActivated(async () => {
 }
 
 .member-address-sub {
+  font-size: 0.9rem;
+  color: #a0aec0;
+  margin-bottom: 10px;
+}
+
+.user-info-requests-banner {
+  margin: 10px 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.user-info-requests-banner-action {
   font-size: 0.85rem;
-  color: #718096;
-  font-family: monospace;
-  margin: 4px 0 8px 0;
+  font-weight: 700;
+}
+
+.member-missing-info {
+  margin: 6px 0 10px;
+}
+
+.request-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.request-info-btn:active {
+  transform: scale(0.98);
 }
 
 .remark-badge {

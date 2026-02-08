@@ -215,7 +215,7 @@ async function publishRecoveryCancelled(accountAddress, cancelledBy, txHash, gua
 async function publishRecoveryCompleted(accountAddress, oldOwnerAddress, newOwnerAddress, txHash) {
   // 通知新Owner
   await publishNotification({
-    recipient_address: newOwnerAddress,
+    recipient_address: accountAddress,
     title: '✅ 账户恢复成功',
     body: `账户 ${accountAddress.substring(0, 10)}... 已成功恢复到您的控制`,
     type: 'recovery_completed',
@@ -233,7 +233,7 @@ async function publishRecoveryCompleted(accountAddress, oldOwnerAddress, newOwne
   // 通知旧Owner（如果地址不同）
   if (oldOwnerAddress.toLowerCase() !== newOwnerAddress.toLowerCase()) {
     await publishNotification({
-      recipient_address: oldOwnerAddress,
+      recipient_address: accountAddress,
       title: '⚠️ 账户已被恢复',
       body: `您的账户 ${accountAddress.substring(0, 10)}... 已被恢复到新的Owner`,
       type: 'recovery_completed_old_owner',

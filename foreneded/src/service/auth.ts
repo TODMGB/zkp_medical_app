@@ -9,6 +9,7 @@ import { buildAuthUrl } from '../config/api.config';
 
 // 导入存储配置
 import { AUTH_KEYS } from '@/config/storage.config';
+import { WALLET_KEYS } from '@/config/storage.config';
 
 // 用户信息接口
 export interface UserInfo {
@@ -33,6 +34,7 @@ export interface RegisterRequest {
 export interface LoginRequest {
   login_time: string;
   signature: string;
+  smart_account?: string;
 }
 
 // API登录响应接口
@@ -85,10 +87,59 @@ export interface StartRecoveryResponse {
   expires_at: string;
 }
 
+export interface RemindRecoveryRequest {
+  session_id: string;
+  dry_run?: boolean;
+}
+
+export interface RemindRecoveryResponse {
+  sent: boolean;
+  session_id: string;
+  cooldown_seconds: number;
+  cooldown_remaining_seconds: number;
+  daily_limit: number;
+  daily_used: number;
+  daily_remaining: number;
+}
+
+export interface RecoveryRequestItem {
+  session_id: string;
+  old_smart_account: string;
+  new_owner_address: string;
+  guardians: string[];
+  threshold: number;
+  status: string;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface GuardianRecoveryRequestsResponse {
+  guardian_address: string;
+  requests: RecoveryRequestItem[];
+  total: number;
+}
+
 class AuthService {
   private token: string | null = null;
   private userInfo: UserInfo | null = null;
   private backendLoggedIn: boolean = false; // 后端登录状态
+
+  public async updateEncryptionPublicKey(encryptionPublicKey: string): Promise<void> {
+    const headers = await this.getAuthHeader();
+    const response = await fetch(buildAuthUrl('encryptionKey'), {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(headers as any),
+      },
+      body: JSON.stringify({ encryption_public_key: encryptionPublicKey }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => null);
+      throw new Error(err?.message || '更新加密公钥失败');
+    }
+  }
 
   /**
    * 用户注册
@@ -234,6 +285,57 @@ class AuthService {
     return result.data as StartRecoveryResponse;
   }
 
+  public async remindRecovery(params: RemindRecoveryRequest): Promise<RemindRecoveryResponse> {
+    const response = await fetch(buildAuthUrl('remindRecovery'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      const error: any = new Error(result?.message || '提醒失败');
+      error.code = result?.code;
+      error.cooldown_remaining_seconds = result?.cooldown_remaining_seconds;
+      throw error;
+    }
+
+    if (!result?.success || !result?.data?.session_id) {
+      throw new Error(result?.message || '提醒失败');
+    }
+
+    return result.data as RemindRecoveryResponse;
+  }
+
+  /**
+   * 查询守护者相关的恢复请求
+   * @param guardianAddress 守护者的智能账户地址
+   * @returns 恢复请求列表
+   */
+  public async getGuardianRecoveryRequests(guardianAddress: string): Promise<GuardianRecoveryRequestsResponse> {
+    const response = await fetch(buildAuthUrl('getGuardianRecoveryRequests').replace(':guardianAddress', guardianAddress), {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const result = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(result?.message || '查询失败');
+    }
+
+    if (!result?.success) {
+      throw new Error(result?.message || '查询失败');
+    }
+
+    return result.data as GuardianRecoveryRequestsResponse;
+  }
+
   /**
    * 用户登录
    * @param eoaWallet EOA钱包（用于签名）
@@ -253,6 +355,22 @@ class AuthService {
       const signature = await eoaWallet.signMessage(message);
       console.log('签名完成');
 
+      let smartAccount: string | null = null;
+      try {
+        const stored = await Preferences.get({ key: WALLET_KEYS.ACCOUNT_ADDRESS });
+        smartAccount = stored.value || null;
+      } catch (e) {
+      }
+
+      if (!smartAccount) {
+        try {
+          const { aaService } = await import('./accountAbstraction');
+          const localAccount = aaService.getAbstractAccountAddress();
+          smartAccount = localAccount || null;
+        } catch (e) {
+        }
+      }
+
       // 3. 调用登录API
       console.log('调用登录API...');
       const response = await fetch(
@@ -264,6 +382,7 @@ class AuthService {
           },
           body: JSON.stringify({
             eoa_address: eoaWallet.address,
+            smart_account: smartAccount,
             login_time: loginTime,
             signature: signature,
           }),
@@ -349,6 +468,18 @@ class AuthService {
         this.token = loginResponse.data.token;
         this.userInfo = userInfo;
         this.backendLoggedIn = true; // 标记后端已登录
+
+        // 5. 登录后同步加密公钥（社交恢复/换设备后 EOA 变化，必须更新，否则端到端加密会解密失败）
+        try {
+          if (navigator.onLine) {
+            const encryptionPublicKey = (eoaWallet as any).signingKey?.compressedPublicKey;
+            if (encryptionPublicKey) {
+              await this.updateEncryptionPublicKey(encryptionPublicKey);
+              console.log('✅ 加密公钥已同步到后端');
+            }
+          }
+        } catch (e) {
+        }
 
         return {
           token: loginResponse.data.token,

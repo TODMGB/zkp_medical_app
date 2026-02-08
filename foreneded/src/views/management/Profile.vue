@@ -111,6 +111,17 @@
         <ChevronRight class="menu-arrow" />
       </div>
       
+      <div class="menu-item" @click="goToGuardianRecoveryList" v-if="isGuardian">
+        <div class="menu-icon-wrapper blue">
+          <Shield class="menu-icon" />
+        </div>
+        <div class="menu-content">
+          <h3 class="menu-title">恢复请求</h3>
+          <p class="menu-desc">查看需要我处理的恢复请求</p>
+        </div>
+        <ChevronRight class="menu-arrow" />
+      </div>
+      
       <div class="menu-item" @click="goToAccountMigration">
         <div class="menu-icon-wrapper purple">
           <Smartphone class="menu-icon" />
@@ -320,6 +331,10 @@ const showToastMessage = (message: string, type: 'success' | 'error') => {
 // 页面跳转
 const goToGuardianSetup = () => {
   router.push('/guardian-setup')
+}
+
+const goToGuardianRecoveryList = () => {
+  router.push('/guardian-recovery-list')
 }
 
 const goToAccountMigration = () => {

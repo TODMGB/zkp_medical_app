@@ -54,6 +54,30 @@
         </div>
       </div>
 
+      <div v-if="pending?.session_id" class="card">
+        <div class="card-title">提醒守护者</div>
+
+        <div class="row">
+          <span class="label">今日剩余次数</span>
+          <span class="value">{{ remindDisplay }}</span>
+        </div>
+
+        <div v-if="remindCooldownRemainingSeconds > 0" class="row">
+          <span class="label">冷却时间</span>
+          <span class="value">{{ formatCountdown(remindCooldownRemainingSeconds) }}</span>
+        </div>
+
+        <div v-if="remindError" class="error-banner">{{ remindError }}</div>
+
+        <button class="secondary-btn full-width" :disabled="remindDisabled" @click="remind">
+          <span v-if="!remindLoading">{{ remindButtonText }}</span>
+          <span v-else class="spinner-text">
+            <Loader2 class="spinner" />
+            发送中...
+          </span>
+        </button>
+      </div>
+
       <button class="primary-btn" :disabled="isLoading" @click="refresh">
         <span v-if="!isLoading">刷新进度</span>
         <span v-else class="spinner-text">
@@ -74,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Preferences } from '@capacitor/preferences'
 import { ArrowLeft, Loader2 } from 'lucide-vue-next'
@@ -84,6 +108,7 @@ import { biometricService } from '@/service/biometric'
 import { uiService } from '@/service/ui'
 import { recoveryPendingService, type RecoveryPending } from '@/service/recoveryPending'
 import { AUTH_KEYS, WALLET_KEYS } from '@/config/storage.config'
+import { authService, type RemindRecoveryResponse } from '@/service/auth'
 
 const router = useRouter()
 
@@ -92,12 +117,27 @@ const globalError = ref('')
 
 const pending = ref<RecoveryPending | null>(null)
 const status = ref<RecoveryStatus | null>(null)
+const currentOwner = ref('')
+
+const isOwnerRecovered = computed(() => {
+  if (!pending.value?.new_owner_address) return false
+  if (!currentOwner.value) return false
+  return String(currentOwner.value).toLowerCase() === String(pending.value.new_owner_address).toLowerCase()
+})
+
+const remindInfo = ref<RemindRecoveryResponse | null>(null)
+const remindLoading = ref(false)
+const remindError = ref('')
+const remindCooldownRemainingSeconds = ref(0)
+let remindCooldownTimer: ReturnType<typeof setInterval> | null = null
 
 const canFinish = computed(() => {
   if (!pending.value || !status.value) return false
-  if (!status.value.executed) return false
-  if (!pending.value.new_owner_address) return true
-  return String(status.value.newOwner || '').toLowerCase() === String(pending.value.new_owner_address || '').toLowerCase()
+  if (status.value.executed) {
+    if (!pending.value.new_owner_address) return true
+    return String(status.value.newOwner || '').toLowerCase() === String(pending.value.new_owner_address || '').toLowerCase()
+  }
+  return isOwnerRecovered.value
 })
 
 const formatTime = (value: string) => {
@@ -110,26 +150,154 @@ const goBack = () => {
   router.back()
 }
 
+const remindDisplay = computed(() => {
+  if (!remindInfo.value) return '--'
+  return `${remindInfo.value.daily_remaining} / ${remindInfo.value.daily_limit}`
+})
+
+const remindDisabled = computed(() => {
+  if (!pending.value?.session_id) return true
+  if (isLoading.value) return true
+  if (remindLoading.value) return true
+  if (remindCooldownRemainingSeconds.value > 0) return true
+  if (remindInfo.value && remindInfo.value.daily_remaining <= 0) return true
+  return false
+})
+
+const remindButtonText = computed(() => {
+  if (remindCooldownRemainingSeconds.value > 0) {
+    return `请等待 ${formatCountdown(remindCooldownRemainingSeconds.value)}`
+  }
+  if (remindInfo.value && remindInfo.value.daily_remaining <= 0) {
+    return '今日次数已用完'
+  }
+  return '提醒守护者'
+})
+
+const formatCountdown = (seconds: number) => {
+  const s = Math.max(0, Math.floor(seconds))
+  const mm = String(Math.floor(s / 60)).padStart(2, '0')
+  const ss = String(s % 60).padStart(2, '0')
+  return `${mm}:${ss}`
+}
+
+const remindCooldownKey = (sessionId: string) => `recovery:remind:cooldown_until:${sessionId}`
+
+const stopRemindTimer = () => {
+  if (remindCooldownTimer) {
+    clearInterval(remindCooldownTimer)
+    remindCooldownTimer = null
+  }
+}
+
+const syncCooldownFromStorage = (sessionId: string) => {
+  stopRemindTimer()
+  remindCooldownRemainingSeconds.value = 0
+
+  const untilRaw = localStorage.getItem(remindCooldownKey(sessionId))
+  const until = parseInt(String(untilRaw || '0'), 10)
+  if (!until || Number.isNaN(until)) return
+
+  const tick = () => {
+    const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000))
+    remindCooldownRemainingSeconds.value = remaining
+    if (remaining <= 0) {
+      stopRemindTimer()
+      localStorage.removeItem(remindCooldownKey(sessionId))
+    }
+  }
+
+  tick()
+  if (until > Date.now()) {
+    remindCooldownTimer = setInterval(tick, 1000)
+  }
+}
+
+const startCooldown = (sessionId: string, seconds: number) => {
+  const until = Date.now() + Math.max(0, seconds) * 1000
+  localStorage.setItem(remindCooldownKey(sessionId), String(until))
+  syncCooldownFromStorage(sessionId)
+}
+
+const loadRemindLimits = async (sessionId: string) => {
+  remindError.value = ''
+  try {
+    const data = await authService.remindRecovery({ session_id: sessionId, dry_run: true })
+    remindInfo.value = data
+
+    if (data.cooldown_remaining_seconds > 0) {
+      startCooldown(sessionId, data.cooldown_remaining_seconds)
+    }
+  } catch (e: any) {
+    remindError.value = e?.message || '获取提醒次数失败'
+  }
+}
+
 const refresh = async () => {
   globalError.value = ''
+  remindError.value = ''
   isLoading.value = true
   try {
     pending.value = await recoveryPendingService.getPending()
     if (!pending.value?.old_smart_account) {
       globalError.value = '当前没有进行中的恢复记录'
       status.value = null
+      currentOwner.value = ''
+      remindInfo.value = null
+      remindCooldownRemainingSeconds.value = 0
+      stopRemindTimer()
       return
     }
 
-    status.value = await guardianService.getRecoveryStatus(pending.value.old_smart_account)
+    const [statusRes, accountInfo] = await Promise.all([
+      guardianService.getRecoveryStatus(pending.value.old_smart_account).catch(() => null),
+      guardianService.getAccountInfo(pending.value.old_smart_account).catch(() => null),
+    ])
+
+    status.value = statusRes
+    currentOwner.value = accountInfo?.owner ? String(accountInfo.owner) : ''
 
     if (canFinish.value) {
       await recoveryPendingService.clearPending()
+    }
+
+    if (pending.value?.session_id) {
+      syncCooldownFromStorage(pending.value.session_id)
+      await loadRemindLimits(pending.value.session_id)
     }
   } catch (e: any) {
     globalError.value = e?.message || '刷新失败'
   } finally {
     isLoading.value = false
+  }
+}
+
+const remind = async () => {
+  if (!pending.value?.session_id) return
+  remindError.value = ''
+  remindLoading.value = true
+  try {
+    const data = await authService.remindRecovery({ session_id: pending.value.session_id })
+    remindInfo.value = data
+
+    if (data.cooldown_remaining_seconds > 0) {
+      startCooldown(pending.value.session_id, data.cooldown_remaining_seconds)
+    } else {
+      startCooldown(pending.value.session_id, 300)
+    }
+
+    await uiService.toast('已发送提醒', { type: 'success' })
+  } catch (e: any) {
+    if (e?.code === 'REMIND_COOLDOWN' && e?.cooldown_remaining_seconds) {
+      startCooldown(pending.value.session_id, e.cooldown_remaining_seconds)
+    }
+    remindError.value = e?.message || '提醒失败'
+    try {
+      await loadRemindLimits(pending.value.session_id)
+    } catch (err) {
+    }
+  } finally {
+    remindLoading.value = false
   }
 }
 
@@ -178,6 +346,10 @@ const finish = async () => {
 
 onMounted(async () => {
   await refresh()
+})
+
+onUnmounted(() => {
+  stopRemindTimer()
 })
 </script>
 
@@ -326,6 +498,10 @@ onMounted(async () => {
   width: 18px;
   height: 18px;
   animation: spin 1s linear infinite;
+}
+
+.full-width {
+  width: 100%;
 }
 
 @keyframes spin {

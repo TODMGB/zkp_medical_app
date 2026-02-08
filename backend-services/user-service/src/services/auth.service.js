@@ -7,6 +7,7 @@ const relationshipClient = require('../clients/relationship.client');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { ethers } = require('ethers');
+const axios = require('axios');
 
 function normalizeEmail(email) {
   if (!email) return null;
@@ -157,20 +158,30 @@ async function register(userData) {
  * 用户登录服务
  */
 async function login(loginData) {
-  const { eoa_address, signature, message } = loginData;
+  const { eoa_address, signature, message, smart_account } = loginData;
 
   try {
-    // 1. 查找用户
-    console.log(`🔄 [Auth Service] 查找用户: ${eoa_address}`);
-    const user = await userEntity.findUserByEoaAddress(eoa_address.toLowerCase());
-    console.log(`✅ [Auth Service] 查找用户成功: ${JSON.stringify(user)}`);
+    // 1. 基本校验
+    if (!smart_account || !ethers.isAddress(String(smart_account))) {
+      const error = new Error('缺少必要参数 smart_account');
+      error.code = 'MISSING_SMART_ACCOUNT';
+      throw error;
+    }
+
+    const normalizedSmartAccount = String(smart_account).toLowerCase();
+    const eoaLower = String(eoa_address).toLowerCase();
+
+    // 2. 先按 smart_account 查找用户（smart_account 是主键）
+    console.log(`🔄 [Auth Service] 通过 smart_account 查找用户: ${normalizedSmartAccount}`);
+    let user = await userEntity.findUserBySmartAccount(normalizedSmartAccount);
+
     if (!user) {
       const error = new Error('用户不存在');
       error.code = 'USER_NOT_FOUND';
       throw error;
     }
 
-    // 2. 验证签名
+    // 3. 验证签名（必须先验签，防止伪造 eoa_address）
     try {
       const recoveredAddress = ethers.verifyMessage(message, signature);
       if (recoveredAddress.toLowerCase() !== eoa_address.toLowerCase()) {
@@ -184,7 +195,41 @@ async function login(loginData) {
       throw error;
     }
 
-    // 3. 生成JWT Token（包含角色信息）
+    // 4. 强制校验：链上 owner(smart_account) 必须等于当前登录 EOA
+    const CHAIN_SERVICE_URL = process.env.CHAIN_SERVICE_URL || 'http://localhost:4337';
+    const url = `${CHAIN_SERVICE_URL}/account/${normalizedSmartAccount}`;
+
+    console.log(`🔄 [Auth Service] 校验链上 owner: smart_account=${normalizedSmartAccount}`);
+    const response = await axios.get(url, { timeout: 30000, validateStatus: () => true });
+
+    const chainLookupOk = response.status >= 200 && response.status < 300 && response.data?.success && response.data?.data?.owner;
+    if (!chainLookupOk) {
+      // counterfactual smart account（未部署）或链服务异常时：回退为 DB eoa_address 校验
+      // 只允许 DB 中当前绑定的 EOA 登录，避免放开安全边界
+      console.warn(`⚠️ [Auth Service] 链上 owner 查询失败，使用 DB 回退校验: smart_account=${normalizedSmartAccount}`);
+
+      if (String(user.eoa_address || '').toLowerCase() !== eoaLower) {
+        const error = new Error('当前EOA不是该智能账户的owner');
+        error.code = 'EOA_NOT_OWNER';
+        throw error;
+      }
+    } else {
+      const ownerOnChain = String(response.data.data.owner).toLowerCase();
+      if (ownerOnChain !== eoaLower) {
+        const error = new Error('当前EOA不是该智能账户的owner');
+        error.code = 'EOA_NOT_OWNER';
+        throw error;
+      }
+
+      // 链上校验通过时，同步DB中的 eoa_address（社交恢复后会变化）
+      if (String(user.eoa_address || '').toLowerCase() !== eoaLower) {
+        await userEntity.updateEoaAddressBySmartAccount(normalizedSmartAccount, eoaLower);
+        user = await userEntity.findUserBySmartAccount(normalizedSmartAccount);
+        console.log(`✅ [Auth Service] 已同步DB中的EOA地址: smart_account=${normalizedSmartAccount}`);
+      }
+    }
+
+    // 5. 生成JWT Token（包含角色信息）
     const roles = user.roles ? user.roles.filter(r => r !== null) : [];
     console.log(`✅ [Auth Service] 查询到的用户对象: ${JSON.stringify(user)}`);
     console.log(`✅ [Auth Service] 提取的角色列表: ${JSON.stringify(roles)}`);

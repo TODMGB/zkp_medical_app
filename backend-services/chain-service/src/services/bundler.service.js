@@ -15,6 +15,8 @@ const entryAbi = addresses.EntryPoint.abi;
 
 // 创建 EntryPoint 合约实例
 const entryContract = new ethers.Contract(ENTRYPOINT_ADDRESS, entryAbi, wallet);
+const entryIface = new ethers.Interface(entryAbi);
+const userOpEventTopic = entryIface.getEvent('UserOperationEvent').topicHash;
 
 /**
  * 规范化 UserOperation 对象
@@ -61,14 +63,36 @@ async function handleSubmit(userOp) {
   console.log('[Bundler] 已提交交易，hash:', tx.hash);
   // 等待交易确认
   const receipt = await tx.wait();
-  
+
+  let userOpEvent = null;
+  try {
+    for (const log of receipt.logs || []) {
+      if (!log?.topics || log.topics.length === 0) continue;
+      if (String(log.address || '').toLowerCase() !== String(ENTRYPOINT_ADDRESS).toLowerCase()) continue;
+      if (log.topics[0] !== userOpEventTopic) continue;
+      const parsed = entryIface.parseLog(log);
+      if (parsed?.name !== 'UserOperationEvent') continue;
+      const sender = String(parsed.args?.sender || '').toLowerCase();
+      if (sender === String(normalized.sender || '').toLowerCase()) {
+        userOpEvent = parsed;
+        break;
+      }
+    }
+  } catch (e) {
+  }
+
+  const userOpSuccess = userOpEvent ? Boolean(userOpEvent.args?.success) : null;
+  const userOpHash = userOpEvent ? String(userOpEvent.args?.userOpHash || '') : '';
+
   // 返回交易结果
   return {
     txHash: tx.hash,                                    // 交易哈希
     blockNumber: receipt.blockNumber,                   // 区块号
     gasUsed: receipt.gasUsed?.toString?.() || receipt.gasUsed,  // 使用的 gas
     status: receipt.status,                             // 状态（1=成功，0=失败）
-    logs: receipt.logs?.length || 0                     // 日志数量
+    logs: receipt.logs?.length || 0,                    // 日志数量
+    userOpHash,
+    userOpSuccess,
   };
 }
 

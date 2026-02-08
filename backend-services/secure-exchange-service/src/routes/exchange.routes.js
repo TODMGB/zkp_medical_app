@@ -13,6 +13,12 @@ router.get('/recipient-pubkey/:recipientAddress', (req, res, next) => exchangeCo
 // 发送加密数据
 router.post('/send', (req, res, next) => exchangeController.sendEncryptedData(req, res, next));
 
+// 请求对方同意后交换 user_info
+router.post('/user-info/request', (req, res, next) => exchangeController.requestUserInfo(req, res, next));
+
+// 同意并发送 user_info（仍由客户端加密后提交）
+router.post('/user-info/approve', (req, res, next) => exchangeController.approveUserInfo(req, res, next));
+
 // 确认接收
 router.post('/acknowledge', (req, res, next) => exchangeController.acknowledgeMessage(req, res, next));
 

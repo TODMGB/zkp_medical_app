@@ -3,6 +3,12 @@ require('dotenv').config();
 // 读取CORS源地址字符串，并按逗号分割成数组
 // ?.split(',') an ?.trim() ensures that if the env var is not set, the app doesn't crash.
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',') || [];
+
+const mqExchangeNameEnv = process.env.MQ_EXCHANGE_NAME;
+const mqExchangeName = (mqExchangeNameEnv && mqExchangeNameEnv.trim() === 'app_events')
+    ? 'exchange.notifications'
+    : (mqExchangeNameEnv || 'exchange.notifications');
+
 module.exports = {
     PORT: process.env.PORT || 3000,
     GRPC_PORT: process.env.GRPC_PORT || 50051,
@@ -23,7 +29,7 @@ module.exports = {
     },
     mq: {
         url: process.env.MQ_URL,
-        exchangeName: process.env.MQ_EXCHANGE_NAME || 'exchange.notifications',
+        exchangeName: mqExchangeName,
     },
     services: {
         USER_INFO_SERVICE_URL: process.env.USER_INFO_SERVICE_URL,

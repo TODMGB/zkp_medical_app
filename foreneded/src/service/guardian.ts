@@ -348,30 +348,46 @@ class GuardianService {
     newOwnerAddress: string
   ): Promise<{ userOp: UserOperation; userOpHash: string }> {
     try {
-      const response = await fetch(
-        buildERC4337Url('buildSupportRecovery'),
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            accountAddress,
-            guardianAccountAddress,
-            newOwnerAddress,
-          }),
-        }
-      );
+      console.log('========================================');
+      console.log('[Guardian Service] buildSupportRecoveryUserOp 被调用');
+      console.log('  accountAddress:', accountAddress);
+      console.log('  guardianAccountAddress:', guardianAccountAddress);
+      console.log('  newOwnerAddress:', newOwnerAddress);
+      
+      const url = buildERC4337Url('buildSupportRecovery');
+      console.log('  请求URL:', url);
+      
+      const requestBody = {
+        accountAddress,
+        guardianAccountAddress,
+        newOwnerAddress,
+      };
+      console.log('  请求Body:', JSON.stringify(requestBody, null, 2));
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
 
+      console.log('  响应状态:', response.status, response.statusText);
+      
       if (!response.ok) {
         const error = await response.json();
+        console.error('  响应错误:', error);
         throw new Error(error.message || '构建支持恢复UserOp失败');
       }
 
       const result = await response.json();
+      console.log('  响应成功:', result);
+      console.log('========================================');
       return result.data;
     } catch (error: any) {
-      console.error('构建支持恢复UserOp失败:', error);
+      console.error('========================================');
+      console.error('[Guardian Service] 构建支持恢复UserOp失败:', error);
+      console.error('========================================');
       throw error;
     }
   }
@@ -524,17 +540,29 @@ class GuardianService {
     eoaWallet: ethers.Wallet | ethers.HDNodeWallet
   ): Promise<{ txHash: string }> {
     try {
+      console.log('========================================');
+      console.log('[Guardian Service] supportRecovery 开始');
+      console.log('  accountAddress:', accountAddress);
+      console.log('  guardianAccountAddress:', guardianAccountAddress);
+      console.log('  newOwnerAddress:', newOwnerAddress);
+      console.log('========================================');
+      
       const { userOp, userOpHash } = await this.buildSupportRecoveryUserOp(
         accountAddress,
         guardianAccountAddress,
         newOwnerAddress
       );
+      
+      console.log('[Guardian Service] UserOp 构建完成，开始签名...');
       const signature = await eoaWallet.signMessage(ethers.getBytes(userOpHash));
       userOp.signature = signature;
+      console.log('[Guardian Service] 签名完成，提交 UserOp...');
+      
       const result = await this.submitRecoveryUserOp(userOp);
+      console.log('[Guardian Service] ✅ 支持恢复成功:', result);
       return result;
     } catch (error: any) {
-      console.error('支持恢复失败:', error);
+      console.error('[Guardian Service] ❌ 支持恢复失败:', error);
       throw error;
     }
   }

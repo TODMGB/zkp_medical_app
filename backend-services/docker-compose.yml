@@ -82,7 +82,7 @@ services:
       DB_PASSWORD: 123456
       REDIS_URL: redis://redis:6379
       MQ_URL: amqp://guest:guest@rabbitmq:5672
-      MQ_EXCHANGE_NAME: app_events
+      MQ_EXCHANGE_NAME: exchange.notifications
       USER_INFO_SERVICE_URL: http://userinfo-service:5000
       RELATIONSHIP_RPC_SERVER: relationship-service:50053
     ports:
@@ -348,7 +348,7 @@ services:
       DB_PASSWORD: 123456
       REDIS_URL: redis://redis:6379
       MQ_URL: amqp://guest:guest@rabbitmq:5672
-      MQ_EXCHANGE_NAME: app_events
+      MQ_EXCHANGE_NAME: exchange.notifications
       PRIVATE_KEY: 626a9e2fb86bf8a65f75d00c4323153148b5165a4bfde165e2196ae4b751194d
       ETH_NODE_URL: http://localhost:8545
       CHAIN_ID: 887766

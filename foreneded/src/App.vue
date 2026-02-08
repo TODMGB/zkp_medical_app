@@ -30,7 +30,9 @@ const showExitToast = ref(false)
 let lastBackPress = 0
 let backButtonListener: any = null
 let listenerRetryTimer: ReturnType<typeof setTimeout> | null = null
+let notificationRetryTimer: ReturnType<typeof setTimeout> | null = null
 const LISTENER_RETRY_INTERVAL = 5000
+const NOTIFICATION_RETRY_INTERVAL = 5000
 
 // 定义哪些路由是"退出点"（在这些页面按返回键需要确认退出）
 const exitRoutes = ['/splash', '/home', '/login']
@@ -46,6 +48,9 @@ onMounted(async () => {
   
   // 启动消息监听服务
   await startMessageListener()
+
+  // 启动通知 WebSocket 服务
+  await startNotificationSocket()
 })
 
 onUnmounted(async () => {
@@ -55,8 +60,12 @@ onUnmounted(async () => {
   }
   
   clearMessageListenerRetry()
+  clearNotificationRetry()
   // 停止消息监听
   await stopMessageListener()
+
+  // 停止通知 WebSocket
+  await stopNotificationSocket()
 })
 
 /**
@@ -154,6 +163,45 @@ function clearMessageListenerRetry() {
   if (listenerRetryTimer) {
     clearInterval(listenerRetryTimer)
     listenerRetryTimer = null
+  }
+}
+
+async function startNotificationSocket(force = false) {
+  try {
+    const { authService } = await import('@/service/auth')
+    const isLoggedIn = await authService.isLoggedIn()
+    if (!isLoggedIn) {
+      scheduleNotificationRetry()
+      return
+    }
+
+    const { notificationService } = await import('@/service/notification')
+    await notificationService.connect()
+    clearNotificationRetry()
+  } catch (error) {
+    scheduleNotificationRetry()
+  }
+}
+
+async function stopNotificationSocket() {
+  try {
+    const { notificationService } = await import('@/service/notification')
+    notificationService.disconnect()
+  } catch (error) {
+  }
+}
+
+function scheduleNotificationRetry() {
+  if (notificationRetryTimer) return
+  notificationRetryTimer = setInterval(() => {
+    startNotificationSocket(true)
+  }, NOTIFICATION_RETRY_INTERVAL)
+}
+
+function clearNotificationRetry() {
+  if (notificationRetryTimer) {
+    clearInterval(notificationRetryTimer)
+    notificationRetryTimer = null
   }
 }
 

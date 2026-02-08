@@ -4,7 +4,7 @@
  */
 
 // 后端服务器配置
-const BACKEND_IP = '192.168.0.104'; // 可以修改为实际后端IP
+const BACKEND_IP = '192.168.0.100'; // 可以修改为实际后端IP
 const API_GATEWAY_PORT = 3000;
 
 // API Gateway 基础地址
@@ -32,6 +32,9 @@ export const AUTH_CONFIG = {
     login: '/auth/login',
     resolveSmartAccount: '/auth/resolve-smart-account',
     startRecovery: '/auth/start-recovery',
+    remindRecovery: '/auth/remind-recovery',
+    getGuardianRecoveryRequests: '/auth/recovery/guardian/:guardianAddress',
+    encryptionKey: '/auth/encryption-key',
   },
 };
 

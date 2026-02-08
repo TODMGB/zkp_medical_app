@@ -17,7 +17,6 @@
       <div class="title-section">
         <h1 class="title">设置密码</h1>
         <p class="subtitle">欢迎，{{ username }} 👋</p>
-        <p class="user-role">{{ roleText }}</p>
         <p class="hint">请设置一个安全的密码来保护您的账户</p>
       </div>
       
@@ -157,9 +156,6 @@ const userRole = ref(route.params.userRole as string || 'elderly');
 
 // 从路由state获取用户信息
 const userInfo = ref<any>(null);
-
-// 角色显示文本
-const roleText = userRole.value === 'elderly' ? '老人' : (userRole.value === 'doctor' ? '医生' : '监护人');
 
 const formData = reactive({
   password: '',

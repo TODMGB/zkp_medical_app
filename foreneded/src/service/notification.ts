@@ -62,19 +62,8 @@ export function getNotificationRoute(type: string, data?: Record<string, any>): 
 
   if (type.includes('recovery')) {
     if (type === 'recovery_requested') {
-      const oldSmartAccount = data?.old_smart_account || data?.oldSmartAccount || ''
-      const newOwnerAddress = data?.new_owner_address || data?.newOwnerAddress || ''
-      const sessionId = data?.session_id || data?.sessionId || ''
-      const expiresAt = data?.expires_at || data?.expiresAt || ''
-
-      const params = new URLSearchParams()
-      if (oldSmartAccount) params.set('old_smart_account', String(oldSmartAccount))
-      if (newOwnerAddress) params.set('new_owner_address', String(newOwnerAddress))
-      if (sessionId) params.set('session_id', String(sessionId))
-      if (expiresAt) params.set('expires_at', String(expiresAt))
-
-      const query = params.toString()
-      return query ? `/recovery-request?${query}` : '/recovery-request'
+      // 守护者收到恢复请求通知，跳转到守护者恢复请求列表页面
+      return '/guardian-recovery-list'
     }
 
     if (
@@ -264,6 +253,33 @@ class NotificationService {
     return this.FILTERED_NOTIFICATION_TYPES.has(String(type || ''))
   }
 
+  private async getFilteredUnreadCount(): Promise<number> {
+    try {
+      const headers = await authService.getAuthHeader()
+      const queryParams = new URLSearchParams()
+      queryParams.append('status', 'unread')
+      queryParams.append('limit', '200')
+      queryParams.append('offset', '0')
+
+      const url = buildNotificationUrl('getNotifications')
+      const fullUrl = `${url}?${queryParams}`
+      const response = await fetch(fullUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      })
+      if (!response.ok) return 0
+
+      const result = await response.json()
+      const list: Notification[] = (result.data || []).map((n: any) => normalizeNotification(n))
+      return list.filter(n => this.isFilteredNotificationType(n.type) && !n.read_at).length
+    } catch (e) {
+      return 0
+    }
+  }
+
   private getAutoUserInfoSentKey(myAccount: string, peerAddress: string): string {
     return `auto_user_info_sent_${String(myAccount).toLowerCase()}_${String(peerAddress).toLowerCase()}`
   }
@@ -353,7 +369,7 @@ class NotificationService {
   /**
    * 处理收到消息
    */
-  private handleMessage(event: MessageEvent): void {
+  private async handleMessage(event: MessageEvent): Promise<void> {
     try {
       const message: WSMessage = JSON.parse(event.data)
       console.log('收到WebSocket消息:', message)
@@ -369,6 +385,16 @@ class NotificationService {
           const normalizedNotification = normalizeNotification(message.data)
 
           if (this.isFilteredNotificationType(normalizedNotification.type)) {
+            try {
+              if (
+                normalizedNotification.type === 'encrypted_message' &&
+                normalizedNotification.data?.dataType === 'user_info_request'
+              ) {
+                this.persistUserInfoRequestFromNotification(normalizedNotification).catch(() => {
+                })
+              }
+            } catch (e) {
+            }
             try {
               if (!normalizedNotification.read_at) {
                 this.markAsReadViaWS(normalizedNotification.notification_id)
@@ -617,6 +643,45 @@ class NotificationService {
     }
   }
 
+  private async persistUserInfoRequestFromNotification(notification: Notification): Promise<void> {
+    try {
+      const msg = notification.data || {}
+      const messageId = String(msg.messageId || msg.message_id || '')
+      const sender = String(msg.senderAddress || msg.sender_address || '')
+      if (!messageId || !sender) return
+
+      const key = 'user_info_requests'
+      const { value } = await Preferences.get({ key })
+      const parsed = value ? JSON.parse(value) : []
+      const list: any[] = Array.isArray(parsed) ? parsed : []
+      const exists = list.some(r => String(r.message_id) === messageId)
+      if (!exists) {
+        list.unshift({
+          message_id: messageId,
+          sender_address: sender,
+          created_at: notification.created_at,
+          payload: null,
+        })
+        await Preferences.set({ key, value: JSON.stringify(list) })
+      }
+
+      try {
+        if (typeof window !== 'undefined' && window?.dispatchEvent) {
+          window.dispatchEvent(
+            new CustomEvent('user_info_request', {
+              detail: {
+                message_id: messageId,
+                sender_address: sender,
+              },
+            })
+          )
+        }
+      } catch (e) {
+      }
+    } catch (e) {
+    }
+  }
+
   // ==================== HTTP API ====================
 
   /**
@@ -727,7 +792,9 @@ class NotificationService {
       }
 
       const result = await response.json()
-      return result.data?.count || result.count || 0
+      const total = result.data?.count || result.count || 0
+      const filtered = await this.getFilteredUnreadCount()
+      return Math.max(0, total - filtered)
     } catch (error: any) {
       console.error('获取未读数量失败:', error)
       return 0 // 失败时返回0，不影响用户体验

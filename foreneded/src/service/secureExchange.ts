@@ -48,12 +48,33 @@ class SecureExchangeService {
   /**
    * 获取接收者的加密公钥（支持离线缓存）
    */
-  public async getRecipientPublicKey(recipientAddress: string): Promise<string> {
+  public async getRecipientPublicKey(
+    recipientAddress: string,
+    options?: { forceRefresh?: boolean }
+  ): Promise<string> {
     try {
+      const forceRefresh = !!options?.forceRefresh;
+
       // 1. 先尝试从缓存获取（支持完全离线）
-      const cachedKey = await publicKeyCacheService.getPublicKey(recipientAddress);
-      if (cachedKey) {
-        return cachedKey;
+      if (!forceRefresh) {
+        const cachedKey = await publicKeyCacheService.getPublicKey(recipientAddress);
+        if (cachedKey) {
+          try {
+            console.log(
+              '🔑 [getRecipientPublicKey] 使用缓存公钥:',
+              JSON.stringify(
+                {
+                  recipientAddress: String(recipientAddress).toLowerCase(),
+                  prefix: String(cachedKey).slice(0, 4),
+                  length: String(cachedKey).length,
+                },
+                null,
+                2
+              )
+            );
+          } catch (e) {}
+          return cachedKey;
+        }
       }
 
       // 2. 缓存未命中，尝试从服务器获取
@@ -66,25 +87,24 @@ class SecureExchangeService {
       }
       
       const headers = await authService.getAuthHeader();
-      const response = await fetch(
-        `${API_GATEWAY_URL}/secure-exchange/recipient-pubkey/${recipientAddress}`,
-        {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...headers,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || '获取接收者公钥失败');
-      }
-
-      const data = await response.json();
-      const publicKey = data.encryptionPublicKey;
+      const publicKey = await this.fetchRecipientPublicKeyFromServer(recipientAddress, headers);
       console.log('✅ 服务器获取公钥成功');
+
+      try {
+        console.log(
+          '🔑 [getRecipientPublicKey] 服务器公钥:',
+          JSON.stringify(
+            {
+              recipientAddress: String(recipientAddress).toLowerCase(),
+              prefix: String(publicKey).slice(0, 4),
+              length: String(publicKey).length,
+              forceRefresh,
+            },
+            null,
+            2
+          )
+        );
+      } catch (e) {}
       
       // 3. 保存到缓存
       await publicKeyCacheService.savePublicKey(recipientAddress, publicKey);
@@ -109,6 +129,30 @@ class SecureExchangeService {
     }
   }
 
+  private async fetchRecipientPublicKeyFromServer(
+    recipientAddress: string,
+    headers: Record<string, string>
+  ): Promise<string> {
+    const response = await fetch(
+      `${API_GATEWAY_URL}/secure-exchange/recipient-pubkey/${recipientAddress}`,
+      {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...headers,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || '获取接收者公钥失败');
+    }
+
+    const data = await response.json();
+    return data.encryptionPublicKey;
+  }
+
   /**
    * 使用ECDH派生共享密钥
    * 参考测试文件中的 deriveSharedSecret 函数
@@ -117,14 +161,45 @@ class SecureExchangeService {
   private deriveSharedSecret(privateKey: string, peerPublicKey: string): Uint8Array {
     try {
       const wallet = new ethers.Wallet(privateKey);
-      const sharedPoint = wallet.signingKey.computeSharedSecret(peerPublicKey);
+      // 兼容压缩/非压缩公钥：统一转换为非压缩格式（0x04...）再计算共享密钥
+      // 部分环境下直接对压缩公钥做 ECDH 可能会导致双方派生结果不一致，从而 AES-GCM 解密失败（DOMException）
+      const normalizedPeerPublicKey = ethers.SigningKey.computePublicKey(peerPublicKey, false);
+
+      try {
+        const myCompressed = wallet.signingKey.compressedPublicKey;
+        const myUncompressed = ethers.SigningKey.computePublicKey(myCompressed, false);
+        console.log(
+          '🔐 [deriveSharedSecret] ECDH inputs:',
+          JSON.stringify(
+            {
+              peerPrefix: String(peerPublicKey).slice(0, 4),
+              peerLength: String(peerPublicKey).length,
+              normalizedPeerPrefix: String(normalizedPeerPublicKey).slice(0, 4),
+              normalizedPeerLength: String(normalizedPeerPublicKey).length,
+              myPrefix: String(myCompressed).slice(0, 4),
+              myLength: String(myCompressed).length,
+              myUncompressedPrefix: String(myUncompressed).slice(0, 4),
+              myUncompressedLength: String(myUncompressed).length,
+            },
+            null,
+            2
+          )
+        );
+      } catch (e) {}
+
+      const sharedPoint = wallet.signingKey.computeSharedSecret(normalizedPeerPublicKey);
       
       // 使用SHA256哈希共享点作为对称密钥
       const sharedPointBuffer = ethers.getBytes(sharedPoint);
       
       // 使用 ethers.js 的 sha256 替代 Node.js crypto
       const hash = ethers.sha256(sharedPointBuffer);
-      return ethers.getBytes(hash);
+      const keyBytes = ethers.getBytes(hash);
+      try {
+        // 只打印短指纹，便于对比是否每次一致（不打印完整密钥）
+        console.log('🔐 [deriveSharedSecret] derivedKeyFingerprint:', String(hash).slice(0, 12));
+      } catch (e) {}
+      return keyBytes;
     } catch (error: any) {
       console.error('派生共享密钥失败:', error);
       throw error;
@@ -189,10 +264,28 @@ class SecureExchangeService {
    */
   private async decrypt(encryptedData: string, sharedSecret: Uint8Array): Promise<string> {
     try {
+      try {
+        console.log('🔓 [decrypt] encryptedData length:', String(encryptedData).length);
+      } catch (e) {}
       // 解析加密数据：iv(24) + authTag(32) + encrypted
       const ivHex = encryptedData.slice(0, 24);
       const authTagHex = encryptedData.slice(24, 56);
       const encryptedHex = encryptedData.slice(56);
+
+      try {
+        console.log(
+          '🔓 [decrypt] parsed lengths:',
+          JSON.stringify(
+            {
+              ivHex: ivHex.length,
+              authTagHex: authTagHex.length,
+              encryptedHex: encryptedHex.length,
+            },
+            null,
+            2
+          )
+        );
+      } catch (e) {}
       
       // 转换为字节数组
       const iv = new Uint8Array(ivHex.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
@@ -203,6 +296,23 @@ class SecureExchangeService {
       const ciphertext = new Uint8Array(encrypted.length + authTag.length);
       ciphertext.set(encrypted);
       ciphertext.set(authTag, encrypted.length);
+
+      try {
+        console.log(
+          '🔓 [decrypt] byte lengths:',
+          JSON.stringify(
+            {
+              iv: iv.length,
+              authTag: authTag.length,
+              encrypted: encrypted.length,
+              ciphertext: ciphertext.length,
+              sharedSecret: sharedSecret.length,
+            },
+            null,
+            2
+          )
+        );
+      } catch (e) {}
       
       // 导入密钥
       const key = await crypto.subtle.importKey(
@@ -240,7 +350,8 @@ class SecureExchangeService {
     recipientAddress: string,
     plainData: any,
     dataType: string,
-    metadata?: any
+    metadata?: any,
+    apiPath: string = '/send'
   ): Promise<string> {
     try {
       console.log('开始发送加密数据...');
@@ -282,7 +393,7 @@ class SecureExchangeService {
       // 5. 发送加密数据
       const headers = await authService.getAuthHeader();
       const response = await fetch(
-        `${API_GATEWAY_URL}/secure-exchange/send`,
+        `${API_GATEWAY_URL}/secure-exchange${apiPath}`,
         {
           method: 'POST',
           headers: {
@@ -447,6 +558,44 @@ class SecureExchangeService {
       console.error('❌ [sendUserInfo] 发送失败:', error);
       throw error;
     }
+  }
+
+  public async requestUserInfo(
+    senderWallet: ethers.Wallet | ethers.HDNodeWallet,
+    recipientAddress: string,
+    payload: Record<string, any> = {}
+  ): Promise<string> {
+    const messageId = await this.sendEncryptedData(
+      senderWallet,
+      recipientAddress,
+      payload,
+      'user_info_request',
+      {
+        title: '【信息交换请求】',
+        description: '对方请求交换个人信息',
+      },
+      '/user-info/request'
+    )
+    return messageId
+  }
+
+  public async approveUserInfo(
+    senderWallet: ethers.Wallet | ethers.HDNodeWallet,
+    recipientAddress: string,
+    userInfo: UserInfoData
+  ): Promise<string> {
+    const messageId = await this.sendEncryptedData(
+      senderWallet,
+      recipientAddress,
+      userInfo,
+      'user_info',
+      {
+        title: '【信息交换同意】',
+        description: `${userInfo.username} 的个人资料`,
+      },
+      '/user-info/approve'
+    )
+    return messageId
   }
 }
 

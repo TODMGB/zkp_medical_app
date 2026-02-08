@@ -210,6 +210,12 @@ async function getMedicationCheckInCount(smartAccountAddress) {
   try {
     const provider = wallet.provider;
 
+    const code = await provider.getCode(smartAccountAddress);
+    if (!code || code === '0x') {
+      console.log(`[MedicationCheckIn] SmartAccount 未部署，返回 0，address: ${smartAccountAddress}`);
+      return '0';
+    }
+
     const contract = new ethers.Contract(
       smartAccountAddress,
       SIMPLE_ACCOUNT_ABI,
@@ -235,6 +241,12 @@ async function getAllCheckInCids(smartAccountAddress) {
   try {
     const provider = wallet.provider;
 
+    const code = await provider.getCode(smartAccountAddress);
+    if (!code || code === '0x') {
+      console.log(`[MedicationCheckIn] SmartAccount 未部署，返回空列表，address: ${smartAccountAddress}`);
+      return [];
+    }
+
     const contract = new ethers.Contract(
       smartAccountAddress,
       SIMPLE_ACCOUNT_ABI,
@@ -243,10 +255,15 @@ async function getAllCheckInCids(smartAccountAddress) {
 
     // 获取打卡总数
     const count = await contract.getMedicationCheckInCount();
+    const total = Number(count);
     const cids = [];
 
+    if (!Number.isFinite(total) || total <= 0) {
+      return [];
+    }
+
     // 逐个获取 CID
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < total; i++) {
       const cid = await contract.checkInCids(i);
       cids.push(cid);
     }

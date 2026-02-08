@@ -5,6 +5,7 @@
 
 import { Preferences } from '@capacitor/preferences';
 import { secureExchangeService } from './secureExchange';
+import { publicKeyCacheService } from './publicKeyCache';
 import { memberInfoService, type MemberInfo } from './memberInfo';
 import { authService } from './auth';
 import { medicationPlanStorageService } from './medicationPlanStorage';
@@ -19,8 +20,96 @@ class MessageListenerService {
   private readonly CHECK_INTERVAL = 30000; // 30秒检查一次
   private readonly USER_INFO_AUTO_SEND_TTL_MS = 24 * 60 * 60 * 1000;
 
+  private readonly USER_INFO_REQUESTS_KEY = 'user_info_requests';
+
+  private async loadUserInfoRequests(): Promise<any[]> {
+    try {
+      const { value } = await Preferences.get({ key: this.USER_INFO_REQUESTS_KEY });
+      if (!value) return [];
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  private async saveUserInfoRequests(list: any[]): Promise<void> {
+    try {
+      await Preferences.set({ key: this.USER_INFO_REQUESTS_KEY, value: JSON.stringify(list || []) });
+    } catch (e) {
+    }
+  }
+
   private getAutoUserInfoSentKey(myAccount: string, peerAddress: string): string {
     return `auto_user_info_sent_${String(myAccount).toLowerCase()}_${String(peerAddress).toLowerCase()}`;
+  }
+
+  private async processUserInfoRequestMessage(message: any, wallet: any): Promise<void> {
+    try {
+      console.log('📨 处理用户信息请求消息:', message.message_id);
+      console.log('  发送者地址:', message.sender_address);
+
+      let payload: any = null;
+      try {
+        const senderPublicKey = await secureExchangeService.getRecipientPublicKey(message.sender_address);
+        payload = await secureExchangeService.decryptMessage(message.encrypted_data, wallet, senderPublicKey);
+      } catch (e) {
+        try {
+          console.warn('⚠️ [user_info_request] 首次解密失败，准备清缓存并强制刷新公钥重试:', {
+            message_id: message.message_id,
+            sender: message.sender_address,
+          });
+
+          const oldKey = await publicKeyCacheService.getPublicKey(message.sender_address);
+          await publicKeyCacheService.clearPublicKey(message.sender_address);
+          const senderPublicKey = await secureExchangeService.getRecipientPublicKey(message.sender_address, { forceRefresh: true });
+          try {
+            console.log('🔁 [user_info_request] 公钥对比:', {
+              oldPrefix: oldKey ? String(oldKey).slice(0, 4) : null,
+              oldLength: oldKey ? String(oldKey).length : null,
+              newPrefix: String(senderPublicKey).slice(0, 4),
+              newLength: String(senderPublicKey).length,
+              changed: oldKey ? String(oldKey) !== String(senderPublicKey) : null,
+            });
+          } catch (e3) {}
+          payload = await secureExchangeService.decryptMessage(message.encrypted_data, wallet, senderPublicKey);
+        } catch (e2) {
+        }
+      }
+
+      const current = await this.loadUserInfoRequests();
+      const exists = current.some(r => String(r.message_id) === String(message.message_id));
+      if (!exists) {
+        current.unshift({
+          message_id: message.message_id,
+          sender_address: message.sender_address,
+          created_at: message.created_at,
+          payload,
+        });
+        await this.saveUserInfoRequests(current);
+      }
+
+      try {
+        if (typeof window !== 'undefined' && window?.dispatchEvent) {
+          window.dispatchEvent(
+            new CustomEvent('user_info_request', {
+              detail: {
+                message_id: message.message_id,
+                sender_address: message.sender_address,
+                payload,
+              },
+            })
+          );
+        }
+      } catch (e) {
+      }
+
+      await secureExchangeService.acknowledgeMessage(message.message_id, '用户信息请求已接收');
+      console.log('✅ 用户信息请求消息已确认');
+    } catch (error) {
+      console.error('处理用户信息请求消息失败:', error);
+      throw error;
+    }
   }
 
   private async canAutoSendUserInfo(myAccount: string, peerAddress: string): Promise<boolean> {
@@ -102,6 +191,11 @@ class MessageListenerService {
       console.log('📡 [消息监听] 查询 user_info 类型的待处理消息...');
       const userInfoMessages = await secureExchangeService.getPendingMessages('user_info');
       console.log(`📊 [消息监听] 查询结果: 找到 ${userInfoMessages.length} 条待处理的用户信息消息`);
+
+      // 1.1 获取待处理的 user_info_request 类型消息
+      console.log('📡 [消息监听] 查询 user_info_request 类型的待处理消息...');
+      const userInfoRequestMessages = await secureExchangeService.getPendingMessages('user_info_request');
+      console.log(`📊 [消息监听] 查询结果: 找到 ${userInfoRequestMessages.length} 条待处理的用户信息请求消息`);
       
       // 2. 获取待处理的medication_plan类型消息
       console.log('📡 [消息监听] 查询 medication_plan 类型的待处理消息...');
@@ -140,6 +234,7 @@ class MessageListenerService {
 
       // 8. 合并所有消息
       const allMessages = [
+        ...userInfoRequestMessages,
         ...userInfoMessages,
         ...medicationPlanMessages,
         ...groupKeyShareMessages,
@@ -167,7 +262,9 @@ class MessageListenerService {
       // 处理每条消息
       for (const message of allMessages) {
         try {
-          if (message.data_type === 'user_info') {
+          if (message.data_type === 'user_info_request') {
+            await this.processUserInfoRequestMessage(message, wallet);
+          } else if (message.data_type === 'user_info') {
             await this.processUserInfoMessage(message, wallet);
           } else if (message.data_type === 'medication_plan') {
             await this.processMedicationPlanMessage(message, wallet);
@@ -204,17 +301,30 @@ class MessageListenerService {
       console.log('📨 处理用户信息消息:', message.message_id);
       console.log('  发送者地址:', message.sender_address);
 
-      // 获取发送者的公钥
-      const senderPublicKey = await secureExchangeService.getRecipientPublicKey(
-        message.sender_address
-      );
+      let decryptedData: any;
+      try {
+        const senderPublicKey = await secureExchangeService.getRecipientPublicKey(message.sender_address);
+        decryptedData = await secureExchangeService.decryptMessage(message.encrypted_data, wallet, senderPublicKey);
+      } catch (e) {
+        console.warn('⚠️ [user_info] 首次解密失败，准备清缓存并强制刷新公钥重试:', {
+          message_id: message.message_id,
+          sender: message.sender_address,
+        });
 
-      // 解密消息
-      const decryptedData = await secureExchangeService.decryptMessage(
-        message.encrypted_data,
-        wallet,
-        senderPublicKey
-      );
+        const oldKey = await publicKeyCacheService.getPublicKey(message.sender_address);
+        await publicKeyCacheService.clearPublicKey(message.sender_address);
+        const senderPublicKey = await secureExchangeService.getRecipientPublicKey(message.sender_address, { forceRefresh: true });
+        try {
+          console.log('🔁 [user_info] 公钥对比:', {
+            oldPrefix: oldKey ? String(oldKey).slice(0, 4) : null,
+            oldLength: oldKey ? String(oldKey).length : null,
+            newPrefix: String(senderPublicKey).slice(0, 4),
+            newLength: String(senderPublicKey).length,
+            changed: oldKey ? String(oldKey) !== String(senderPublicKey) : null,
+          });
+        } catch (e3) {}
+        decryptedData = await secureExchangeService.decryptMessage(message.encrypted_data, wallet, senderPublicKey);
+      }
 
       // 打印完整的解密数据
       console.log('✅ 解密成功！');

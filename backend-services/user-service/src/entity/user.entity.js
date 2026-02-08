@@ -112,6 +112,24 @@ async function updateEncryptionPublicKey(smartAccount, encryptionPublicKey) {
   return rows[0];
 }
 
+/**
+ * 更新用户的 EOA 地址（用于社交恢复后 owner 变更同步）
+ * @param {string} smartAccount - 智能账户地址
+ * @param {string} eoaAddress - 新的 EOA 地址
+ * @returns {Promise<object|null>} 返回更新后的用户对象或 null
+ */
+async function updateEoaAddressBySmartAccount(smartAccount, eoaAddress) {
+  const query = `
+    UPDATE users
+    SET eoa_address = $1
+    WHERE smart_account = $2
+    RETURNING *;
+  `;
+
+  const { rows } = await pool.query(query, [eoaAddress, smartAccount]);
+  return rows[0] || null;
+}
+
 async function ensureIdentityBindingsTable() {
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS user_identity_bindings (
@@ -211,6 +229,7 @@ module.exports = {
   createUser,                     // 创建新用户
   addUserRole,                    // 添加用户角色
   updateEncryptionPublicKey,      // 更新加密公钥
+  updateEoaAddressBySmartAccount,
   ensureIdentityBindingsTable,
   upsertIdentityBinding,
   findSmartAccountByIdentity,

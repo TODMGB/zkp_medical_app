@@ -673,6 +673,41 @@ class RelationService {
     }
   }
 
+  public async requestPeerInfo(peerAddress: string): Promise<void> {
+    const peer = String(peerAddress || '').trim();
+    if (!peer) {
+      throw new Error('缺少对方地址');
+    }
+
+    let wallet: any = null;
+    try {
+      const { aaService } = await import('./accountAbstraction');
+      wallet = aaService.getEOAWallet();
+    } catch (e) {
+    }
+
+    if (!wallet) {
+      throw new Error('无法获取本地钱包，请先登录');
+    }
+
+    const userInfo = await authService.getUserInfo();
+    if (!userInfo) {
+      throw new Error('无法获取当前用户信息');
+    }
+
+    const { secureExchangeService } = await import('./secureExchange');
+    await secureExchangeService.requestUserInfo(wallet, peer, {
+      requester: String(userInfo.smart_account || ''),
+      timestamp: Date.now(),
+    });
+
+    try {
+      const { messageListenerService } = await import('./messageListener');
+      await messageListenerService.checkMessagesNow(wallet);
+    } catch (e) {
+    }
+  }
+
   private async sendUserInfoToPeer(wallet: any, peerAddress: string): Promise<void> {
     await this.sendUserInfoToOwner(wallet, peerAddress);
   }
